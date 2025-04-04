@@ -1,0 +1,55 @@
+site_name: PyHub MCP Tools
+site_url: https://mcp.pyhub.kr
+site_description: Python library for automating applications through Anthropic MCP protocol
+site_author: Your Name
+
+repo_name: pyhub-kr/pyhub-mcp-tools
+repo_url: https://github.com/pyhub-kr/pyhub-mcp-tools
+
+theme:
+  name: material
+  palette:
+    primary: indigo
+    accent: indigo
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.expand
+    - navigation.indexes
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - def_list
+  - attr_list
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            show_object_full_path: false
+            show_category_heading: true
+            show_if_no_docstring: false
+            heading_level: 2
+
+nav:
+  - Home: index.md
+# - Getting Started:
+#   - Installation: usage/installation.md
+#   - Quickstart: usage/quickstart.md
+# - User Guide:
+#   - Excel Automation: usage/excel.md
+#   - Browser Automation: usage/browser.md

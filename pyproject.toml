@@ -1,0 +1,118 @@
+[project]
+name = "pyhub-mcp-tools"
+version = "0.1.0"
+description = "Python library for automating applications through MCP protocol"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Office/Business",
+    "Topic :: Office/Business :: Office Suites",
+]
+dependencies = [
+    "django>=5.2",
+    "django-environ",
+    "mcp",
+    "typer",
+    "tzlocal",
+]
+
+[project.optional-dependencies]
+browser = [
+    "bs4",
+    "httpx",
+    "playwright",
+]
+excel = [
+    "openpyxl",
+    "pandas",
+    # "xlwings",
+]
+all = [
+    "pyhub-mcp-tools[excel,browser]",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-httpx>=0.35.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "ruff>=0.0.40",
+    "djlint>=1.36.4",
+]
+docs = [
+    "mkdocs>=1.4.0",
+    "mkdocs-material>=9.1.0",
+    "mkdocstrings>=0.20.0",
+    "mkdocstrings-python>=1.0.0",
+]
+build = ["setuptools", "wheel", "build", "twine"]
+
+[project.urls]
+Homepage = "https://github.com/pyhub-kr/pyhub-mcp-tools"
+Documentation = "https://pyhub-kr.github.io/pyhub-mcp-tools"
+"Bug Tracker" = "https://github.com/pyhub-kr/pyhub-mcp-tools/issues"
+"Source Code" = "https://github.com/pyhub-kr/pyhub-mcp-tools"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pyhub"]
+exclude = ["**/__pycache__", "**/.DS_Store", "**/conftest.py", "**/tests/", "**/test_*.py"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.black]
+line-length = 120
+target-version = ["py310", "py311", "py312", "py313"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+select = ["E", "F", "B", "I"]
+ignore = []
+
+[tool.ruff.lint]
+ignore = ["B008"]  # Typer 사용 시 함수 호출 기본값 허용
+
+[tool.djlint]
+profile = "django"
+indent = 2
+
+[tool.pytest.ini_options]
+testpaths = ["pyhub"]
+python_files = "test_*.py"
+asyncio_mode = "auto"  # Enable asyncio mode
+asyncio_default_fixture_loop_scope = "function"  # Set default fixture loop scope
+markers = [
+    "asyncio: mark test as an asyncio test",
+]
