@@ -15,7 +15,7 @@ async def get_webpage_metadata(
 ) -> dict:
     """Get metadata in a webpage"""
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         response = await client.get(
             url,
             headers={
