@@ -69,6 +69,11 @@ Documentation = "https://pyhub-kr.github.io/pyhub-mcp-tools"
 "Bug Tracker" = "https://github.com/pyhub-kr/pyhub-mcp-tools/issues"
 "Source Code" = "https://github.com/pyhub-kr/pyhub-mcp-tools"
 
+[project.scripts]
+"pyhub.mcp_tools.browser" = "pyhub.mcp_tools.browser.__main__:app"
+"pyhub.mcp_tools.excel" = "pyhub.mcp_tools.excel.__main__:app"
+"pyhub.mcp_tools.setup" = "pyhub.mcp_tools.setup.__main__:app"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
