@@ -2,41 +2,53 @@ import json
 import os
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 from rich.console import Console
+from typer import Exit
 
 console = Console()
 
 
-def get_config_path(host: str) -> Path:
+def get_config_path(host: str, is_verbose: bool = False) -> Path:
     """현재 운영체제에 맞는 설정 파일 경로를 반환합니다."""
     os_system = sys.platform.lower()
     home = Path.home()
 
     try:
-        return {
+        path = {
             ("darwin", "claude"): home / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json",
             ("windows", "claude"): home / "AppData" / "Roaming" / "Claude" / "claude_desktop_config.json",
         }[(os_system, host)]
     except KeyError:
         pass
+    else:
+        if is_verbose:
+            console.print(f"[INFO] config path : {path}", highlight=False)
+        return path
 
     raise ValueError(f"{os_system}의 {host} 프로그램은 지원하지 않습니다.")
 
 
-def read_config_file(path: Path) -> dict:
-    """설정 파일을 읽어서 반환합니다."""
+@contextmanager
+def read_config_file(path: Path, is_verbose: bool = False):
+    """설정 파일을 읽어서 반환합니다. with 문에서 사용 가능합니다."""
     if not path.exists():
         raise IOError(f"{path} 경로의 파일이 아직 없습니다.")
 
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            config_data: dict = json.load(f)
+            yield config_data
     except json.JSONDecodeError as e:
         raise ValueError("설정 파일이 JSON 포맷이 아닙니다.") from e
     except Exception as e:
-        raise e
+        if is_verbose:
+            console.print_exception()
+        else:
+            console.print(f"[red]{type(e).__name__}: {e}[/red]")
+        raise Exit(1) from e
 
 
 def get_editor_commands() -> list[str]:
