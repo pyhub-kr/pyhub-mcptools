@@ -14,6 +14,9 @@ console = Console()
 def get_config_path(host: str, is_verbose: bool = False) -> Path:
     """현재 운영체제에 맞는 설정 파일 경로를 반환합니다."""
     os_system = sys.platform.lower()
+    if "win" in os_system:
+        os_system = "windows"
+
     home = Path.home()
 
     try:
