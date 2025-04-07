@@ -17,7 +17,7 @@ from pyhub.mcptools.core.choices import McpHostChoices, TransportChoices
 from pyhub.mcptools.core.init import mcp
 from pyhub.mcptools.core.utils import get_config_path, open_with_default_editor, read_config_file
 
-app = typer.Typer()
+app = typer.Typer(add_completion=False)
 console = Console()
 
 
