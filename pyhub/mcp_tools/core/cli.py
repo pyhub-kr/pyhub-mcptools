@@ -1,4 +1,5 @@
 import json
+from importlib.metadata import version, PackageNotFoundError
 from typing import Optional, Sequence
 
 import typer
@@ -17,8 +18,18 @@ console = Console()
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
-    if ctx.invoked_subcommand is None:
+def main(
+    ctx: typer.Context,
+    is_version: bool = typer.Option(False, "--version", "-v", help="Show version and exit."),
+):
+    if is_version:
+        try:
+            v = version("pyhub-mcp-tools")
+        except PackageNotFoundError:
+            v = "not found"
+        console.print(v, highlight=False)
+
+    elif ctx.invoked_subcommand is None:
         console.print(ctx.get_help())
         raise typer.Exit()
 
