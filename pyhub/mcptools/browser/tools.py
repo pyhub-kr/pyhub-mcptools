@@ -6,7 +6,7 @@ import httpx
 from bs4 import BeautifulSoup
 from pydantic import Field
 
-from .. import mcp
+from pyhub.mcptools import mcp
 
 
 @mcp.tool()

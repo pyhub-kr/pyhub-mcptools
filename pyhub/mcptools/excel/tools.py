@@ -7,8 +7,8 @@ from typing import Optional, Any
 
 import xlwings as xw
 
-from .types import ExcelRange
-from .. import mcp
+from pyhub.mcptools.excel.types import ExcelRange
+from pyhub.mcptools import mcp
 
 
 #

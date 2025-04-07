@@ -4,7 +4,7 @@ import django
 from django.conf import settings
 from mcp.server.fastmcp import FastMCP
 
-from ..core.utils import activate_timezone
+from pyhub.mcptools.core.utils import activate_timezone
 
 mcp: FastMCP
 

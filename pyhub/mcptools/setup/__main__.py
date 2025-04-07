@@ -4,10 +4,10 @@ from click import ClickException
 from rich.console import Console
 from typer import Argument, Exit, Option, confirm, prompt
 
-from ..core.cli import app
-from . import tools  # noqa
-from .choices import McpHostChoices
-from .utils import get_config_path, open_with_default_editor, read_config_file
+from pyhub.mcptools.core.cli import app
+from pyhub.mcptools.setup import tools  # noqa
+from pyhub.mcptools.setup.choices import McpHostChoices
+from pyhub.mcptools.setup.utils import get_config_path, open_with_default_editor, read_config_file
 
 console = Console()
 

@@ -10,8 +10,8 @@ from rich.console import Console
 from rich.table import Table
 from typer import Argument, Option
 
-from .choices import TransportChoices
-from .init import mcp
+from pyhub.mcptools.core.choices import TransportChoices
+from pyhub.mcptools.core.init import mcp
 
 app = typer.Typer()
 console = Console()

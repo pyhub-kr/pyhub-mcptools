@@ -2,7 +2,7 @@ from pathlib import Path
 
 from environ import Env
 
-from .utils import (
+from pyhub.mcptools.core.utils import (
     get_current_language_code,
     get_current_timezone,
     get_databases,

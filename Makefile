@@ -32,7 +32,7 @@ publish: build
 build-onefile-excel: clean
 	uv pip install --upgrade -e ".[build]"
 	uv pip install --upgrade pyinstaller
-	uv run pyinstaller --onefile --windowed --name pyhub.mcptools.excel pyhub/mcptools/excel/__main__.py
+	uv run pyinstaller --console --onefile --collect-all pyhub.mcptools --name pyhub.mcptools.excel pyhub/mcptools/excel/__main__.py
 
 #
 # docs

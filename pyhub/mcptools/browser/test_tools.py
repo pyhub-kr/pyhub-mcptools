@@ -1,7 +1,7 @@
 import pytest
 from pytest_httpx import HTTPXMock
 
-from .tools import get_webpage_metadata
+from pyhub.mcptools.browser.tools import get_webpage_metadata
 
 
 @pytest.mark.asyncio
