@@ -4,11 +4,10 @@ from typing import Optional, Sequence
 import typer
 from asgiref.sync import async_to_sync
 from mcp.types import TextContent, ImageContent, EmbeddedResource
-from mypy.server.update import is_verbose
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
 from rich.table import Table
-from typer import Argument
+from typer import Argument, Option
 
 from .choices import TransportChoices
 from .init import mcp
@@ -26,9 +25,31 @@ def main(ctx: typer.Context):
 
 @app.command()
 def run(
-    transport: TransportChoices = typer.Option(default=TransportChoices.STDIO),
+    transport: TransportChoices = typer.Argument(default=TransportChoices.STDIO),
+    host: str = typer.Option("0.0.0.0", help="SSE Host (SSE transport 방식에서만 사용)"),
+    port: int = typer.Option(8000, help="SSE Port (SSE transport 방식에서만 사용)"),
 ):
     """지정 transport로 MCP 서버 실행"""
+
+    if host is not None:
+        if ":" in host:
+            try:
+                host_part, port_str = host.split(":")
+                port_from_host = int(port_str)
+                mcp.settings.host = host_part
+                mcp.settings.port = port_from_host
+            except ValueError:
+                raise typer.BadParameter("Host 포맷이 잘못되었습니다. --host 'ip:port' 형식이어야 합니다.")
+        else:
+            mcp.settings.host = host
+
+            # 별도 port 인자가 지정된 경우에만 설정
+            if port is not None:
+                mcp.settings.port = port
+
+    elif port is not None:
+        mcp.settings.port = port
+
     mcp.run(transport=transport)
 
 
@@ -39,6 +60,7 @@ def call(
         None,
         help="Arguments for the tool in key=value format(e.g, x=10 y='hello world'",
     ),
+    is_verbose: bool = Option(False, "--verbose", "-v"),
 ):
     """테스트 목적으로 MCP 인터페이스를 거치지 않고 지정 도구를 직접 호출"""
 
@@ -58,18 +80,26 @@ def call(
                 # Fallback to string if not valid JSON
                 arguments[key] = value
 
-    console.print(f"Calling tool '{tool_name}' with arguments: {arguments}")
+    if is_verbose:
+        console.print(f"Calling tool '{tool_name}' with arguments: {arguments}")
 
     return_value: Sequence[TextContent | ImageContent | EmbeddedResource]
     try:
         return_value = async_to_sync(mcp.call_tool)(tool_name, arguments=arguments)
     except ValidationError as e:
+        if is_verbose:
+            console.print_exception()
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
     except Exception as e:
+        if is_verbose:
+            console.print_exception()
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
     else:
+        if is_verbose:
+            console.print(return_value)
+
         for ele in return_value:
             if isinstance(ele, TextContent):
                 console.print(ele.text)
