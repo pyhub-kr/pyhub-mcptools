@@ -58,7 +58,22 @@ DATABASES = get_databases(CURRENT_DIR)
 
 # "AUTH_USER_MODEL": ...,  # TODO:
 
-# LOGGING = {}
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "null": {
+            "class": "logging.NullHandler",
+        },
+    },
+    "loggers": {
+        "httpx": {
+            "handlers": ["null"],
+            "level": "CRITICAL",
+            "propagate": False,
+        },
+    },
+}
 
 LANGUAGE_CODE = get_current_language_code("ko-KR")
 # 데이터베이스 저장 목적

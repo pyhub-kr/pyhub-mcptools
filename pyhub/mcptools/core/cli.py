@@ -18,6 +18,7 @@ from rich.table import Table
 from pyhub.mcptools.core.choices import McpHostChoices, TransportChoices
 from pyhub.mcptools.core.init import mcp
 from pyhub.mcptools.core.utils import get_config_path, open_with_default_editor, read_config_file
+from pyhub.mcptools.core.versions import PackageVersionChecker
 
 app = typer.Typer(add_completion=False)
 console = Console()
@@ -382,6 +383,26 @@ def setup_restore(
     except IOError as e:
         console.print(f"[red]파일 복사 중 오류가 발생했습니다: {e}[/red]")
         raise typer.Exit(1) from e
+
+
+@app.command()
+def check_update():
+    """최신 버전을 확인합니다."""
+
+    # current_cmd = sys.argv[0]
+    #
+    # if "__main__" in current_cmd:
+    #     console.print("[red]팩키징된 실행파일에 대해서만 지원합니다.[/red]")
+    #     raise typer.Exit(1)
+
+    package_name = "pyhub-mcptools"
+    version_check = PackageVersionChecker.check_update(package_name, is_force=True)
+
+    if not version_check.has_update:
+        console.print(f"이미 최신 버전({version_check.installed})입니다.", highlight=False)
+    else:
+        latest_url = f"https://github.com/pyhub-kr/pyhub-mcptools/releases/tag/v{version_check.latest}"
+        console.print(f"{latest_url} 페이지에서 최신 버전을 다운받으실 수 있습니다.")
 
 
 def print_as_table(title: str, rows: list[BaseModel]) -> None:
