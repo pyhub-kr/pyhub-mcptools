@@ -30,7 +30,7 @@ publish: build
 	uv run -m twine upload dist/*
 
 build-onefile-excel: clean
-	uv pip install --upgrade -e ".[build]"
+	uv pip install --upgrade -e ".[build,excel]"
 	uv pip install --upgrade pyinstaller
 	uv run pyinstaller --console --onefile --collect-all pyhub.mcptools --name pyhub.mcptools.excel pyhub/mcptools/excel/__main__.py
 

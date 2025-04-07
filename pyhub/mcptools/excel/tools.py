@@ -32,34 +32,27 @@ from pyhub.mcptools import mcp
 def get_opened_workbooks() -> dict:
     """현재 열려진 엑셀 워크북 목록을 반환"""
 
-    try:
-        return {
-            "books": [
-                {
-                    "name": book.name,
-                    "fullname": book.fullname,
-                    "sheets": [
-                        {
-                            "name": sheet.name,
-                            "index": sheet.index,
-                            "range": sheet.used_range.get_address(),  # "$A$1:$E$665"
-                            "count": sheet.used_range.count,  # 3325 (셀의 총 개수)
-                            "shape": sheet.used_range.shape,  # (655, 5)
-                            "active": sheet == xw.sheets.active,
-                        }
-                        for sheet in book.sheets
-                    ],
-                    "active": book == xw.books.active,
-                }
-                for book in xw.books
-            ]
-        }
-    except Exception as e:
-        import traceback
-
-        with open("/Users/allieus/Work/pyhub-mcptools/debug.txt", "wt") as f:
-            f.write(traceback.format_exc())
-        raise e
+    return {
+        "books": [
+            {
+                "name": book.name,
+                "fullname": book.fullname,
+                "sheets": [
+                    {
+                        "name": sheet.name,
+                        "index": sheet.index,
+                        "range": sheet.used_range.get_address(),  # "$A$1:$E$665"
+                        "count": sheet.used_range.count,  # 3325 (셀의 총 개수)
+                        "shape": sheet.used_range.shape,  # (655, 5)
+                        "active": sheet == xw.sheets.active,
+                    }
+                    for sheet in book.sheets
+                ],
+                "active": book == xw.books.active,
+            }
+            for book in xw.books
+        ]
+    }
 
 
 @mcp.tool()
