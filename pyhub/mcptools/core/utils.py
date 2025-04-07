@@ -208,7 +208,7 @@ def read_config_file(path: Path, is_verbose: bool = False):
             config_data: dict = json.load(f)
             yield config_data
     except json.JSONDecodeError as e:
-        raise ValueError("설정 파일이 JSON 포맷이 아닙니다.") from e
+        raise ValueError("JSON 설정 파일에 오류가 있습니다.") from e
     except Exception as e:
         if is_verbose:
             console.print_exception()

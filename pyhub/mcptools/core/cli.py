@@ -1,5 +1,7 @@
 import json
+import re
 import shutil
+import sys
 from enum import Enum
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -46,24 +48,15 @@ def run(
 ):
     """지정 transport로 MCP 서버 실행"""
 
-    if host is not None:
-        if ":" in host:
-            try:
-                host_part, port_str = host.split(":")
-                port_from_host = int(port_str)
-                mcp.settings.host = host_part
-                mcp.settings.port = port_from_host
-            except ValueError as e:
-                raise typer.BadParameter("Host 포맷이 잘못되었습니다. --host 'ip:port' 형식이어야 합니다.") from e
-        else:
-            mcp.settings.host = host
+    if ":" in host:
+        try:
+            host, port = host.split(":")
+            port = int(port)
+        except ValueError as e:
+            raise ValueError("Host 포맷이 잘못되었습니다. --host 'ip:port' 형식이어야 합니다.") from e
 
-            # 별도 port 인자가 지정된 경우에만 설정
-            if port is not None:
-                mcp.settings.port = port
-
-    elif port is not None:
-        mcp.settings.port = port
+    mcp.settings.host = host
+    mcp.settings.port = port
 
     mcp.run(transport=transport)
 
@@ -170,14 +163,76 @@ class FormatEnum(str, Enum):
 
 
 @app.command()
+def setup_add(
+    mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    is_verbose: bool = typer.Option(False, "--verbose", "-v"),
+):
+    """[MCP 설정파일] 설정에 자동 추가 (팩키징된 실행파일만 지원)"""
+
+    current_cmd = sys.argv[0]
+    current_exe_path = Path(current_cmd).resolve()
+
+    # 뒤에 또 다른 mcptools가 나오면 매칭하지 않음 (lookahead)
+    matched = re.search(r"mcptools[/.]([a-zA-Z0-9_]+)(?!.*mcptools)", str(current_exe_path))
+    command_category = matched.group(1)  # ex) "excel"
+    config_name = f"pyhub.mcptools.{command_category}"
+
+    # 소스파일 실행
+    if "__main__" in current_exe_path.name:
+        console.print("[red]팩키징된 실행파일에 대해서만 지원합니다.[/red]")
+        new_config = None
+
+    # 윈도우 실행파일 실행
+    elif current_exe_path.suffix == ".exe":
+        # current_cmd 경로를 그대로 활용하면 됨
+        new_config = {"command": str(current_exe_path), "args": ["run", "stdio"]}
+
+    # 맥 실행파일 실행
+    #  - macOS에서는 Claude 내에서 엑셀 프로그램에 대한 접근 권한 문제로 stdio 방식을 지원하지 않겠습니다.
+    else:
+        console.print("[red]macOS는 지원예정입니다.[/red]")
+        raise typer.Exit(1)
+
+        # TODO: 현재 머신에서 (현재 가상환경 포함) 가용한 mcp-proxy 명령의 절대경로를 찾습니다.
+        # mcp_proxy_abs_path = "mcp-proxy"
+        #
+        # TODO: pyhub.mcptools.excel SSE 서버 URL 찾기
+        # pyhub_mcptools_excel_sse_path = "http://localhost:9999/sse"
+        #
+        # new_config = {"command": mcp_proxy_abs_path, "args": [pyhub_mcptools_excel_sse_path]}
+
+    if new_config:
+        config_path = get_config_path(mcp_host, is_verbose)
+
+        with read_config_file(config_path) as config_data:
+            config_data.setdefault("mcpServers", {})
+
+        if config_name in config_data["mcpServers"]:
+            is_confirm = typer.confirm(f"{config_name} 설정이 이미 있습니다. 덮어쓰시겠습니까?")
+            if not is_confirm:
+                raise typer.Abort()
+
+        config_data["mcpServers"][config_name] = new_config
+
+        config_path = get_config_path(mcp_host, is_verbose)
+        with open(config_path, "wt", encoding="utf-8") as f:
+            json_str = json.dumps(config_data, indent=2, ensure_ascii=False)
+            f.write(json_str)
+
+        console.print(f"'{config_path}' 경로에 {config_name} 설정을 추가했습니다.", highlight=False)
+    else:
+        raise typer.Exit(1)
+
+
+@app.command()
 def setup_print(
-    host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
     fmt: FormatEnum = typer.Option(FormatEnum.JSON, "--format", "-f", help="출력 포맷"),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """[MCP 설정파일] 표준 출력"""
 
-    with read_config_file(get_config_path(host, is_verbose)) as config_data:
+    with read_config_file(get_config_path(mcp_host, is_verbose)) as config_data:
         if fmt == FormatEnum.TABLE:
             mcp_servers = config_data.get("mcpServers", [])
 
@@ -216,22 +271,13 @@ def setup_print(
 
 @app.command()
 def setup_edit(
-    host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """[MCP 설정파일] 가용 에디터로 편집"""
 
-    config_path = get_config_path(host)
+    config_path = get_config_path(mcp_host)
     open_with_default_editor(config_path, is_verbose)
-
-
-# @app.command()
-# def setup_add(
-#     host: McpHostChoices = Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
-#     is_verbose: bool = Option(False, "--verbose", "-v"),
-# ):
-#     """지정 MCP 설정을 현재 OS 설정에 맞춰 자동으로 추가합니다."""
-#     print("host :", host)
 
 
 # TODO: figma mcp 관련 설치를 자동으로 !!!
@@ -239,12 +285,12 @@ def setup_edit(
 
 @app.command()
 def setup_remove(
-    host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """[MCP 설정파일] 지정 서버 제거"""
 
-    with read_config_file(get_config_path(host, is_verbose)) as config_data:
+    with read_config_file(get_config_path(mcp_host, is_verbose)) as config_data:
         if not isinstance(config_data, dict):
             raise ClickException(f"[ERROR] 설정파일이 잘못된 타입 : {type(config_data).__name__}")
 
@@ -252,7 +298,7 @@ def setup_remove(
         if len(mcp_servers) == 0:
             raise ClickException("등록된 mcpServers 설정이 없습니다.")
 
-    setup_print(host=host, fmt=FormatEnum.TABLE, is_verbose=is_verbose)
+    setup_print(mcp_host=mcp_host, fmt=FormatEnum.TABLE, is_verbose=is_verbose)
 
     def validator_range(v):
         v = int(v)
@@ -281,7 +327,7 @@ def setup_remove(
     config_data["mcpServers"] = mcp_servers
 
     # 설정 파일에 저장
-    config_path = get_config_path(host, is_verbose)
+    config_path = get_config_path(mcp_host, is_verbose)
     with open(config_path, "wt", encoding="utf-8") as f:
         json_str = json.dumps(config_data, indent=2, ensure_ascii=False)
         f.write(json_str)
@@ -291,7 +337,7 @@ def setup_remove(
 
 @app.command()
 def setup_backup(
-    host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
     dest: Path = typer.Option(..., "--dest", "-d", help="복사 경로"),
     is_force: bool = typer.Option(False, "--force", "-f", help="강제 복사 여부"),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
@@ -299,7 +345,7 @@ def setup_backup(
     """[MCP 설정파일] 지정 경로로 백업"""
 
     dest_path = dest.resolve()
-    src_path = get_config_path(host, is_verbose)
+    src_path = get_config_path(mcp_host, is_verbose)
 
     if dest_path.is_dir():
         dest_path = dest_path / src_path.name
@@ -318,14 +364,14 @@ def setup_backup(
 
 @app.command()
 def setup_restore(
-    host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
     src: Path = typer.Option(..., "--src", "-s", help="원본 경로"),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """[MCP 설정파일] 복원"""
 
     src_path = src.resolve()
-    dest_path = get_config_path(host, is_verbose)
+    dest_path = get_config_path(mcp_host, is_verbose)
 
     if src_path.is_dir():
         src_path = src_path / dest_path.name
