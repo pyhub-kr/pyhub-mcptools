@@ -19,9 +19,8 @@ lint:
 	uv run djlint ./pyhub --check
 
 clean:
-	rm -rf dist/
-	rm -rf build/
-	rm -rf pyhub/*.egg-info
+	find . -name __pycache__ | xargs rm -rf
+	rm -rf dist/ build/ *.egg-info *.spec .pytest_cache .mypy_cache .ruff_cache
 
 build: clean
 	uv pip install -e ".[build]"
@@ -29,6 +28,11 @@ build: clean
 
 publish: build
 	uv run -m twine upload dist/*
+
+build-onefile-excel: clean
+	uv pip install --upgrade -e ".[build]"
+	uv pip install --upgrade pyinstaller
+	uv run pyinstaller --onefile --windowed --name pyhub.mcptools.excel pyhub/mcptools/excel/__main__.py
 
 #
 # docs

@@ -23,7 +23,7 @@ from .. import mcp
 #  - https://github.com/xlwings/xlwings/issues/1851
 #  - https://github.com/xlwings/xlwings/issues/1966
 #
-# Claude 밖에서 별도 프로세스로 SSE 서버를 띄운 다음 pyhub.mcp_tools.excel run sse --port 9999
+# Claude 밖에서 별도 프로세스로 SSE 서버를 띄운 다음 pyhub.mcptools.excel run sse --port 9999
 # Claude 에서는 uvx mcp-proxy http://localhost:9999/sse 명령으로 접속 가능
 #
 
@@ -57,7 +57,7 @@ def get_opened_workbooks() -> dict:
     except Exception as e:
         import traceback
 
-        with open("/Users/allieus/Work/pyhub-mcp-tools/debug.txt", "wt") as f:
+        with open("/Users/allieus/Work/pyhub-mcptools/debug.txt", "wt") as f:
             f.write(traceback.format_exc())
         raise e
 

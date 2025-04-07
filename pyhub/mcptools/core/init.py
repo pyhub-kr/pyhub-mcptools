@@ -9,13 +9,13 @@ from ..core.utils import activate_timezone
 mcp: FastMCP
 
 if not settings.configured:
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "pyhub.mcp_tools.core.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "pyhub.mcptools.core.settings")
     django.setup()
 
     activate_timezone()
 
     mcp = FastMCP(
-        name="pyhub-mcp-tools",
+        name="pyhub-mcptools",
         # instructions=None,
         # ** settings,
     )

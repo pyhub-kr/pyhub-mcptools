@@ -5,6 +5,6 @@ from django.apps import AppConfig
 logger = logging.getLogger(__name__)
 
 
-class BrowserConfig(AppConfig):
+class ExcelConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "pyhub.mcp_tools.browser"
+    name = "pyhub.mcptools.excel"

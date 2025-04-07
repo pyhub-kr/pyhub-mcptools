@@ -18,12 +18,12 @@ CURRENT_DIR = Path.cwd().resolve()
 
 DEBUG = env.bool("DEBUG", default=False)
 # "BASE_DIR": ...,
-SECRET_KEY = "pyhub.mcp_tools"
+SECRET_KEY = "pyhub.mcptools"
 
 INSTALLED_APPS = [
-    "pyhub.mcp_tools.core",
-    "pyhub.mcp_tools.browser",
-    "pyhub.mcp_tools.excel",
+    "pyhub.mcptools.core",
+    "pyhub.mcptools.browser",
+    "pyhub.mcptools.excel",
 ]
 MIDDLEWARE = []
 
@@ -38,7 +38,7 @@ TEMPLATES = [
 
 CACHES = {
     "default": make_filecache_setting(
-        "pyhub_mcp_tools_cache",
+        "pyhub_mcptools_cache",
         max_entries=5_000,
         cull_frequency=5,
         timeout=86400 * 30,

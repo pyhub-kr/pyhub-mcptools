@@ -1,12 +1,12 @@
 [project]
-name = "pyhub-mcp-tools"
+name = "pyhub-mcptools"
 version = "0.2.0"
-description = "Python library for automating applications through MCP protocol"
+description = "파이썬사랑방 MCP 도구"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "Your Name", email = "your.email@example.com"},
+    {name = "Chinseok Lee", email = "me@pyhub.kr"},
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -40,7 +40,7 @@ excel = [
     "xlwings",
 ]
 all = [
-    "pyhub-mcp-tools[excel,browser]",
+    "pyhub-mcptools[excel,browser]",
 ]
 dev = [
     "pytest",
@@ -62,15 +62,16 @@ docs = [
 build = ["setuptools", "wheel", "build", "twine"]
 
 [project.urls]
-Homepage = "https://github.com/pyhub-kr/pyhub-mcp-tools"
-Documentation = "https://pyhub-kr.github.io/pyhub-mcp-tools"
-"Bug Tracker" = "https://github.com/pyhub-kr/pyhub-mcp-tools/issues"
-"Source Code" = "https://github.com/pyhub-kr/pyhub-mcp-tools"
+Homepage = "https://github.com/pyhub-kr/pyhub-mcptools"
+Documentation = "https://pyhub-kr.github.io/pyhub-mcptools"
+"Bug Tracker" = "https://github.com/pyhub-kr/pyhub-mcptools/issues"
+"Source Code" = "https://github.com/pyhub-kr/pyhub-mcptools"
 
 [project.scripts]
-"pyhub.mcp_tools.browser" = "pyhub.mcp_tools.browser.__main__:app"
-"pyhub.mcp_tools.excel" = "pyhub.mcp_tools.excel.__main__:app"
-"pyhub.mcp_tools.setup" = "pyhub.mcp_tools.setup.__main__:app"
+"pyhub.mcptools" = "pyhub.mcptools.__main__:app"
+"pyhub.mcptools.browser" = "pyhub.mcptools.browser.__main__:app"
+"pyhub.mcptools.excel" = "pyhub.mcptools.excel.__main__:app"
+"pyhub.mcptools.setup" = "pyhub.mcptools.setup.__main__:app"
 
 [build-system]
 requires = ["hatchling"]

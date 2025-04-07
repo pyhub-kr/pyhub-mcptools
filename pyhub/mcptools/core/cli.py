@@ -24,7 +24,7 @@ def main(
 ):
     if is_version:
         try:
-            v = version("pyhub-mcp-tools")
+            v = version("pyhub-mcptools")
         except PackageNotFoundError:
             v = "not found"
         console.print(v, highlight=False)

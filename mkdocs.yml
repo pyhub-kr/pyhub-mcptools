@@ -3,8 +3,8 @@ site_url: https://mcp.pyhub.kr
 site_description: Python library for automating applications through Anthropic MCP protocol
 site_author: Your Name
 
-repo_name: pyhub-kr/pyhub-mcp-tools
-repo_url: https://github.com/pyhub-kr/pyhub-mcp-tools
+repo_name: pyhub-kr/pyhub-mcptools
+repo_url: https://github.com/pyhub-kr/pyhub-mcptools
 
 copyright: Copyright &copy; 2025 파이썬사랑방 (<a href="mailto:me@pyhub.kr">me@pyhub.kr</a>)
 

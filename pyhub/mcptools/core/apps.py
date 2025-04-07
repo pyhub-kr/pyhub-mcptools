@@ -5,6 +5,6 @@ from django.apps import AppConfig
 logger = logging.getLogger(__name__)
 
 
-class CursorConfig(AppConfig):
+class CoreConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "pyhub.mcp_tools.cursor"
+    name = "pyhub.mcptools.core"

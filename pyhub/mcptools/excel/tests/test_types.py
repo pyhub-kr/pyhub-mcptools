@@ -1,5 +1,5 @@
 import pytest
-from pyhub.mcp_tools.excel.types import validate_excel_range
+from pyhub.mcptools.excel.types import validate_excel_range
 
 
 @pytest.mark.parametrize(

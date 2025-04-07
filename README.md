@@ -1,7 +1,7 @@
-# pyhub-mcp-tools
+# pyhub-mcptools
 
-## Features
+## 지원 도구
 
-- **엑셀 자동화**: Easily interact with Excel spreadsheets
-- **워드 자동화**: Create and modify Word documents
-- **브라우저 자동화**: Control web browsers for data collection or testing
+### 엑셀 MCP 도구
+
+Claude와 함께 엑셀 화면을 같이 보며, 함께 읽고 수정할 수 있습니다.
