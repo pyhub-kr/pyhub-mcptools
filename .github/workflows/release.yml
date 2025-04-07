@@ -42,13 +42,26 @@ jobs:
       run: |
         uv venv
 
-    - name: Build onefile excel
-      run: make build-onefile-excel
+    - name: Build onedir excel
+      run: make build-onedir-excel
+
+    - name: Zip artifacts for Windows
+      if: runner.os == 'Windows'
+      run: |
+        cd dist
+        7z a -tzip pyhub.mcptools.excel-windows.zip pyhub.mcptools.excel/
+
+    - name: Zip artifacts for non-Windows platforms
+      if: runner.os != 'Windows'
+      run: |
+        cd dist
+        zip -r pyhub.mcptools.excel-${{ runner.os }}.zip pyhub.mcptools.excel/
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/*
+        files: |
+          dist/*.zip
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
