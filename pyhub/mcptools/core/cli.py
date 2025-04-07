@@ -205,8 +205,12 @@ def setup_add(
     if new_config:
         config_path = get_config_path(mcp_host, is_verbose)
 
-        with read_config_file(config_path) as config_data:
-            config_data.setdefault("mcpServers", {})
+        try:
+            config_data = read_config_file(config_path)
+        except FileNotFoundError:
+            config_data = {}
+
+        config_data.setdefault("mcpServers", {})
 
         if config_name in config_data["mcpServers"]:
             is_confirm = typer.confirm(f"{config_name} 설정이 이미 있습니다. 덮어쓰시겠습니까?")
@@ -233,41 +237,46 @@ def setup_print(
 ):
     """[MCP 설정파일] 표준 출력"""
 
-    with read_config_file(get_config_path(mcp_host, is_verbose)) as config_data:
-        if fmt == FormatEnum.TABLE:
-            mcp_servers = config_data.get("mcpServers", [])
+    config_path = get_config_path(mcp_host, is_verbose)
 
-            config_keys = set()
-            for config in mcp_servers.values():
-                config_keys.update(config.keys())
+    try:
+        config_data = read_config_file(config_path)
+    except FileNotFoundError as e:
+        console.print(f"{config_path} 파일이 없습니다.")
+        raise typer.Abort() from e
 
-            config_keys: list = sorted(config_keys - {"command", "args"})
+    if fmt == FormatEnum.TABLE:
+        mcp_servers = config_data.get("mcpServers", {})
 
-            table = Table(
-                title=f"[bold]{len(mcp_servers)}개의 MCP 서버가 등록되어있습니다.[/bold]", title_justify="left"
-            )
-            table.add_column("id")
-            table.add_column("name")
-            table.add_column("command")
-            table.add_column("args")
+        config_keys: set = set()
+        for config in mcp_servers.values():
+            config_keys.update(config.keys())
+
+        config_keys: list = sorted(config_keys - {"command", "args"})
+
+        table = Table(title=f"[bold]{len(mcp_servers)}개의 MCP 서버가 등록되어있습니다.[/bold]", title_justify="left")
+        table.add_column("id")
+        table.add_column("name")
+        table.add_column("command")
+        table.add_column("args")
+        for key in config_keys:
+            table.add_column(key)
+
+        for row_idx, (name, config) in enumerate(mcp_servers.items(), start=1):
+            server_config = " ".join(config.get("args", []))
+            row = [str(row_idx), name, config["command"], server_config]
             for key in config_keys:
-                table.add_column(key)
+                v = config.get(key, "")
+                if v:
+                    row.append(repr(v))
+                else:
+                    row.append("")
+            table.add_row(*row)
 
-            for row_idx, (name, config) in enumerate(mcp_servers.items(), start=1):
-                server_config = " ".join(config.get("args", []))
-                row = [str(row_idx), name, config["command"], server_config]
-                for key in config_keys:
-                    v = config.get(key, "")
-                    if v:
-                        row.append(repr(v))
-                    else:
-                        row.append("")
-                table.add_row(*row)
-
-            console.print()
-            console.print(table)
-        else:
-            console.print(json.dumps(config_data, indent=4, ensure_ascii=False))
+        console.print()
+        console.print(table)
+    else:
+        console.print(json.dumps(config_data, indent=4, ensure_ascii=False))
 
 
 @app.command()
@@ -291,13 +300,20 @@ def setup_remove(
 ):
     """[MCP 설정파일] 지정 서버 제거"""
 
-    with read_config_file(get_config_path(mcp_host, is_verbose)) as config_data:
-        if not isinstance(config_data, dict):
-            raise ClickException(f"[ERROR] 설정파일이 잘못된 타입 : {type(config_data).__name__}")
+    config_path = get_config_path(mcp_host, is_verbose)
 
-        mcp_servers = config_data.get("mcpServers", {})
-        if len(mcp_servers) == 0:
-            raise ClickException("등록된 mcpServers 설정이 없습니다.")
+    try:
+        config_data = read_config_file(config_path)
+    except FileNotFoundError as e:
+        console.print(f"{config_path} 파일이 없습니다.")
+        raise typer.Abort() from e
+
+    if not isinstance(config_data, dict):
+        raise ClickException(f"[ERROR] 설정파일이 잘못된 타입 : {type(config_data).__name__}")
+
+    mcp_servers = config_data.get("mcpServers", {})
+    if len(mcp_servers) == 0:
+        raise ClickException("등록된 mcpServers 설정이 없습니다.")
 
     setup_print(mcp_host=mcp_host, fmt=FormatEnum.TABLE, is_verbose=is_verbose)
 
@@ -357,7 +373,7 @@ def setup_backup(
 
     try:
         shutil.copy2(src_path, dest_path)
-        console.print("[green]설정 파일을 성공적으로 복사했습니다.[/green]")
+        console.print(f"[green]설정 파일을 {dest_path} 경로로 복사했습니다.[/green]")
     except IOError as e:
         console.print(f"[red]파일 복사 중 오류가 발생했습니다: {e}[/red]")
         raise typer.Exit(1) from e

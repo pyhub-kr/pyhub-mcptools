@@ -5,7 +5,6 @@ import os
 import subprocess
 import sys
 import tempfile
-from contextlib import contextmanager
 from pathlib import Path
 from typing import Literal, Optional, TypeAlias
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -197,16 +196,15 @@ def get_config_path(host: str, is_verbose: bool = False) -> Path:
     raise ValueError(f"{os_label}의 {host} 프로그램은 지원하지 않습니다.")
 
 
-@contextmanager
-def read_config_file(path: Path, is_verbose: bool = False):
+def read_config_file(path: Path, is_verbose: bool = False) -> dict:
     """설정 파일을 읽어서 반환합니다. with 문에서 사용 가능합니다."""
     if not path.exists():
-        raise IOError(f"{path} 경로의 파일이 아직 없습니다.")
+        raise FileNotFoundError(f"{path} 경로의 파일이 아직 없습니다.")
 
     try:
         with open(path, "r", encoding="utf-8") as f:
             config_data: dict = json.load(f)
-            yield config_data
+            return config_data
     except json.JSONDecodeError as e:
         raise ValueError("JSON 설정 파일에 오류가 있습니다.") from e
     except Exception as e:
