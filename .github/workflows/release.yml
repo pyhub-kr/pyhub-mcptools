@@ -1,0 +1,45 @@
+name: Create Release and Build Windows Executable
+
+on:
+  push:
+    tags:
+      - 'v*' # 'v'로 시작하는 태그가 푸시될 때 실행 (예: v0.1.0)
+
+permissions:
+  contents: write # GitHub Releases 생성 및 아티팩트 업로드를 위해 필요
+
+jobs:
+  build-windows:
+    name: Build Windows Executable
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest]
+        python-version: ["3.13"]
+        architecture: [x64]
+      # 일부 작업이 실패하더라도 다른 모든 matrix 작업이 완료될 때까지 계속 실행됩니다.
+      fail-fast: false
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install GNU Make (if needed)
+      if: runner.os == 'Windows'
+      run: choco install make -y
+
+    - name: Build onefile excel
+      run: make build-onefile-excel
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
