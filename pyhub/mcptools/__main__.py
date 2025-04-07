@@ -1,11 +1,8 @@
+from importlib import import_module
+
 import typer
-from rich.console import Console
 
-app = typer.Typer(
-    pretty_exceptions_show_locals=False,
-)
-console = Console()
-
+from pyhub.mcptools.core.cli import app, console
 
 logo = """
 ██████╗ ██╗   ██╗██╗  ██╗██╗   ██╗██████╗
@@ -30,8 +27,12 @@ logo = """
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
+    # 사용할 Tools 들을 임포트
+    import_module("pyhub.mcptools.excel.tools")
+
     if ctx.invoked_subcommand is None:
         console.print(logo)
+        console.print(ctx.get_help())
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@ from mcp.types import EmbeddedResource, ImageContent, TextContent
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
 from rich.table import Table
+from typer.models import OptionInfo
 
 from pyhub.mcptools.core.choices import McpHostChoices, TransportChoices
 from pyhub.mcptools.core.init import mcp
@@ -47,7 +48,7 @@ def run(
     host: str = typer.Option("0.0.0.0", help="SSE Host (SSE transport 방식에서만 사용)"),
     port: int = typer.Option(8000, help="SSE Port (SSE transport 방식에서만 사용)"),
 ):
-    """지정 transport로 MCP 서버 실행"""
+    """지정 transport로 MCP 서버 실행 (디폴트: stdio)"""
 
     if ":" in host:
         try:
@@ -73,10 +74,32 @@ def list_():
 
 
 @app.command()
-def tools_list():
+def tools_list(
+    verbosity: int = typer.Option(
+        2,
+        "--verbosity",
+        "-v",
+        help="출력 상세 수준",
+        min=1,
+        max=3,
+    ),
+):
     """도구 목록 출력"""
+
+    # list_ 함수에서 tools_list 함수 직접 호출 시에 디폴트 인자가 적용되면, OptionInfo 객체가 적용됩니다.
+    if isinstance(verbosity, OptionInfo):
+        verbosity = verbosity.default
+
     tools = async_to_sync(mcp.list_tools)()
-    print_as_table("tools", tools)
+
+    # verbosity 수준에 따라 표시할 컬럼 결정
+    columns = ["name"]
+    if verbosity >= 2:
+        columns.append("description")
+    if verbosity >= 3:
+        columns.append("inputSchema")
+
+    print_as_table("tools", tools, columns=columns)
 
 
 @app.command()
@@ -421,13 +444,16 @@ def check_update():
         console.print(f"{latest_url} 페이지에서 최신 버전을 다운받으실 수 있습니다.")
 
 
-def print_as_table(title: str, rows: list[BaseModel]) -> None:
+def print_as_table(title: str, rows: list[BaseModel], columns: Optional[list[str]] = None) -> None:
     if len(rows) > 0:
         table = Table(title=f"[bold]{title}[/bold]", title_justify="left")
 
         row = rows[0]
         row_dict = row.model_dump()
-        column_names = row_dict.keys()
+
+        column_names = columns or row_dict.keys()
+        column_names = [name for name in column_names if name in row_dict]
+
         for name in column_names:
             table.add_column(name)
 

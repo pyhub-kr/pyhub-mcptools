@@ -28,8 +28,8 @@ from pyhub.mcptools.excel.types import ExcelRange
 
 
 @mcp.tool()
-def get_opened_workbooks() -> dict:
-    """현재 Excel에서 열려있는 모든 워크북과 시트 정보를 상세히 조회"""
+def excel_get_opened_workbooks() -> dict:
+    """Excel 프로그램에 열려있는 모든 워크북과 시트 내역 조회"""
 
     return {
         "books": [
@@ -55,9 +55,8 @@ def get_opened_workbooks() -> dict:
 
 
 @mcp.tool()
-def get_values_from_active_sheet(sheet_range: Optional[ExcelRange] = None) -> str:
-    """현재 활성화된 Excel 시트에서 특정 범위의 데이터 조회.
-    범위를 지정하지 않으면 전체 범위."""
+def excel_get_values_from_active_sheet(sheet_range: Optional[ExcelRange] = None) -> str:
+    """Excel 프로그램에 열려있는 워크북에서 활성화된 시트 특정 범위의 데이터 조회. 범위를 지정하지 않으면 전체 범위."""
 
     if sheet_range is None:
         data = xw.sheets.active.used_range.value
@@ -68,9 +67,8 @@ def get_values_from_active_sheet(sheet_range: Optional[ExcelRange] = None) -> st
 
 
 @mcp.tool()
-def get_values_from_sheet(book_name: str, sheet_name: str, sheet_range: Optional[ExcelRange] = None) -> str:
-    """지정 Excel 시트에서 특정 범위의 데이터 조회.
-    범위를 지정하지 않으면 전체 범위."""
+def excel_get_values_from_sheet(book_name: str, sheet_name: str, sheet_range: Optional[ExcelRange] = None) -> str:
+    """Excel 프로그램에 열려있는 워크북에서 지정 시트 특정 범위의 데이터 조회. 범위를 지정하지 않으면 전체 범위."""
 
     sheet: xw.Sheet = xw.books[book_name].sheets[sheet_name]
 
@@ -83,8 +81,8 @@ def get_values_from_sheet(book_name: str, sheet_name: str, sheet_range: Optional
 
 
 @mcp.tool()
-def set_values_to_active_sheet(sheet_range: ExcelRange, values) -> None:
-    """현재 활성화된 Excel 시트의 지정된 범위에 데이터를 기록"""
+def excel_set_values_to_active_sheet(sheet_range: ExcelRange, values) -> None:
+    """Excel 프로그램에 열려있는 워크북에서 활성화된 시트의 지정된 범위에 데이터를 기록"""
 
     if sheet_range is None:
         range_ = xw.sheets.active.used_range
@@ -95,8 +93,8 @@ def set_values_to_active_sheet(sheet_range: ExcelRange, values) -> None:
 
 
 @mcp.tool()
-def set_values_to_sheet(book_name: str, sheet_name: str, sheet_range: ExcelRange, values) -> None:
-    """지정 Excel 시트의 지정된 범위에 데이터를 기록"""
+def excel_set_values_to_sheet(book_name: str, sheet_name: str, sheet_range: ExcelRange, values) -> None:
+    """Excel 프로그램에 열려있는 워크북의 지정 시트의 지정된 범위에 데이터를 기록"""
 
     sheet: xw.Sheet = xw.books[book_name].sheets[sheet_name]
 
