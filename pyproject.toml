@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Office/Business :: Office Suites",
 ]
 dependencies = [
-    "django>=5.2",
+    "django>=4.0",
     "django-environ",
     "mcp",
     "typer",
@@ -43,15 +43,15 @@ all = [
     "pyhub-mcp-tools[excel,browser]",
 ]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-httpx>=0.35.0",
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "mypy>=1.0.0",
-    "ruff>=0.0.40",
-    "djlint>=1.36.4",
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+    "pytest-httpx",
+    "black",
+    "isort",
+    "mypy",
+    "ruff",
+    "djlint",
 ]
 docs = [
     "mkdocs>=1.4.0",
