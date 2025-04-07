@@ -32,5 +32,5 @@ def validate_excel_range(value: Optional[str]) -> Optional[str]:
 ExcelRange = Annotated[
     str,
     BeforeValidator(validate_excel_range),
-    Field(description="Excel Range (ex: 'A1', 'A1:C3', 'Sheet1!A1', '$A$1:$C$3')")
+    Field(description="Excel Range (ex: 'A1', 'A1:C3', 'Sheet1!A1', '$A$1:$C$3')"),
 ]
