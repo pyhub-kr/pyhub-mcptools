@@ -72,7 +72,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          .venv\Scripts\python -m pytest tests/
+          .venv\Scripts\python -m pytest
 
       - name: Test build
         run: |
