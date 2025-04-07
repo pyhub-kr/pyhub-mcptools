@@ -33,6 +33,15 @@ jobs:
       if: runner.os == 'Windows'
       run: choco install make -y
 
+    - name: Install uv
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install --upgrade uv
+
+    - name: Create virtualenv
+      run: |
+        uv venv
+
     - name: Build onefile excel
       run: make build-onefile-excel
 
