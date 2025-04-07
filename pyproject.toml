@@ -37,9 +37,7 @@ browser = [
     "playwright",
 ]
 excel = [
-    "openpyxl",
-    "pandas",
-    # "xlwings",
+    "xlwings",
 ]
 all = [
     "pyhub-mcp-tools[excel,browser]",
