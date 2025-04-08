@@ -11,7 +11,7 @@ from typing import Optional, Sequence
 import psutil
 import typer
 from asgiref.sync import async_to_sync
-from click import ClickException
+from click import ClickException, Choice
 from mcp.types import EmbeddedResource, ImageContent, TextContent
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
@@ -344,21 +344,15 @@ def setup_remove(
 
     setup_print(mcp_host=mcp_host, fmt=FormatEnum.TABLE, is_verbose=is_verbose)
 
-    def validator_range(v):
-        v = int(v)
-        if 0 <= v - 1 < len(mcp_servers):
-            return v
-        raise ValueError
-
     # choice >= 1
-    choice: int = typer.prompt(
+    choice: str = typer.prompt(
         "제거할 MCP 서버 번호를 선택하세요",
-        type=validator_range,
+        type=Choice(list(map(str, range(1, len(mcp_servers) + 1)))),
         prompt_suffix=": ",
         show_choices=False,
     )
 
-    idx = choice - 1
+    idx = int(choice) - 1
     selected_key = tuple(mcp_servers.keys())[idx]
 
     # 확인 메시지
