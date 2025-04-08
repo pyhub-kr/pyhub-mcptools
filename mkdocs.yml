@@ -49,7 +49,15 @@ plugins:
 
 nav:
   - Home: index.md
-  - Excel: excel/index.md
+  - 설치 방법:
+      - setup/index.md
+      - setup/windows/index.md
+      - setup/macos/index.md
+  - MCP 도구:
+      - mcptools/index.md
+      - mcptools/excel/index.md
+#     - mcptools/hometax/index.md
+#     - mcptools/shopping/index.md
 
 # - Getting Started:
 #   - Installation: usage/installation.md
