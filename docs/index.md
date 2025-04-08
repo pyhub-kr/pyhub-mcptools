@@ -19,6 +19,10 @@ Claude/Cursor와 함께 엑셀 화면을 같이 보며, 함께 읽고 수정할 
 사용자와 MCP가 동시에 같은 엑셀 파일을 실시간으로 편집할 수 있고, 아직 디스크에 저장하지 않은 메모리 상의
 변경 내용까지도 도구에서 읽어갈 수 있습니다. 이를 통해 더욱 자연스럽고 효율적인 협업이 가능합니다.
 
+<video width="100%" controls>
+    <source src="./mcptools/excel/assets/pyhub.mcptools-v0.4.6.mp4" type="video/mp4">
+</video>
+
 ## 설치 방법
 
 파이썬사랑방 MCP 도구는 다음 2가지 방법으로 설치하실 수 있습니다.

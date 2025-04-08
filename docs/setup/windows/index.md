@@ -6,19 +6,21 @@
 
 ## 실행 파일로 빠르게 구성하기
 
+node/파이썬/도커 설치없이도 실행파일 만으로 MCP 서버를 구성하실 수 있습니다.
+
 ### 1. 실행파일 받아서 압축 풀기
 
 [공식 릴리즈 페이지](https://github.com/pyhub-kr/pyhub-mcptools/releases)에서 윈도우 용으로 최신 버전을 받아주세요.
 
 ![](./assets/01-release-page.png)
 
-원하는 경로에 압축을 풀어주세요. 저는 `c:\mcptools\` 경로에 풀어주겠습니다.
+원하는 경로에 압축을 풀어주세요. 저는 `c:\mcptools\` 경로에 풀어주겠습니다. 여러분도 같은 경로에 풀어주세요.
 
 !!! note
 
     설치 마법사는 지원 예정이며, 실행 파일을 직접 복사해주셔야 합니다.
 
-저는 `c:\mcptools\pyhub.mcptools\` 폴더 아래에 `pyhub.mcptools.exe` 파일이 위치하도록 풀어줬습니다.
+`c:\mcptools\pyhub.mcptools\` 폴더 아래에서 `pyhub.mcptools.exe` 실행 파일이 확인됩니다.
 
 ![](./assets/02-unzip.png)
 
@@ -75,26 +77,30 @@ cd mcptools\pyhub.mcptools\
 ### 4. MCP 도구를 통해 엑셀 읽어보기 
 
 Claude 에서 AI가 알아서 MCP 도구를 호출할 테지만, 지원하는 엑셀 도구와의 인터페이스를 이해하기 위해 MCP 도구를 직접 실행해봅시다.
-"파이썬사랑방 MCP 도구"에서는 MCP 도구 직접 실행을 지원합니다. 간편하게 MCP 도구 동작을 확인하실 수 있습니다. 😉 다른 MCP 도구에서는
-[MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector)를 써야만 합니다.
+"파이썬사랑방 MCP 도구"에서는 MCP 도구 직접 실행을 지원합니다. 간편하게 MCP 도구 동작을 확인하실 수 있습니다. 😉 다른 MCP 도구들은
+[MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector)를 써야만 동작을 확인할 수 있습니다.
 
-먼저 통계청 [합계출산율](https://www.index.go.kr/unity/potal/main/EachDtlPageDetail.do?idx_cd=1428) 엑셀 파일을 받아서 옆에 열어주세요.
+먼저 통계청 [합계출산율](https://www.index.go.kr/unity/potal/main/EachDtlPageDetail.do?idx_cd=1428) 엑셀 파일을 받아서 열어주세요.
 
-명령 프롬프트 혹은 파워쉘의 `c:\mcptools\pyhub.mcptools\` 경로에서 다음 명령을 실행해보세요. 그럼 현재 열려진 워크북 내역을 확인하실 수 있습니다.
-한글이 `\uc9c0`처럼 보여지는 것은 유니코드 코드값으로 보여지는 것 뿐입니다. 한글이 깨진 것이 아니니 안심하세요.
+`pyhub.mcptools.exe`에서는 `tools-call` 명령으로 지정 도구를 호출할 수 있습니다.
+`excel_get_opened_workbooks` 도구를 호출하여 현재 엑셀 프로그램을 통해 열려있는 엑셀 파일 내역을 조회해보겠습니다.
 
 ```
 .\pyhub.mcptools.exe tools-call excel_get_opened_workbooks
 ```
 
-그리고, 아래 명령으로 현재 활성화된 (앞에 띄워진) 시트의 모든 데이터를 조회할 수 있구요. 
+그리고, 아래 명령으로 현재 활성화된 (앞에 띄워진) 시트의 모든 데이터를 조회할 수 있습니다.
 
 ```
 .\pyhub.mcptools.exe tools-call excel_get_values_from_active_sheet
 ```
 
+한글이 `\uc9c0`처럼 보여지는 것은 유니코드 코드값으로 보여지는 것 뿐입니다. 한글이 깨진 것이 아니니 안심하세요.
+(최신 버전에서는 패치되어 한글로 정상적으로 보여집니다.)
+
 ![](./assets/08-tools-call.png)
 
+`excel_get_values_from_active_sheet` 도구 호출 시에 `sheet_range="A29:D31"` 인자를 지정하여
 지정 범위의 값 만을 읽어올 수도 있습니다.
 
 ```
@@ -103,10 +109,10 @@ Claude 에서 AI가 알아서 MCP 도구를 호출할 테지만, 지원하는 �
 
 ![](./assets/09-tools-call-get-values.png)
 
-지정 범위에 값을 셀, 혹은 한 번에 여러 셀의 값을 변경하실 수도 있습니다.
+`excel_set_values_to_active_sheet` 도구를 통해 지정 범위의 값을 변경하실 수도 있습니다.
 
 ```
-.\pyhub.mcptools.exe tools-call excel_set_values_to_active_sheet sheet_range="B35:C36" json_values="[['hello'], ['world']]"
+.\pyhub.mcptools.exe tools-call excel_set_values_to_active_sheet sheet_range="B35" json_values="[['hello'], ['world']]"
 ```
 
 ![](./assets/10-tools-call-set-values.png)
