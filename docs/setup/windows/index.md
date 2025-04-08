@@ -70,6 +70,14 @@ cd mcptools\pyhub.mcptools\
 
 ![](./assets/07-cmd-exec.png)
 
+`-v 3` 옵션을 주시면 각 Tools 인자에 대한 상세 내역까지 확인하실 수 있습니다.
+
+```
+.\pyhub.mcptools.exe tools-list -v 3
+```
+
+Claude와 같은 MCP 클라이언트 프로그램에서는 위 Tools 설명을 기반으로, 어떤 Tool을 호출할 것인지를 결정합니다. 
+
 !!! note
 
     `c:\mcptools\` 경로명에서 역슬래시(`\`) 글자와 원화 글자는 폰트에 따라 다르게 보여질 뿐, 같은 글자입니다. 
@@ -92,27 +100,24 @@ Claude 에서 AI가 알아서 MCP 도구를 호출할 테지만, 지원하는 �
 그리고, 아래 명령으로 현재 활성화된 (앞에 띄워진) 시트의 모든 데이터를 조회할 수 있습니다.
 
 ```
-.\pyhub.mcptools.exe tools-call excel_get_values_from_active_sheet
+.\pyhub.mcptools.exe tools-call excel_get_values
 ```
-
-한글이 `\uc9c0`처럼 보여지는 것은 유니코드 코드값으로 보여지는 것 뿐입니다. 한글이 깨진 것이 아니니 안심하세요.
-(최신 버전에서는 패치되어 한글로 정상적으로 보여집니다.)
 
 ![](./assets/08-tools-call.png)
 
-`excel_get_values_from_active_sheet` 도구 호출 시에 `sheet_range="A29:D31"` 인자를 지정하여
+`excel_get_values` 도구 호출 시에 `sheet_range="A29:D31"` 인자를 지정하여
 지정 범위의 값 만을 읽어올 수도 있습니다.
 
 ```
-.\pyhub.mcptools.exe tools-call excel_get_values_from_active_sheet sheet_range="A29:D31"
+.\pyhub.mcptools.exe tools-call excel_get_values sheet_range="A29:D31"
 ```
 
 ![](./assets/09-tools-call-get-values.png)
 
-`excel_set_values_to_active_sheet` 도구를 통해 지정 범위의 값을 변경하실 수도 있습니다.
+`excel_set_values` 도구를 통해 지정 범위의 값을 변경하실 수도 있습니다.
 
 ```
-.\pyhub.mcptools.exe tools-call excel_set_values_to_active_sheet sheet_range="B35" json_values="[['hello'], ['world']]"
+.\pyhub.mcptools.exe tools-call excel_set_values sheet_range="B35" json_values="[['hello'], ['world']]"
 ```
 
 ![](./assets/10-tools-call-set-values.png)
