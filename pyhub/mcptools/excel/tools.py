@@ -3,6 +3,7 @@ Excel automation
 """
 
 import json
+import re
 from ast import literal_eval
 from typing import Optional, Union
 
@@ -93,6 +94,13 @@ def excel_set_values_to_active_sheet(sheet_range: ExcelRange, json_values: Union
     When adding values to consecutive cells, you only need to specify the starting cell coordinate,
     and the data will be populated according to the dimensions of the input.
 
+    IMPORTANT: The data orientation (row vs column) is determined by the format of json_values:
+    - Flat list ["v1", "v2", "v3"] will always be written horizontally (row orientation)
+    - Nested list [["v1"], ["v2"], ["v3"]] will be written vertically (column orientation)
+
+    If your sheet_range spans multiple columns (e.g., "A1:C1"), use a flat list format.
+    If your sheet_range spans multiple rows (e.g., "A1:A10"), you MUST use a nested list format.
+
     The dimensions of the input must match the expected format:
     - For rows, each row must have the same number of columns
     - For columns, each column must have the same number of rows
@@ -100,7 +108,12 @@ def excel_set_values_to_active_sheet(sheet_range: ExcelRange, json_values: Union
     Examples:
     - Write horizontally (1 row): sheet_range="A10" json_values='["v1", "v2", "v3"]'
     - Write vertically (1 column): sheet_range="A10" json_values='[["v1"], ["v2"], ["v3"]]'
-    - Write multiple rows/columns: sheet_range="A10" json_values='[["v1", "v2"], ["v3", "v4"], ["v5", "v6"]]'
+    - Multiple rows/columns: sheet_range="A10" json_values='[["v1", "v2"], ["v3", "v4"]]'
+
+    INCORRECT USAGE:
+    - DO NOT use sheet_range="A1:A5" with json_values='["v1", "v2", "v3", "v4", "v5"]'
+      This will write horizontally instead of vertically.
+    - CORRECT way: sheet_range="A1:A5" json_values='[["v1"], ["v2"], ["v3"], ["v4"], ["v5"]]'
     """
 
     if sheet_range is None:
@@ -108,7 +121,7 @@ def excel_set_values_to_active_sheet(sheet_range: ExcelRange, json_values: Union
     else:
         range_ = xw.Range(sheet_range)
 
-    range_.value = json_loads(json_values)
+    range_.value = fix_data(json_loads(json_values))
 
 
 @mcp.tool()
@@ -120,6 +133,13 @@ def excel_set_values_to_sheet(
     When adding values to consecutive cells, you only need to specify the starting cell coordinate,
     and the data will be populated according to the dimensions of the input.
 
+    IMPORTANT: The data orientation (row vs column) is determined by the format of json_values:
+    - Flat list ["v1", "v2", "v3"] will always be written horizontally (row orientation)
+    - Nested list [["v1"], ["v2"], ["v3"]] will be written vertically (column orientation)
+
+    If your sheet_range spans multiple columns (e.g., "A1:C1"), use a flat list format.
+    If your sheet_range spans multiple rows (e.g., "A1:A10"), you MUST use a nested list format.
+
     The dimensions of the input must match the expected format:
     - For rows, each row must have the same number of columns
     - For columns, each column must have the same number of rows
@@ -127,7 +147,12 @@ def excel_set_values_to_sheet(
     Examples:
     - Write horizontally (1 row): sheet_range="A10" json_values='["v1", "v2", "v3"]'
     - Write vertically (1 column): sheet_range="A10" json_values='[["v1"], ["v2"], ["v3"]]'
-    - Write multiple rows/columns: sheet_range="A10" json_values='[["v1", "v2"], ["v3", "v4"], ["v5", "v6"]]'
+    - Multiple rows/columns: sheet_range="A10" json_values='[["v1", "v2"], ["v3", "v4"]]'
+
+    INCORRECT USAGE:
+    - DO NOT use sheet_range="A1:A5" with json_values='["v1", "v2", "v3", "v4", "v5"]'
+      This will write horizontally instead of vertically.
+    - CORRECT way: sheet_range="A1:A5" json_values='[["v1"], ["v2"], ["v3"], ["v4"], ["v5"]]'
     """
 
     sheet: xw.Sheet = xw.books[book_name].sheets[sheet_name]
@@ -137,11 +162,62 @@ def excel_set_values_to_sheet(
     else:
         range_ = sheet.range(sheet_range)
 
-    range_.value = json_loads(json_values)
+    range_.value = fix_data(json_loads(json_values))
+
+
+def fix_data(sheet_range: ExcelRange, values: Union[str, list]) -> Union[str, list]:
+    """
+    sheet_range가 열 방향인데, 값이 리스트이지만 중첩 리스트가 아니라면 중첩 리스트로 변환합니다.
+
+    Args:
+        sheet_range: Excel 범위 문자열 (예: "A1:A10", "B1", "Sheet1!C1:C5")
+        values: 셀에 입력할 값들
+
+    Returns:
+        변환된 값 또는 원본 값
+    """
+
+    if (
+        isinstance(values, str)
+        or not isinstance(values, list)
+        or (isinstance(values, list) and values and isinstance(values[0], list))
+    ):
+        return values
+
+    # range가 범위를 포함하는지 확인
+    range_pattern = (
+        r"(?:(?:'[^']+'|[a-zA-Z0-9_.\-]+)!)?(\$?[A-Z]{1,3}\$?[1-9][0-9]{0,6})(?::(\$?[A-Z]{1,3}\$?[1-9][0-9]{0,6}))?"
+    )
+    match = re.match(range_pattern, sheet_range)
+
+    if not match:
+        return values
+
+    # 단일 셀 또는 범위의 시작과 끝을 추출
+    start_cell = match.group(1)
+    end_cell = match.group(2)
+
+    # 단일 셀인 경우 (범위가 없는 경우)
+    if not end_cell:
+        # 단일 셀에 중첩되지 않은 리스트가 입력된 경우 가공하지 않음
+        return values
+
+    # 열 방향 범위인지 확인 (예: A1:A10)
+    start_col = re.search(r"[A-Z]+", start_cell).group(0)
+    end_col = re.search(r"[A-Z]+", end_cell).group(0)
+
+    start_row = re.search(r"[0-9]+", start_cell).group(0)
+    end_row = re.search(r"[0-9]+", end_cell).group(0)
+
+    # 열이 같고 행이 다르면 열 방향 범위
+    if start_col == end_col and start_row != end_row:
+        # 평면 리스트를 중첩 리스트로 변환
+        return [[value] for value in values]
+
+    return values
 
 
 def json_loads(json_str: str) -> Union[dict, str]:
-    print("#### json_str :", repr(json_str))
     if isinstance(json_str, (str, bytes)):
         try:
             return json.loads(json_str)
