@@ -247,18 +247,27 @@ $env:PATH += ";c:\mcptools\pyhub.mcptools\"
 
 ![](./assets/19-check-update.png)
 
-새 버전이 있으시면 안내의 페이지로 이동하셔서 윈도우 zip 파일을 다운받아주시구요.
+새 버전이 있으시면 안내의 페이지에서 윈도우 zip 파일을 다운받아시고,
 압축을 풀어 `c:\mcptools\pyhub.mcptools\` 폴더에 덮어쓰기 해주시면 되는 데요.
 
-덮어쓰기 하시기 전에 `.\pyhub.mcptools.exe kill claude` 명령으로 Claude Desktop을 먼저 종료해주세요.
+`update` 명령도 지원합니다. 😉
+
+명령을 직접 덮어쓰시기 전, 혹은 `update` 명령을 실행하시기 전에 `.\pyhub.mcptools.exe kill claude` 명령으로 Claude Desktop을 먼저 종료해주세요.
 종료하지 않으시면 덮어쓰기 하실 때 해당 실행파일이 사용 중이라서 덮어쓰기할 수 없다라는 오류를 만나시게 됩니다.
+
+```
+.\pyhub.mcptools.exe kill claude
+.\pyhub.mcptools.exe update
+```
 
 !!! warning
 
     압축을 푸시고 덮어쓰기 하시기 전에 `c:\mcptools\pyhub.mcptools\` 폴더 내의 `_internal` 폴더를 반드시 먼저 삭제해주세요.
     삭제하지 않으시면 앞선 버전의 메타 파일들이 남아있게 됩니다.
 
-`c:\mcptools\pyhub.mcptools\` 폴더에 압축을 풀어 덮어쓰기 하시고, Claude Desktop을 다시 실행해주시면 업데이트 끝입니다.
+    `update` 명령은 `_internal` 폴더를 먼저 삭제합니다.
+
+Claude Desktop을 다시 실행해주시면 업데이트 끝입니다.
 
 ## 소스 코드로 직접 구성하기
 
