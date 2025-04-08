@@ -6,17 +6,16 @@ test:
 
 format:
 	uv pip install -e ".[all,dev]"
-	uv run black ./pyhub
-	uv run isort ./pyhub
-	uv run ruff check ./pyhub --fix
-	uv run djlint ./pyhub --reformat
+	uv run black $(or $(filter-out $@,$(MAKECMDGOALS)),./pyhub)
+	uv run isort $(or $(filter-out $@,$(MAKECMDGOALS)),./pyhub)
+	uv run ruff check $(or $(filter-out $@,$(MAKECMDGOALS)),./pyhub) --fix
 
 lint:
 	uv pip install -e ".[all,dev]"
-	uv run black ./pyhub --check
-	uv run isort ./pyhub --check
-	uv run ruff check ./pyhub
-	uv run djlint ./pyhub --check
+	uv run black $(or $(filter-out $@,$(MAKECMDGOALS)),./pyhub) --check
+	uv run isort $(or $(filter-out $@,$(MAKECMDGOALS)),./pyhub) --check
+	uv run ruff check $(or $(filter-out $@,$(MAKECMDGOALS)),./pyhub)
+	uv run djlint $(or $(filter-out $@,$(MAKECMDGOALS)),./pyhub) --check
 
 clean:
 	find . -name __pycache__ | xargs rm -rf
