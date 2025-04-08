@@ -1,12 +1,14 @@
 import json
 import re
 import shutil
+import subprocess
 import sys
 from enum import Enum
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Optional, Sequence
 
+import psutil
 import typer
 from asgiref.sync import async_to_sync
 from click import ClickException
@@ -442,6 +444,38 @@ def check_update():
     else:
         latest_url = f"https://github.com/pyhub-kr/pyhub-mcptools/releases/tag/v{version_check.latest}"
         console.print(f"{latest_url} 페이지에서 최신 버전을 다운받으실 수 있습니다.")
+
+
+# https://modelcontextprotocol.io/clients
+
+
+class McpClientEnum(str, Enum):
+    CLAUDE = "claude"
+
+
+@app.command()
+def kill(
+    target: McpClientEnum = typer.Argument(..., help="프로세스를 죽일 MCP 클라이언트"),
+):
+    """MCP 설정 적용을 위해 Claude 등의 MCP 클라이언트 프로세스를 죽입니다."""
+
+    if target == McpClientEnum.CLAUDE:
+        if sys.platform.startswith("win"):
+            for proc in psutil.process_iter(["pid", "name"]):
+                proc_name = proc.info["name"].lower()
+                proc_pid = proc.pid
+                try:
+                    if proc_name == "claude.exe":
+                        print(f"Killing: {proc_name} (PID {proc_pid})")
+                        proc.terminate()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+        elif sys.platform == "darwin":
+            subprocess.run("pkill -f '/Applications/Claude.app/'", shell=True)
+        else:
+            raise typer.BadParameter(f"Unsupported platform : {sys.platform}")
+
+    console.print(f"[green]{target.value} 프로세스를 모두 죽였습니다.[/green]")
 
 
 def print_as_table(title: str, rows: list[BaseModel], columns: Optional[list[str]] = None) -> None:

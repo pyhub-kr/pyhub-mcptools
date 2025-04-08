@@ -1,6 +1,6 @@
 [project]
 name = "pyhub-mcptools"
-version = "0.4.1"
+version = "0.4.2"
 description = "파이썬사랑방 MCP 도구"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,6 +28,7 @@ dependencies = [
     "mcp",
     "typer",
     "tzlocal",
+    "psutil",
 ]
 
 [project.optional-dependencies]
