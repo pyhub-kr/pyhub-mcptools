@@ -11,7 +11,7 @@ from typing import Optional, Sequence
 import psutil
 import typer
 from asgiref.sync import async_to_sync
-from click import ClickException, Choice
+from click import Choice, ClickException
 from mcp.types import EmbeddedResource, ImageContent, TextContent
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
@@ -20,6 +20,7 @@ from typer.models import OptionInfo
 
 from pyhub.mcptools.core.choices import McpHostChoices, TransportChoices
 from pyhub.mcptools.core.init import mcp
+from pyhub.mcptools.core.updater import apply_update
 from pyhub.mcptools.core.utils import get_config_path, open_with_default_editor, read_config_file
 from pyhub.mcptools.core.versions import PackageVersionChecker
 
@@ -205,9 +206,9 @@ def setup_add(
     command_category = matched.group(1)  # ex) "excel"
     config_name = f"pyhub.mcptools.{command_category}"
 
-    # 소스파일 실행
-    if "__main__" in current_exe_path.name:
-        console.print("[red]팩키징된 실행파일에 대해서만 지원합니다.[/red]")
+    # 실행 파일이 아닌 경우 오류 처리
+    if getattr(sys, "frozen", False) is False:
+        console.print("[red]패키징된 실행파일이 아닌 환경은 아직 지원하지 않습니다.[/red]")
         new_config = None
 
     # 윈도우 실행파일 실행
@@ -426,11 +427,9 @@ def setup_restore(
 def check_update():
     """최신 버전을 확인합니다."""
 
-    # current_cmd = sys.argv[0]
-    #
-    # if "__main__" in current_cmd:
-    #     console.print("[red]팩키징된 실행파일에 대해서만 지원합니다.[/red]")
-    #     raise typer.Exit(1)
+    if getattr(sys, "frozen", False) is False:
+        console.print("[red]패키징된 실행파일에서만 버전 확인을 지원합니다.[/red]")
+        raise typer.Exit(1)
 
     package_name = "pyhub-mcptools"
     version_check = PackageVersionChecker.check_update(package_name, is_force=True)
@@ -440,6 +439,55 @@ def check_update():
     else:
         latest_url = f"https://github.com/pyhub-kr/pyhub-mcptools/releases/tag/v{version_check.latest}"
         console.print(f"{latest_url} 페이지에서 최신 버전을 다운받으실 수 있습니다.")
+
+
+@app.command()
+def update(
+    target_version: Optional[str] = typer.Argument(
+        None, help="업데이트할 버전. 생략하면 최신 버전으로 업데이트합니다. (ex: 0.5.0)"
+    ),
+    force: bool = typer.Option(False, "--force", "-f", help="이미 최신 버전이라도 강제로 업데이트합니다."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="업데이트 전 확인하지 않고 바로 진행합니다."),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+):
+    """최신 버전으로 업데이트합니다."""
+
+    if getattr(sys, "frozen", False) is False:
+        console.print("[red]패키징된 실행파일에서만 자동 업데이트를 지원합니다.[/red]")
+        raise typer.Exit(1)
+
+    # 버전 포맷 검사 (숫자.숫자.숫자)
+    if target_version and not re.match(r"^\d+\.\d+\.\d+$", target_version):
+        console.print(f"[red]버전 형식이 잘못되었습니다. '숫자.숫자.숫자' 형식이어야 합니다: {target_version}[/red]")
+        raise typer.Exit(1)
+
+    package_name = "pyhub-mcptools"
+    version_check = PackageVersionChecker.check_update(package_name)
+
+    if target_version:
+        version_check.latest = target_version
+        console.print(f"[blue]지정된 버전({target_version})으로 업데이트합니다.[/blue]")
+
+    elif not version_check.has_update and not force:
+        console.print(f"이미 최신 버전({version_check.installed})입니다.", highlight=False)
+        raise typer.Exit(0)
+
+    elif not version_check.has_update and force:
+        version_check.latest = version_check.installed
+        console.print(f"[yellow]같은 버전({version_check.installed})이라도 강제 업데이트를 진행합니다.[/yellow]")
+
+    # 업데이트 진행 여부를 한 번 더 확인합니다.
+    if not yes:
+        confirm = typer.confirm(
+            f"현재 버전 {version_check.installed}에서 {version_check.latest}로 업데이트하시겠습니까?"
+        )
+        if not confirm:
+            console.print("업데이트를 취소하셨습니다.")
+            raise typer.Exit(0)
+
+    console.print(f"[green]업데이트할 버전 {version_check.latest}[/green]")
+
+    apply_update(version_check.latest, verbose)
 
 
 # https://modelcontextprotocol.io/clients
