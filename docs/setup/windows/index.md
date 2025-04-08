@@ -117,12 +117,18 @@ Claude 에서 AI가 알아서 MCP 도구를 호출할 테지만, 지원하는 �
 `excel_set_values` 도구를 통해 지정 범위의 값을 변경하실 수도 있습니다.
 
 ```
-.\pyhub.mcptools.exe tools-call excel_set_values sheet_range="B35" json_values="[['hello'], ['world']]"
+.\pyhub.mcptools.exe tools-call excel_set_values sheet_range="A34" json_values="[['val1', 'val2', 'val3'], ['val4', 'val5', 'val6']]"
 ```
 
 ![](./assets/10-tools-call-set-values.png)
 
 물론 다른 특정 시트를 지정해서 값을 읽어오거나 값을 변경하는 도구도 지원합니다.
+
+!!! note
+
+    우리는 방금 일일이 Tool 이름과 인자를 지정해서 호출했지만, 이제 그럴 필요가 없습니다.
+
+    상상해보세요. Claude/Cursor에게 말만 하면, 알아서 지정한 위치의 데이터를 읽어가고 **AI가 생각한 뒤에** 지정한 위치에 데이터를 기록합니다. 😮
 
 ### 5. Claude Desktop에 등록하기
 
@@ -142,7 +148,9 @@ Claude Desktop 프로그램을 실행하시고, "파일" -> "설정" 창을 띄�
 
 ![](./assets/11-claude-desktop.png)
 
-개발자 탭에서 MCP 서버 설정 내역을 확인하실 수 있습니다. "설정 편집" 버튼을 클릭하시면
+개발자 탭에서 MCP 서버 설정 내역을 확인하실 수 있습니다.
+
+"설정 편집" 버튼을 클릭하시면
 윈도우 탐색기를 통해 `c:\Users\사용자\AppData\Roaming\Clauide\claude_desktop_config.json` 경로의 파일을 확인하실 수 있습니다.
 
 ![](./assets/12-claude-settings-developer.png)
@@ -164,21 +172,23 @@ Claude Desktop 프로그램을 실행하시고, "파일" -> "설정" 창을 띄�
 }
 ```
 
-본 설치에서는 `pyhub.mcptools.exe` 하나에 관련 라이브러리가 모두 포함되어있으니, 관련 프로그램은 모두 설치된 상황이구요.
-아래 명령으로 여러분들이 JSON 파일 편집없이 한 번에 설정을 추가하실 수 있기 때문에 "경로명 오타", "JSON 문법 오류" 등이 발생할 여지가 전혀 없습니다. 😉
+`pyhub.mcptools.exe` 하나에 관련 라이브러리가 모두 포함되어있으니, 관련 프로그램은 모두 설치된 상황이구요.
+MCP 설정을 자동으로 추가해주는 명령을 지원합니다.
+JSON 파일 편집없이 한 번에 설정을 추가하실 수 있기 때문에 "경로명 오타", "JSON 문법 오류" 등이 발생할 여지가 전혀 없습니다. 😉
 
 일단 `.\pyhub.mcptools.exe setup-print` 명령으로 현재 설정 내역을 출력해보시죠. 아래와 같이 파일이 없다고 출력되거나 `{}` 처럼 빈 설정으로 출력이 되실 거구요.
 
 ![](./assets/13-setup-print.png)
 
-이제 `.\pyhub.mcptools.exe setup-add` 명령만 실행하시면 한 번에 설정이 자동으로 추가되고, 
+이제 `.\pyhub.mcptools.exe setup-add` 명령만 실행하시면 한 번에 `pyhub.mcptools` 에 대한 MCP 서버 설정이 자동으로 추가되고, 
 다시 `.\pyhub.mcptools.exe setup-print` 명령을 실행해보시면 아래와 같이 설정이 적용되었음을 확인하실 수 있습니다. 
 
 ![](./assets/14-setup-add.png)
 
 ### 6. Claude Desktop 재실행
 
-이제 Claude Desktop 프로그램을 완전히 종료해주시고 재실행해주시면 MCP 설정을 로딩합니다.
+이제 Claude Desktop 프로그램을 완전히 종료해주시고 재실행해주시면, Claude Desktop에서 MCP 설정을 다시 로딩하고
+Claude Desktop 내부에서 MCP 서버를 새롭게 띄웁니다.
 
 그런데 Claude Desktop 프로그램에서 "닫기" 버튼을 클릭하는 것 만으로는 완전히 종료되지 않습니다.
 작업 관리자를 여시고 Claude 프로세스에 대해 "작업 끝내기"를 해주셔야만 하는 데요.
@@ -200,10 +210,13 @@ Claude Desktop 프로그램을 실행하시고, "파일" -> "설정" 창을 띄�
 
 ![](./assets/17-claude.png)
 
-망치 아이콘을 등록하시면 이렇게 "파이썬사랑방 MCP 도구"에서 지원하는 도구 목록을 확인하실 수 있습니다.
-(최신 버전에서는 도구 성능을 위해 도구 설명을 영어로 변경했습니다.)
+위 스크린샷에서는 도구가 3개이구요. 정상적으로 도구를 인식했습니다. 향후 업데이트가 되면 지원하는 도구 개수가 늘어날 수 있습니다.
+
+망치 아이콘을 클릭하시면 이렇게 "파이썬사랑방 MCP 도구"에서 지원하는 도구 목록을 확인하실 수 있습니다.
 
 ![](./assets/18-claude-mcp-tools.png)
+
+이제 Claude를 대화를 하면, Claude가 엑셀 도구가 필요하다고 판단하는 시점에 알아서 엑셀 도구를 호출합니다.
 
 ### 7. Claude를 통해 엑셀 협업하기
 
@@ -225,7 +238,7 @@ $env:PATH += ";c:\mcptools\pyhub.mcptools\"
 [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [EnvironmentVariableTarget]::User)
 ```
 
-이제 어떤 경로에서든 `pyhub.mcptools.exe` 명령을 사용하실 수 있습니다.
+이제 어떤 경로의 파워쉘/명령프롬프트에서도 `pyhub.mcptools.exe` 명령을 사용하실 수 있습니다.
 
 ### 9. 최신 버전으로 업데이트하기
 
@@ -251,4 +264,4 @@ $env:PATH += ";c:\mcptools\pyhub.mcptools\"
 
 !!! note
 
-    TODO
+    작성 예정
