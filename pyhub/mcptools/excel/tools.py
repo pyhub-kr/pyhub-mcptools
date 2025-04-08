@@ -28,10 +28,10 @@ from pyhub.mcptools.excel.types import ExcelRange
 
 
 @mcp.tool()
-def excel_get_opened_workbooks() -> dict:
+def excel_get_opened_workbooks() -> str:
     """Excel 프로그램에 열려있는 모든 워크북과 시트 내역 조회"""
 
-    return {
+    return json.dumps({
         "books": [
             {
                 "name": book.name,
@@ -51,7 +51,7 @@ def excel_get_opened_workbooks() -> dict:
             }
             for book in xw.books
         ]
-    }
+    }, ensure_ascii=False)
 
 
 @mcp.tool()
