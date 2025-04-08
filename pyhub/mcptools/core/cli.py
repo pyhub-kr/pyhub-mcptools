@@ -451,6 +451,7 @@ def check_update():
 
 class McpClientEnum(str, Enum):
     CLAUDE = "claude"
+    CURSOR = "cursor"
 
 
 @app.command()
@@ -459,23 +460,34 @@ def kill(
 ):
     """MCP 설정 적용을 위해 Claude 등의 MCP 클라이언트 프로세스를 죽입니다."""
 
-    if target == McpClientEnum.CLAUDE:
-        if sys.platform.startswith("win"):
-            for proc in psutil.process_iter(["pid", "name"]):
-                proc_name = proc.info["name"].lower()
-                proc_pid = proc.pid
-                try:
-                    if proc_name == "claude.exe":
-                        print(f"Killing: {proc_name} (PID {proc_pid})")
-                        proc.terminate()
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
-        elif sys.platform == "darwin":
-            subprocess.run("pkill -f '/Applications/Claude.app/'", shell=True)
-        else:
-            raise typer.BadParameter(f"Unsupported platform : {sys.platform}")
+    def kill_in_windows(proc_name: str):
+        for proc in psutil.process_iter(["pid", "name"]):
+            proc_pid = proc.pid
+            try:
+                if proc.info["name"].lower() == proc_name.lower():
+                    console.print(f"Killing: {proc_name} (PID {proc_pid})")
+                    proc.terminate()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
 
-    console.print(f"[green]{target.value} 프로세스를 모두 죽였습니다.[/green]")
+    if sys.platform.startswith("win"):
+        if target == McpClientEnum.CLAUDE:
+            kill_in_windows("claude.exe")
+        elif target == McpClientEnum.CURSOR:
+            kill_in_windows("cursor.exe")
+        else:
+            raise typer.BadParameter(f"Unsupported target : {target.value}")
+    elif sys.platform == "darwin":
+        if target == McpClientEnum.CLAUDE:
+            subprocess.run("pkill -f '/Applications/Claude.app/'", shell=True)
+        elif target == McpClientEnum.CURSOR:
+            subprocess.run("pkill -f '/Applications/Cursor.app/'", shell=True)
+        else:
+            raise typer.BadParameter(f"Unsupported target : {target.value}")
+    else:
+        raise typer.BadParameter(f"Unsupported platform : {sys.platform}")
+
+    console.print(f"[green]Killed {target.value} processes[/green]")
 
 
 def print_as_table(title: str, rows: list[BaseModel], columns: Optional[list[str]] = None) -> None:
