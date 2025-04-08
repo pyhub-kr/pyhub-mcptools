@@ -198,7 +198,25 @@ Claude Desktop 프로그램을 실행하시고, "파일" -> "설정" 창을 띄�
 
 [엑셀 도구](../../mcptools/excel/index.md) 페이지를 참고해주세요.
 
-### 8. 최신 버전으로 업데이트하기
+### 8. 환경변수 PATH에 등록하기
+
+`c:\mcptools\pyhub.mcptools\pyhub.mcptools.exe` 명령을 다른 경로에서도 손쉽게 실행할 수 있도록
+환경변수 PATH에 `c:\mcptools\pyhub.mcptools\` 경로를 추가해주세요.
+윈도우 환경변수 설정 기능을 활용하셔도 되고, 명령행에서 아래 명령으로 추가하실 수도 있습니다.
+
+``` title="명령 프롬프트"
+set PATH=%PATH%;c:\mcptools\pyhub.mcptools\
+setx PATH "%PATH%"
+```
+
+``` title="파워쉘"
+$env:PATH += ";c:\mcptools\pyhub.mcptools\"
+[Environment]::SetEnvironmentVariable("PATH", $env:PATH, [EnvironmentVariableTarget]::User)
+```
+
+이제 어떤 경로에서든 `pyhub.mcptools.exe` 명령을 사용하실 수 있습니다.
+
+### 9. 최신 버전으로 업데이트하기
 
 `.\pyhub.mcptools.exe --version` 명령을 통해 현재 버전을 확인하실 수 있고,
 `.\pyhub.mcptools.exe check-update` 명령을 통해 새버전 유무를 확인하실 수 있습니다. 
