@@ -60,35 +60,53 @@ def excel_get_opened_workbooks() -> str:
 
 
 @mcp.tool()
-def excel_get_values_from_active_sheet(sheet_range: Optional[ExcelRange] = None) -> str:
-    """Get data from a specified range in the active sheet of an open Excel workbook.
-    If no range is specified, gets data from the entire used range."""
+def excel_get_values(
+    sheet_range: Optional[ExcelRange] = None,
+    book_name: Optional[str] = None,
+    sheet_name: Optional[str] = None,
+) -> str:
+    """Get data from Excel workbook.
 
-    if sheet_range is None:
-        data = xw.sheets.active.used_range.value
+    Retrieves data from a specified Excel range. By default uses the active workbook and sheet
+    if no specific book_name or sheet_name is provided.
+
+    Parameters:
+        sheet_range: Excel range to get data from (e.g., "A1:C10"). If None, gets entire used range.
+        book_name: Name of workbook to use. If None, uses active workbook.
+        sheet_name: Name of sheet to use. If None, uses active sheet.
+
+    Returns:
+        JSON string containing the data.
+    """
+
+    if book_name is None:
+        book = xw.books.active
     else:
-        data = xw.Range(sheet_range).value
+        book = xw.books[book_name]
 
-    return json_dumps(data)
-
-
-@mcp.tool()
-def excel_get_values_from_sheet(book_name: str, sheet_name: str, sheet_range: Optional[ExcelRange] = None) -> str:
-    """Get data from a specified range in a specific sheet of an open Excel workbook.
-    If no range is specified, gets data from the entire used range."""
-
-    sheet: xw.Sheet = xw.books[book_name].sheets[sheet_name]
+    if sheet_name is None:
+        sheet = book.sheets.active
+    else:
+        sheet = book.sheets[sheet_name]
 
     if sheet_range is None:
         data = sheet.used_range.value
     else:
         data = sheet.range(sheet_range).value
 
+    if data is None:
+        return "[]"
+
     return json_dumps(data)
 
 
 @mcp.tool()
-def excel_set_values_to_active_sheet(sheet_range: ExcelRange, json_values: Union[str, list]) -> None:
+def excel_set_values(
+    sheet_range: ExcelRange,
+    json_values: Union[str, list],
+    book_name: Optional[str] = None,
+    sheet_name: Optional[str] = None,
+) -> None:
     """Write data to a specified range in the active sheet of an open Excel workbook.
 
     When adding values to consecutive cells, you only need to specify the starting cell coordinate,
@@ -116,46 +134,15 @@ def excel_set_values_to_active_sheet(sheet_range: ExcelRange, json_values: Union
     - CORRECT way: sheet_range="A1:A5" json_values='[["v1"], ["v2"], ["v3"], ["v4"], ["v5"]]'
     """
 
-    if sheet_range is None:
-        range_ = xw.sheets.active.used_range
+    if book_name is None:
+        book = xw.books.active
     else:
-        range_ = xw.Range(sheet_range)
+        book = xw.books[book_name]
 
-    range_.value = fix_data(sheet_range, json_loads(json_values))
-
-
-@mcp.tool()
-def excel_set_values_to_sheet(
-    book_name: str, sheet_name: str, sheet_range: ExcelRange, json_values: Union[str, list]
-) -> None:
-    """Write data to a specified range in a specific sheet of an open Excel workbook.
-
-    When adding values to consecutive cells, you only need to specify the starting cell coordinate,
-    and the data will be populated according to the dimensions of the input.
-
-    IMPORTANT: The data orientation (row vs column) is determined by the format of json_values:
-    - Flat list ["v1", "v2", "v3"] will always be written horizontally (row orientation)
-    - Nested list [["v1"], ["v2"], ["v3"]] will be written vertically (column orientation)
-
-    If your sheet_range spans multiple columns (e.g., "A1:C1"), use a flat list format.
-    If your sheet_range spans multiple rows (e.g., "A1:A10"), you MUST use a nested list format.
-
-    The dimensions of the input must match the expected format:
-    - For rows, each row must have the same number of columns
-    - For columns, each column must have the same number of rows
-
-    Examples:
-    - Write horizontally (1 row): sheet_range="A10" json_values='["v1", "v2", "v3"]'
-    - Write vertically (1 column): sheet_range="A10" json_values='[["v1"], ["v2"], ["v3"]]'
-    - Multiple rows/columns: sheet_range="A10" json_values='[["v1", "v2"], ["v3", "v4"]]'
-
-    INCORRECT USAGE:
-    - DO NOT use sheet_range="A1:A5" with json_values='["v1", "v2", "v3", "v4", "v5"]'
-      This will write horizontally instead of vertically.
-    - CORRECT way: sheet_range="A1:A5" json_values='[["v1"], ["v2"], ["v3"], ["v4"], ["v5"]]'
-    """
-
-    sheet: xw.Sheet = xw.books[book_name].sheets[sheet_name]
+    if sheet_name is None:
+        sheet = book.sheets.active
+    else:
+        sheet = book.sheets[sheet_name]
 
     if sheet_range is None:
         range_ = sheet.used_range
