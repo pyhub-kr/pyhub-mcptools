@@ -121,7 +121,7 @@ def excel_set_values_to_active_sheet(sheet_range: ExcelRange, json_values: Union
     else:
         range_ = xw.Range(sheet_range)
 
-    range_.value = fix_data(json_loads(json_values))
+    range_.value = fix_data(sheet_range, json_loads(json_values))
 
 
 @mcp.tool()
@@ -162,7 +162,7 @@ def excel_set_values_to_sheet(
     else:
         range_ = sheet.range(sheet_range)
 
-    range_.value = fix_data(json_loads(json_values))
+    range_.value = fix_data(sheet_range, json_loads(json_values))
 
 
 def fix_data(sheet_range: ExcelRange, values: Union[str, list]) -> Union[str, list]:
