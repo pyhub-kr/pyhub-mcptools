@@ -3,12 +3,14 @@ Excel automation
 """
 
 import json
-from typing import Optional
+from ast import literal_eval
+from typing import Optional, Union
 
 import xlwings as xw
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.excel.types import ExcelRange
+
 
 #
 # macOS 보안정책에 창의 가시성을 조절하거나, 워크북 수를 세는 명령은 자동화 권한을 허용한 앱에서만 가능
@@ -31,7 +33,7 @@ from pyhub.mcptools.excel.types import ExcelRange
 def excel_get_opened_workbooks() -> str:
     """Excel 프로그램에 열려있는 모든 워크북과 시트 내역 조회"""
 
-    return json.dumps({
+    return json_dumps({
         "books": [
             {
                 "name": book.name,
@@ -51,7 +53,7 @@ def excel_get_opened_workbooks() -> str:
             }
             for book in xw.books
         ]
-    }, ensure_ascii=False)
+    })
 
 
 @mcp.tool()
@@ -63,7 +65,7 @@ def excel_get_values_from_active_sheet(sheet_range: Optional[ExcelRange] = None)
     else:
         data = xw.Range(sheet_range).value
 
-    return json.dumps(data, ensure_ascii=False)
+    return json_dumps(data)
 
 
 @mcp.tool()
@@ -77,11 +79,11 @@ def excel_get_values_from_sheet(book_name: str, sheet_name: str, sheet_range: Op
     else:
         data = sheet.range(sheet_range).value
 
-    return json.dumps(data, ensure_ascii=False)
+    return json_dumps(data)
 
 
 @mcp.tool()
-def excel_set_values_to_active_sheet(sheet_range: ExcelRange, values) -> None:
+def excel_set_values_to_active_sheet(sheet_range: ExcelRange, json_values) -> None:
     """Excel 프로그램에 열려있는 워크북에서 활성화된 시트의 지정된 범위에 데이터를 기록"""
 
     if sheet_range is None:
@@ -89,11 +91,11 @@ def excel_set_values_to_active_sheet(sheet_range: ExcelRange, values) -> None:
     else:
         range_ = xw.Range(sheet_range)
 
-    range_.value = values
+    range_.value = json_loads(json_values)
 
 
 @mcp.tool()
-def excel_set_values_to_sheet(book_name: str, sheet_name: str, sheet_range: ExcelRange, values) -> None:
+def excel_set_values_to_sheet(book_name: str, sheet_name: str, sheet_range: ExcelRange, json_values) -> None:
     """Excel 프로그램에 열려있는 워크북의 지정 시트의 지정된 범위에 데이터를 기록"""
 
     sheet: xw.Sheet = xw.books[book_name].sheets[sheet_name]
@@ -103,4 +105,20 @@ def excel_set_values_to_sheet(book_name: str, sheet_name: str, sheet_range: Exce
     else:
         range_ = sheet.range(sheet_range).value
 
-    range_.value = values
+    range_.value = json_loads(json_values)
+
+
+def json_loads(json_str: str) -> Union[dict, str]:
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError as e:
+        try:
+            return literal_eval(json_str)
+        except (ValueError, SyntaxError):
+            pass
+
+    return json_str
+
+
+def json_dumps(json_data: dict) -> str:
+    return json.dumps(json_data, ensure_ascii=False)
