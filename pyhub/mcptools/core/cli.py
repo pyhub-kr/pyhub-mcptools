@@ -152,12 +152,14 @@ def tools_call(
             console.print(return_value)
 
         for ele in return_value:
+            # console.print는 출력하는 과정에서 raw string을 출력하지 않고,
+            # 대괄호 등을 포맷팅 제어 문자로서 사용하기에 print 로서 raw string 출력
             if isinstance(ele, TextContent):
-                console.print(ele.text)
+                print(ele.text)
             elif isinstance(ele, ImageContent):
-                console.print(ele)
+                print(ele)
             elif isinstance(ele, EmbeddedResource):
-                console.print(ele)
+                print(ele)
             else:
                 raise ValueError(f"Unexpected type : {type(ele)}")
 
