@@ -6,7 +6,7 @@ import time
 import zipfile
 from pathlib import Path
 
-import requests
+import httpx
 from rich.progress import BarColumn, DownloadColumn, Progress, TextColumn, TimeRemainingColumn, TransferSpeedColumn
 
 
@@ -42,7 +42,7 @@ def download_update(version: str, target_dir: str = ".", verbose: bool = False) 
 
         # 다운로드 (별도의 파일 핸들로 작업)
         with open(temp_file_path, "wb") as temp_file:
-            with requests.get(url, stream=True) as response:
+            with httpx.stream("GET", url, follow_redirects=True) as response:
                 response.raise_for_status()
                 total = int(response.headers.get("content-length", 0))
                 content_type = response.headers.get("content-type", "")
@@ -68,7 +68,7 @@ def download_update(version: str, target_dir: str = ".", verbose: bool = False) 
                 ) as progress:
                     task = progress.add_task("download", total=total)
 
-                    for chunk in response.iter_content(chunk_size=8192):
+                    for chunk in response.iter_bytes(chunk_size=8192):
                         temp_file.write(chunk)
                         progress.update(task, advance=len(chunk))
 
@@ -97,7 +97,7 @@ def download_update(version: str, target_dir: str = ".", verbose: bool = False) 
 
             raise ValueError("다운로드한 파일이 유효한 ZIP 형식이 아닙니다") from e
 
-    except requests.RequestException as e:
+    except httpx.RequestError as e:
         if verbose:
             print(f"다운로드 중 네트워크 오류 발생: {e}")
         raise ValueError("다운로드 중 오류가 발생했습니다") from e
