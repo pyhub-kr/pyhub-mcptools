@@ -12,7 +12,6 @@ import xlwings as xw
 from pyhub.mcptools import mcp
 from pyhub.mcptools.excel.types import ExcelRange
 
-
 #
 # macOS 보안정책에 창의 가시성을 조절하거나, 워크북 수를 세는 명령은 자동화 권한을 허용한 앱에서만 가능
 # Claude 앱에서는 Excel에 대해 자동화 권한을 부여하지 않았음.
@@ -150,6 +149,61 @@ def excel_set_values(
         range_ = sheet.range(sheet_range)
 
     range_.value = fix_data(sheet_range, json_loads(json_values))
+
+
+@mcp.tool()
+def excel_add_sheet(
+    name: Optional[str] = None,
+    book_name: Optional[str] = None,
+    at_start: bool = False,
+    at_end: bool = False,
+    before_sheet_name: Optional[str] = None,
+    after_sheet_name: Optional[str] = None,
+) -> str:
+    """
+    Adds a new sheet to the specified Excel workbook.
+
+    Parameters:
+        name (Optional[str]): The name of the new sheet. If None, Excel assigns a default name (e.g., "Sheet1").
+        book_name (Optional[str]): The name of the workbook to add the sheet to.
+                                   If None, the currently active workbook is used.
+        at_start (bool): If True, adds the sheet at the beginning of the workbook. Default is False.
+        at_end (bool): If True, adds the sheet at the end of the workbook. Default is False.
+        before_sheet_name (Optional[str]): The name of the sheet before which the new sheet should be inserted.
+                                           Optional.
+        after_sheet_name (Optional[str]): The name of the sheet after which the new sheet should be inserted.
+                                          Optional.
+
+    Returns:
+        str: A message indicating the sheet has been successfully added.
+
+    Note:
+        - Parameters for sheet placement have the following priority order:
+            at_start > at_end > before_sheet_name > after_sheet_name.
+        - If multiple placement parameters are provided, only the highest priority one will be considered.
+        - The function uses xlwings and requires an active Excel session.
+    """
+
+    before_sheet = None
+    after_sheet = None
+
+    if book_name is None:
+        book = xw.books.active
+    else:
+        book = xw.books[book_name]
+
+    if at_start:
+        before_sheet = book.sheets[0]
+    elif at_end:
+        after_sheet = book.sheets[-1]
+    elif before_sheet_name is not None:
+        before_sheet = book.sheets[before_sheet_name]
+    elif after_sheet_name is not None:
+        after_sheet = book.sheets[after_sheet_name]
+
+    book.sheets.add(name=name, before=before_sheet, after=after_sheet)
+
+    return f"Successfully added a new sheet{' named ' + name if name else ''}."
 
 
 def fix_data(sheet_range: ExcelRange, values: Union[str, list]) -> Union[str, list]:
