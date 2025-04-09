@@ -169,16 +169,16 @@ function Download-Asset
         exit 1
     }
 
-    # 다운로드 경로 및 파일명 설정
-    $downloadUrl = $asset.browser_download_url  # 다운로드 URL
-    $outputFile = Join-Path $PWD $asset.name    # 저장할 파일 경로
+    # 임시 디렉토리에 다운로드
+    $tempDir = [System.IO.Path]::GetTempPath()
+    $downloadUrl = $asset.browser_download_url
+    $outputFile = Join-Path $tempDir $asset.name
 
-    # 다운로드 실행 (Invoke-WebRequest의 기본 진행률 표시 사용)
-    Write-Host "Downloading: $( $asset.browser_download_url )"
+    # 다운로드 실행
+    Write-Host "Downloading to temp directory: $downloadUrl"
 
     try
     {
-        # Invoke-WebRequest는 기본적으로 진행률 표시줄을 제공함
         Invoke-WebRequest -Uri $downloadUrl -OutFile $outputFile -ErrorAction Stop
         Write-Host "Download complete: $outputFile"
     }
@@ -198,13 +198,13 @@ function Download-Asset
 function Verify-Checksum
 {
     param (
-        [string]$DownloadUrl, # 다운로드 URL
-        [string]$OutputFile    # 다운로드한 파일 경로
+        [string]$DownloadUrl,
+        [string]$OutputFile
     )
 
-    # 체크섬 파일 다운로드
-    $sha256Url = "$DownloadUrl.sha256"  # 체크섬 파일 URL
-    $sha256File = "$OutputFile.sha256"  # 체크섬 파일 저장 경로
+    # 체크섬 파일을 같은 임시 경로에 다운로드
+    $sha256Url = "$DownloadUrl.sha256"
+    $sha256File = "$OutputFile.sha256"
 
     Write-Host "Downloading checksum file: $sha256Url"
     try
@@ -269,10 +269,6 @@ function Extract-Archive
 
     # 임시 디렉토리 정리
     Remove-Item -Recurse -Force $tempPath
-
-    # 최종 디렉토리로 이동
-    Set-Location -Path $DestinationPath
-    Write-Host "`nChanged directory to: $DestinationPath"
 }
 
 # PATH 환경변수 설정 함수
@@ -324,6 +320,8 @@ function Show-PostInstallInstructions
     # 운영체제별 명령어 표시
     if ($script:os -match "Windows")
     {
+        Write-Host "cd $script:extractPath"
+        Write-Host ""
         Write-Host ".\pyhub.mcptools.exe --version"
         Write-Host ".\pyhub.mcptools.exe kill claude"
         Write-Host ".\pyhub.mcptools.exe setup-add"
@@ -331,6 +329,8 @@ function Show-PostInstallInstructions
     }
     else
     {
+        Write-Host "cd $script:extractPath"
+        Write-Host ""
         Write-Host "./pyhub.mcptools --version"
         Write-Host "./pyhub.mcptools kill claude"
         Write-Host "./pyhub.mcptools setup-add"
@@ -369,6 +369,10 @@ function Install-PyHubMCPTools
     $currentStep++
     Show-Progress -Step $currentStep -TotalSteps $totalSteps -Message "Extracting files"
     Extract-Archive -ArchiveFile $downloadResult.OutputFile -DestinationPath $installPath
+
+    # 다운로드한 임시 파일 및 체크섬 파일 삭제
+    Remove-Item -Force $downloadResult.OutputFile
+    Remove-Item -Force "$( $downloadResult.OutputFile ).sha256"
 
     # 6. PATH 업데이트 및 설치 후 안내
     $currentStep++
