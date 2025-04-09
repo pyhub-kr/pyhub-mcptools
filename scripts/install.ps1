@@ -252,20 +252,27 @@ function Verify-Checksum
 function Extract-Archive
 {
     param (
-        [string]$ArchiveFile, # 압축 파일 경로
-        [string]$DestinationPath  # 압축 해제 대상 경로
+        [string]$ArchiveFile,
+        [string]$DestinationPath
     )
 
     # 임시 디렉토리 생성
-    $tempPath = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())  # 임시 경로
+    $tempPath = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
     New-Item -ItemType Directory -Path $tempPath | Out-Null
+
+    # 목적지 디렉토리가 없는 경우 생성
+    if (-not (Test-Path -Path $DestinationPath -PathType Container)) {
+        New-Item -ItemType Directory -Path $DestinationPath -Force | Out-Null
+    }
 
     # 임시 디렉토리에 압축 해제
     Write-Host "Extracting to temporary location: $tempPath"
     Expand-Archive -LiteralPath $ArchiveFile -DestinationPath $tempPath -Force
 
     # 압축 해제된 내용을 최종 경로로 이동
-    Move-Item -Path (Join-Path $tempPath "*") -Destination $DestinationPath -Force
+    Get-ChildItem -Path $tempPath -Force | ForEach-Object {
+        Move-Item -Path $_.FullName -Destination $DestinationPath -Force
+    }
 
     # 임시 디렉토리 정리
     Remove-Item -Recurse -Force $tempPath
