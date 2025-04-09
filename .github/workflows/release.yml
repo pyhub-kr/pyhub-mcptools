@@ -51,17 +51,30 @@ jobs:
         cd dist
         7z a -tzip pyhub.mcptools-windows-${{ github.ref_name }}.zip pyhub.mcptools/
 
+    - name: Generate SHA256 for Windows artifacts
+      if: runner.os == 'Windows'
+      run: |
+        cd dist
+        certutil -hashfile pyhub.mcptools-windows-${{ github.ref_name }}.zip SHA256 | findstr /v "CertUtil" > pyhub.mcptools-windows-${{ github.ref_name }}.zip.sha256
+
     - name: Zip artifacts for non-Windows platforms
       if: runner.os != 'Windows'
       run: |
         cd dist
         zip -r pyhub.mcptools-${{ runner.os }}-${{ github.ref_name }}.zip pyhub.mcptools/
 
+    - name: Generate SHA256 for non-Windows artifacts
+      if: runner.os != 'Windows'
+      run: |
+        cd dist
+        shasum -a 256 pyhub.mcptools-${{ runner.os }}-${{ github.ref_name }}.zip > pyhub.mcptools-${{ runner.os }}-${{ github.ref_name }}.zip.sha256
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
           dist/*.zip
+          dist/*.sha256
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
