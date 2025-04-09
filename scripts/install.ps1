@@ -94,6 +94,7 @@ function Set-InstallPath
         }
     }
 
+    # 원래 코드로 복구 (Join-Path 사용)
     $script:extractPath = Join-Path $script:extractBasePath "pyhub.mcptools"
 
     # 기존 폴더 체크 및 처리
@@ -261,7 +262,8 @@ function Extract-Archive
     New-Item -ItemType Directory -Path $tempPath | Out-Null
 
     # 목적지 디렉토리가 없는 경우 생성
-    if (-not (Test-Path -Path $DestinationPath -PathType Container)) {
+    if (-not (Test-Path -Path $DestinationPath -PathType Container))
+    {
         New-Item -ItemType Directory -Path $DestinationPath -Force | Out-Null
     }
 
@@ -269,9 +271,22 @@ function Extract-Archive
     Write-Host "Extracting to temporary location: $tempPath"
     Expand-Archive -LiteralPath $ArchiveFile -DestinationPath $tempPath -Force
 
-    # 압축 해제된 내용을 최종 경로로 이동
-    Get-ChildItem -Path $tempPath -Force | ForEach-Object {
-        Move-Item -Path $_.FullName -Destination $DestinationPath -Force
+    # 압축 파일 내용 검사 - pyhub.mcptools 폴더가 있는지 확인
+    $pyhubFolder = Get-ChildItem -Path $tempPath -Directory | Where-Object { $_.Name -eq "pyhub.mcptools" } | Select-Object -First 1
+
+    if ($pyhubFolder)
+    {
+        # pyhub.mcptools 폴더 내부 파일만 대상 폴더로 이동
+        Get-ChildItem -Path $pyhubFolder.FullName -Force | ForEach-Object {
+            Move-Item -Path $_.FullName -Destination $DestinationPath -Force
+        }
+    }
+    else
+    {
+        # 임시 폴더의 모든 파일을 대상 폴더로 이동
+        Get-ChildItem -Path $tempPath -Force | ForEach-Object {
+            Move-Item -Path $_.FullName -Destination $DestinationPath -Force
+        }
     }
 
     # 임시 디렉토리 정리
@@ -285,37 +300,22 @@ function Update-PathVariable
         [string]$AddedPath  # PATH에 추가할 경로
     )
 
-    # 사용자 PATH 환경변수 가져오기
-    $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")  # 현재 사용자 PATH
+    # 현재 세션 PATH 업데이트 디버깅을 위한 로그 추가
+    Write-Host "Current session PATH before update: $env:Path"
+    Write-Host "Attempting to add: $AddedPath"
 
-    # 경로가 이미 PATH에 있는지 확인
-    if ($AddToPath -and -not ($currentPath.Split($script:PathSeparator) -contains $AddedPath))
-    {
-        if ($NoPrompt)
-        {
-            [Environment]::SetEnvironmentVariable("Path", "$currentPath$script:PathSeparator$AddedPath", "User")
-            Write-Host "Added to user PATH."
-        }
-        else
-        {
-            $addToPath = Read-Host "The path '$AddedPath' is not in your PATH. Add it? (Y/n)"
-            if ([string]::IsNullOrWhiteSpace($addToPath) -or $addToPath -match "^[Yy]$")
-            {
-                [Environment]::SetEnvironmentVariable("Path", "$currentPath$script:PathSeparator$AddedPath", "User")
-                Write-Host "Added to user PATH."
-            }
-            else
-            {
-                Write-Host "Did not add '$AddedPath' to user PATH."
-            }
-        }
-    }
-
-    # 현재 세션 PATH에 추가
+    # 현재 세션 PATH에 추가 (좀 더 명시적인 방식)
     if (-not ($env:Path.Split($script:PathSeparator) -contains $AddedPath))
     {
-        $env:Path += "$script:PathSeparator$AddedPath"
+        $env:Path = "$env:Path$script:PathSeparator$AddedPath"
+        Write-Host "Added path to current session: $AddedPath"
     }
+    else 
+    {
+        Write-Host "Path already exists in current session"
+    }
+
+    Write-Host "Current session PATH after update: $env:Path"
 }
 
 # 설치 완료 후 안내 메시지 출력 함수
@@ -384,6 +384,7 @@ function Install-PyHubMCPTools
     # 6. PATH 업데이트 및 설치 후 안내
     $currentStep++
     Show-Progress -Step $currentStep -TotalSteps $totalSteps -Message "Configuring environment and finishing installation"
+    Write-Host "Adding to PATH: $installPath"
     Update-PathVariable -AddedPath $installPath
     Show-PostInstallInstructions
 
