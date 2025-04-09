@@ -300,22 +300,8 @@ function Update-PathVariable
         [string]$AddedPath  # PATH에 추가할 경로
     )
 
-    # 현재 세션 PATH 업데이트 디버깅을 위한 로그 추가
-    Write-Host "Current session PATH before update: $env:Path"
-    Write-Host "Attempting to add: $AddedPath"
-
-    # 현재 세션 PATH에 추가 (좀 더 명시적인 방식)
-    if (-not ($env:Path.Split($script:PathSeparator) -contains $AddedPath))
-    {
-        $env:Path = "$env:Path$script:PathSeparator$AddedPath"
-        Write-Host "Added path to current session: $AddedPath"
-    }
-    else 
-    {
-        Write-Host "Path already exists in current session"
-    }
-
-    Write-Host "Current session PATH after update: $env:Path"
+    # 세션 환경변수 업데이트 대신 안내 메시지만 표시
+    Write-Host "To add the installation path to your system PATH permanently, run the appropriate command for your OS."
 }
 
 # 설치 완료 후 안내 메시지 출력 함수
@@ -324,7 +310,7 @@ function Show-PostInstallInstructions
     Write-Host "`nTo add configuration for Claude, please run the following commands:"
     Write-Host ""
 
-    # 운영체제별 명령어 표시
+    # 운영체제별 명령어 표시 및 PATH 추가 명령 추가
     if ($script:os -match "Windows")
     {
         Write-Host "cd $script:extractPath"
@@ -333,6 +319,9 @@ function Show-PostInstallInstructions
         Write-Host ".\pyhub.mcptools.exe kill claude"
         Write-Host ".\pyhub.mcptools.exe setup-add"
         Write-Host ".\pyhub.mcptools.exe setup-print"
+
+        Write-Host "`nTo add the installation path to your system PATH permanently, run this command in an elevated PowerShell:"
+        Write-Host "[Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'Machine') + '$script:PathSeparator$script:extractPath', 'Machine')"
     }
     else
     {
@@ -342,6 +331,11 @@ function Show-PostInstallInstructions
         Write-Host "./pyhub.mcptools kill claude"
         Write-Host "./pyhub.mcptools setup-add"
         Write-Host "./pyhub.mcptools setup-print"
+
+        Write-Host "`nTo add the installation path to your system PATH permanently, run this command:"
+        Write-Host "echo 'export PATH=\"\$PATH:${script:extractPath}\"' >> ~/.bashrc && source ~/.bashrc"
+        Write-Host "Or for zsh users:"
+        Write-Host "echo 'export PATH=\"\$PATH:${script:extractPath}\"' >> ~/.zshrc && source ~/.zshrc"
     }
 }
 
@@ -381,11 +375,9 @@ function Install-PyHubMCPTools
     Remove-Item -Force $downloadResult.OutputFile
     Remove-Item -Force "$( $downloadResult.OutputFile ).sha256"
 
-    # 6. PATH 업데이트 및 설치 후 안내
+    # 6. 설치 후 안내
     $currentStep++
-    Show-Progress -Step $currentStep -TotalSteps $totalSteps -Message "Configuring environment and finishing installation"
-    Write-Host "Adding to PATH: $installPath"
-    Update-PathVariable -AddedPath $installPath
+    Show-Progress -Step $currentStep -TotalSteps $totalSteps -Message "Finishing installation"
     Show-PostInstallInstructions
 
     # 완료 표시

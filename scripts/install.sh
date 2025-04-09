@@ -82,19 +82,18 @@ download_file() {
   local url=$1
   local output=$2
   local size_in_bytes=0
-  local downloaded=0
   local percent=0
-  
+
   # 파일 크기 가져오기
   size_in_bytes=$(curl -sI "$url" | grep -i content-length | awk '{print $2}' | tr -d '\r')
-  
+
   # 크기 정보를 가져올 수 없으면 기본값 사용
   if [ -z "$size_in_bytes" ] || [ "$size_in_bytes" -eq 0 ]; then
     echo "⚠️ Could not determine file size, downloading without progress bar"
     curl -L "$url" -o "$output"
     return
   fi
-  
+
   # 프로그레스바와 함께 다운로드
   echo "📥 Downloading: $url"
   curl -L "$url" -o "$output" -#
@@ -169,39 +168,30 @@ setup_path_env() {
 
   # Check if path is already in PATH
   if [[ ":$PATH:" != *":$extract_path:"* ]]; then
-    read -p "The path '$extract_path' is not in your PATH. Do you want to add it? (Y/n): " ADD_TO_PATH
-    if [[ -z "$ADD_TO_PATH" || "$ADD_TO_PATH" == "y" || "$ADD_TO_PATH" == "Y" ]]; then
-      SHELL_PROFILE=""
-      case "$SHELL" in
-        */zsh)
-          SHELL_PROFILE="$HOME/.zshrc"
-          ;;
-        */bash)
-          if [ -f "$HOME/.bash_profile" ]; then
-            SHELL_PROFILE="$HOME/.bash_profile"
-          else
-            SHELL_PROFILE="$HOME/.bashrc"
-          fi
-          ;;
-      esac
-
-      if [ -n "$SHELL_PROFILE" ]; then
-        if ! grep -q "$extract_path" "$SHELL_PROFILE"; then
-          echo "export PATH=\"\$PATH:$extract_path\"" >> "$SHELL_PROFILE"
-          echo "✅ Added to PATH in $SHELL_PROFILE"
+    SHELL_PROFILE=""
+    case "$SHELL" in
+      */zsh)
+        SHELL_PROFILE="$HOME/.zshrc"
+        ;;
+      */bash)
+        if [ -f "$HOME/.bash_profile" ]; then
+          SHELL_PROFILE="$HOME/.bash_profile"
         else
-          echo "✅ Path already present in $SHELL_PROFILE"
+          SHELL_PROFILE="$HOME/.bashrc"
         fi
-      else
-        echo "⚠️ No known shell profile found. Please add the following to your PATH manually:"
-        echo "export PATH=\"\$PATH:$extract_path\""
-      fi
+        ;;
+    esac
 
-      # Always add to current session
-      export PATH="$PATH:$extract_path"
-      echo "✅ Added to current session PATH."
+    if [ -n "$SHELL_PROFILE" ]; then
+      if ! grep -q "$extract_path" "$SHELL_PROFILE"; then
+        echo "export PATH=\"\$PATH:$extract_path\"" >> "$SHELL_PROFILE"
+        echo "✅ Added to PATH in $SHELL_PROFILE"
+      else
+        echo "✅ Path already present in $SHELL_PROFILE"
+      fi
     else
-      echo "❌ Did not add '$extract_path' to PATH."
+      echo "⚠️ No known shell profile found. Please add the following to your PATH manually:"
+      echo "export PATH=\"\$PATH:$extract_path\""
     fi
   fi
 }
@@ -218,6 +208,9 @@ show_post_install_instructions() {
   echo "./pyhub.mcptools kill claude"
   echo "./pyhub.mcptools setup-add"
   echo "./pyhub.mcptools setup-print"
+  echo ""
+  echo "🔄 To use pyhub.mcptools in your current terminal session, run:"
+  echo "export PATH=\"\$PATH:$extract_path\""
 }
 
 # 메인 함수
