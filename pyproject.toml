@@ -59,6 +59,7 @@ docs = [
     "mkdocs-material>=9.1.0",
     "mkdocstrings>=0.20.0",
     "mkdocstrings-python>=1.0.0",
+    "mkdocs-glightbox",
 ]
 build = ["setuptools", "wheel", "build", "twine"]
 

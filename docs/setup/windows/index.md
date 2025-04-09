@@ -4,11 +4,63 @@
 
 엑셀 도구 사용을 위해서는 엑셀 2016 이상이 반드시 설치되어 있으셔야 합니다.
 
-## 실행 파일로 빠르게 구성하기
+## 실행 파일로 빠르게 설치하기
 
-node/파이썬/도커 설치없이도 실행파일 만으로 MCP 서버를 구성하실 수 있습니다.
+> node/파이썬/도커 설치없이도 실행파일 만으로 MCP 서버를 구성하실 수 있습니다.
 
 ### 1. 실행파일 받아서 압축 풀기
+
+#### 방법 1) 명령 한 방 버전 (추천)
+
+다음 과정을 한 번에 수행하실 수 있는 [인스톨러 파워쉘 스크립트](https://github.com/pyhub-kr/pyhub-mcptools/blob/main/scripts/install.ps1)를
+제공합니다.
+
+1. 최신 버전 다운로드 및 다운로드 파일에 대한 SHA256 체크섬 무결성 검증
+2. `c:\mcptools\` 경로에 자동 압축 해제 : 경로 변경 가능
+
+파워쉘을 여시고, 다음 명령을 복사해서 실행해주세요.
+
+=== "윈도우 기본 파워쉘"
+
+    ``` ps1
+    powershell -ExecutionPolicy Bypass -NoProfile -Command "iex (iwr -UseBasicParsing 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1')"
+    ```
+
+    ![](./assets/00-installer-using-powershell.png)
+
+=== "파워쉘 코어 7"
+
+    ``` ps1
+    pwsh -NoProfile -Command "iex (iwr 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1')"
+    ```
+
+    ![](./assets/00-installer-using-pwsh.png)
+
+디폴트 경로로 `c:\mcptools\pyhub.mcptools\` 폴더에 아래와 같이 `pyhub.mcptools.exe` 파일과 `_internal` 폴더가 확인되시면
+설치 성공입니다. 이어서 다음 단계 "2. 실행파일 차단풀기" 를 진행해주세요.
+
+![](./assets/00-windows-explorer.png)
+
+!!! note
+
+    윈도우 기본 파워쉘 (버전 5)보다 최신 버전의 [파워쉘 코어 v7](https://aka.ms/PSWindows)을 추천드립니다.
+    UI도 미려해지고 사용성도 좋아요. 👍
+
+    요즘 윈도우에는 기본에 `winget` 팩키지 매니저가 설치되어있습니다. 다음 명령 한 번에 설치됩니다. 
+
+    ```
+    winget install --id Microsoft.PowerShell --source winget
+    ```
+
+!!! warning
+
+    설치 시에 Rate limit exceeded 오류가 발생할 수 있습니다.
+    팩키지 최신 버전 조회를 위해
+    [GitHub REST API](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)를 사용합니다.
+    비인증 API 요청에 대해서는 60회/1시간 제한이 있기 때문입니다.
+    1시간 후에 다시 시도하시거나, 아래 "방법 2"로 설치하실 수 있습니다.
+
+#### 방법 2) 직접 받아서 압축 풀기
 
 [공식 릴리즈 페이지](https://github.com/pyhub-kr/pyhub-mcptools/releases)에서 윈도우 용으로 최신 버전을 받아주세요.
 
