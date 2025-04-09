@@ -1,21 +1,21 @@
 #!/usr/bin/env pwsh
 
 param(
-    [string]$Owner = "pyhub-kr", # GitHub 저장소 소유자
-    [string]$Repo = "pyhub-mcptools", # GitHub 저장소 이름
-    [string]$InstallDir, # 사용자 지정 설치 디렉토리
-    [switch]$NoPrompt, # 사용자 프롬프트 없이 자동 설치 여부
-    [switch]$AddToPath = $true, # PATH에 설치 디렉토리 추가 여부
-    [string]$Token                   # GitHub API 토큰
+    [string]$Owner = "pyhub-kr", # GitHub repository owner
+    [string]$Repo = "pyhub-mcptools", # GitHub repository name
+    [string]$InstallDir, # Custom installation directory
+    [switch]$NoPrompt, # Auto install without user prompts
+    [switch]$AddToPath = $true, # Add installation directory to PATH
+    [string]$Token                   # GitHub API token
 )
 
-# 프로그레스바 표시 함수
+# Function to display progress bar
 function Show-Progress
 {
     param (
-        [int]$Step, # 현재 단계
-        [int]$TotalSteps, # 전체 단계 수
-        [string]$Message  # 표시할 메시지
+        [int]$Step, # Current step
+        [int]$TotalSteps, # Total number of steps
+        [string]$Message  # Message to display
     )
 
     $percent = ($Step / $TotalSteps) * 100
@@ -25,50 +25,33 @@ function Show-Progress
     Write-Host "[$Step/$TotalSteps] $Message"
 }
 
-# 환경 설정 및 OS 감지 함수
+# Function for environment setup and OS detection
 function Initialize-Environment
 {
-    # 운영체제 감지 (pwsh와 기본 파워쉘 호환)
+    # OS detection (compatible with pwsh and default PowerShell)
     $script:os = [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
 
-    # 경로 구분자 설정 - Windows는 세미콜론, 그 외는 콜론
-    $script:PathSeparator = if ($script:os -match "Windows")
+    # Windows only - exit with error message for other OS
+    if (-not ($script:os -match "Windows"))
     {
-        ';'
-    }
-    else
-    {
-        ':'
+        Write-Error "This installer only supports Windows. Detected OS: $script:os"
+        exit 1
     }
 
-    # 운영체제별 설정 값 지정
-    switch -Regex ($script:os)
-    {
-        "Windows" {
-            $script:keyword = "pyhub.mcptools-windows"  # 다운로드 파일 키워드
-            $script:defaultExtractBasePath = "C:\mcptools"  # 기본 설치 경로
-        }
-        "Darwin" {
-            $script:keyword = "pyhub.mcptools-macOS"  # 다운로드 파일 키워드
-            $script:defaultExtractBasePath = "$HOME/mcptools"  # 기본 설치 경로
-        }
-        "Linux" {
-            $script:keyword = "pyhub.mcptools-linux"  # 다운로드 파일 키워드
-            $script:defaultExtractBasePath = "$HOME/mcptools"  # 기본 설치 경로
-        }
-        default {
-            Write-Error "Unsupported OS: $script:os"
-            exit 1
-        }
-    }
+    # Set path separator - semicolon for Windows
+    $script:PathSeparator = ';'
+
+    # Set Windows configuration values
+    $script:keyword = "pyhub.mcptools-windows"  # Download file keyword
+    $script:defaultExtractBasePath = "C:\mcptools"  # Default installation path
 }
 
-# 설치 경로 설정 함수
+# Function to set installation path
 function Set-InstallPath
 {
     Write-Host "Default extraction path is: $script:defaultExtractBasePath"
 
-    # 자동 설치 모드이거나 사용자 지정 경로가 있는 경우
+    # For auto install mode or custom path provided
     if ($NoPrompt -or $InstallDir)
     {
         $script:extractBasePath = if ($InstallDir)
@@ -82,7 +65,7 @@ function Set-InstallPath
     }
     else
     {
-        # 사용자에게 경로 확인
+        # Ask user for path confirmation
         $userPath = Read-Host "Use this path? (Press Enter to accept or type a new path)"
         $script:extractBasePath = if ( [string]::IsNullOrWhiteSpace($userPath))
         {
@@ -94,10 +77,10 @@ function Set-InstallPath
         }
     }
 
-    # 원래 코드로 복구 (Join-Path 사용)
+    # Restore original code (using Join-Path)
     $script:extractPath = Join-Path $script:extractBasePath "pyhub.mcptools"
 
-    # 기존 폴더 체크 및 처리
+    # Check and handle existing folder
     if (Test-Path $script:extractPath)
     {
         $proceed = $true
@@ -120,13 +103,13 @@ function Set-InstallPath
     return $script:extractPath
 }
 
-# 최신 릴리스 정보 가져오기 함수
+# Function to get latest release information
 function Get-LatestRelease
 {
     $releaseApiUrl = "https://api.github.com/repos/$Owner/$Repo/releases/latest"  # GitHub API URL
-    $headers = @{ "User-Agent" = "PowerShell" }  # API 요청 헤더
+    $headers = @{ "User-Agent" = "PowerShell" }  # API request headers
 
-    # 토큰이 제공된 경우 인증 헤더 추가
+    # Add auth header if token provided
     if ($Token)
     {
         $headers.Authorization = "Bearer $Token"
@@ -135,9 +118,9 @@ function Get-LatestRelease
     try
     {
         $response = Invoke-WebRequest -Uri $releaseApiUrl -Headers $headers -ErrorAction Stop
-        $rateRemaining = $response.Headers["x-ratelimit-remaining"]  # API 요청 제한 확인
+        $rateRemaining = $response.Headers["x-ratelimit-remaining"]  # Check API rate limit
 
-        # API 요청 제한 초과 체크
+        # Check for API rate limit exceeded
         if ($response.StatusCode -eq 403 -or $response.StatusCode -eq 429)
         {
             Write-Error "Rate limit exceeded (status: $( $response.StatusCode )). Remaining quota: $rateRemaining"
@@ -154,14 +137,14 @@ function Get-LatestRelease
     }
 }
 
-# 자산 다운로드 함수
+# Function to download assets
 function Download-Asset
 {
     param (
-        [PSObject]$Release  # 릴리스 정보 객체
+        [PSObject]$Release  # Release information object
     )
 
-    # 운영체제에 맞는 자산 찾기
+    # Find asset matching OS
     $asset = $Release.assets | Where-Object { $_.name -like "$script:keyword*.zip" } | Select-Object -First 1
 
     if ($null -eq $asset)
@@ -170,12 +153,12 @@ function Download-Asset
         exit 1
     }
 
-    # 임시 디렉토리에 다운로드
+    # Download to temp directory
     $tempDir = [System.IO.Path]::GetTempPath()
     $downloadUrl = $asset.browser_download_url
     $outputFile = Join-Path $tempDir $asset.name
 
-    # 다운로드 실행
+    # Execute download
     Write-Host "Downloading to temp directory: $downloadUrl"
 
     try
@@ -195,7 +178,7 @@ function Download-Asset
     }
 }
 
-# 체크섬 검증 함수
+# Function to verify checksum
 function Verify-Checksum
 {
     param (
@@ -203,7 +186,7 @@ function Verify-Checksum
         [string]$OutputFile
     )
 
-    # 체크섬 파일을 같은 임시 경로에 다운로드
+    # Download checksum file to same temp path
     $sha256Url = "$DownloadUrl.sha256"
     $sha256File = "$OutputFile.sha256"
 
@@ -218,7 +201,7 @@ function Verify-Checksum
         exit 1
     }
 
-    # 체크섬 파일에서 해시값 추출
+    # Extract hash from checksum file
     $expectedHash = Get-Content $sha256File | ForEach-Object {
         if ($_ -match "([a-fA-F0-9]{64})")
         {
@@ -232,10 +215,10 @@ function Verify-Checksum
         exit 1
     }
 
-    # 다운로드한 파일의 해시값 계산
+    # Calculate hash of downloaded file
     $actualHash = (Get-FileHash -Path $OutputFile -Algorithm SHA256).Hash
 
-    # 해시값 비교
+    # Compare hashes
     if ($actualHash -ne $expectedHash)
     {
         Write-Error "Checksum verification failed! Expected: $expectedHash, Actual: $actualHash"
@@ -249,7 +232,7 @@ function Verify-Checksum
     }
 }
 
-# 파일 압축 해제 함수
+# Function to extract archive
 function Extract-Archive
 {
     param (
@@ -257,133 +240,120 @@ function Extract-Archive
         [string]$DestinationPath
     )
 
-    # 임시 디렉토리 생성
+    # Create temp directory
     $tempPath = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
     New-Item -ItemType Directory -Path $tempPath | Out-Null
 
-    # 목적지 디렉토리가 없는 경우 생성
+    # Create destination directory if not exists
     if (-not (Test-Path -Path $DestinationPath -PathType Container))
     {
         New-Item -ItemType Directory -Path $DestinationPath -Force | Out-Null
     }
 
-    # 임시 디렉토리에 압축 해제
+    # Extract to temp directory
     Write-Host "Extracting to temporary location: $tempPath"
     Expand-Archive -LiteralPath $ArchiveFile -DestinationPath $tempPath -Force
 
-    # 압축 파일 내용 검사 - pyhub.mcptools 폴더가 있는지 확인
+    # Check archive contents - look for pyhub.mcptools folder
     $pyhubFolder = Get-ChildItem -Path $tempPath -Directory | Where-Object { $_.Name -eq "pyhub.mcptools" } | Select-Object -First 1
 
     if ($pyhubFolder)
     {
-        # pyhub.mcptools 폴더 내부 파일만 대상 폴더로 이동
+        # Move only files inside pyhub.mcptools folder to target
         Get-ChildItem -Path $pyhubFolder.FullName -Force | ForEach-Object {
             Move-Item -Path $_.FullName -Destination $DestinationPath -Force
         }
     }
     else
     {
-        # 임시 폴더의 모든 파일을 대상 폴더로 이동
+        # Move all files from temp folder to target
         Get-ChildItem -Path $tempPath -Force | ForEach-Object {
             Move-Item -Path $_.FullName -Destination $DestinationPath -Force
         }
     }
 
-    # 임시 디렉토리 정리
+    # Clean up temp directory
     Remove-Item -Recurse -Force $tempPath
 }
 
-# PATH 환경변수 설정 함수
+# Function to set PATH environment variable
 function Update-PathVariable
 {
     param (
-        [string]$AddedPath  # PATH에 추가할 경로
+        [string]$AddedPath  # Path to add to PATH
     )
 
-    # 세션 환경변수 업데이트 대신 안내 메시지만 표시
-    Write-Host "To add the installation path to your system PATH permanently, run the appropriate command for your OS."
+    $env:PATH += ";$AddedPath"
+    [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [EnvironmentVariableTarget]::User)
+    Write-Host "✅ Added '$AddedPath' to User PATH environment variable"
 }
 
-# 설치 완료 후 안내 메시지 출력 함수
+# Function to show post-installation instructions
 function Show-PostInstallInstructions
 {
     Write-Host "`nTo add configuration for Claude, please run the following commands:"
     Write-Host ""
 
-    # 운영체제별 명령어 표시 및 PATH 추가 명령 추가
-    if ($script:os -match "Windows")
-    {
-        Write-Host "cd $script:extractPath"
-        Write-Host ""
-        Write-Host ".\pyhub.mcptools.exe --version"
-        Write-Host ".\pyhub.mcptools.exe kill claude"
-        Write-Host ".\pyhub.mcptools.exe setup-add"
-        Write-Host ".\pyhub.mcptools.exe setup-print"
-
-        Write-Host "`nTo add the installation path to your system PATH permanently, run this command in an elevated PowerShell:"
-        Write-Host "[Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'Machine') + '$script:PathSeparator$script:extractPath', 'Machine')"
-    }
-    else
-    {
-        Write-Host "cd $script:extractPath"
-        Write-Host ""
-        Write-Host "./pyhub.mcptools --version"
-        Write-Host "./pyhub.mcptools kill claude"
-        Write-Host "./pyhub.mcptools setup-add"
-        Write-Host "./pyhub.mcptools setup-print"
-
-        Write-Host "`nTo add the installation path to your system PATH permanently, run this command:"
-        Write-Host "echo 'export PATH=\"\$PATH:${script:extractPath}\"' >> ~/.bashrc && source ~/.bashrc"
-        Write-Host "Or for zsh users:"
-        Write-Host "echo 'export PATH=\"\$PATH:${script:extractPath}\"' >> ~/.zshrc && source ~/.zshrc"
-    }
+    # Show Windows commands
+    Write-Host "cd $script:extractPath"
+    Write-Host ""
+    Write-Host ".\pyhub.mcptools.exe --version"
+    Write-Host ".\pyhub.mcptools.exe kill claude"
+    Write-Host ".\pyhub.mcptools.exe setup-add"
+    Write-Host ".\pyhub.mcptools.exe setup-print"
 }
 
-# 메인 설치 함수
+# Main installation function
 function Install-PyHubMCPTools
 {
-    $totalSteps = 6  # 전체 설치 단계 수
-    $currentStep = 0  # 현재 진행 단계
+    $totalSteps = 6  # Total number of installation steps
+    $currentStep = 0  # Current progress step
 
-    # 1. 환경 초기화
+    # 1. Initialize environment
     $currentStep++
     Show-Progress -Step $currentStep -TotalSteps $totalSteps -Message "Initializing environment"
     Initialize-Environment
 
-    # 2. 설치 경로 설정
+    # 2. Set installation path
     $currentStep++
     Show-Progress -Step $currentStep -TotalSteps $totalSteps -Message "Setting installation path"
     $installPath = Set-InstallPath
 
-    # 3. 최신 릴리스 정보 가져오기
+    # 3. Get latest release info
     $currentStep++
     Show-Progress -Step $currentStep -TotalSteps $totalSteps -Message "Fetching latest release information"
     $releaseInfo = Get-LatestRelease
 
-    # 4. 다운로드 및 체크섬 검증
+    # 4. Download and verify checksum
     $currentStep++
     Show-Progress -Step $currentStep -TotalSteps $totalSteps -Message "Downloading and verifying assets"
     $downloadResult = Download-Asset -Release $releaseInfo
     Verify-Checksum -DownloadUrl $downloadResult.DownloadUrl -OutputFile $downloadResult.OutputFile
 
-    # 5. 압축 해제
+    # 5. Extract files
     $currentStep++
     Show-Progress -Step $currentStep -TotalSteps $totalSteps -Message "Extracting files"
     Extract-Archive -ArchiveFile $downloadResult.OutputFile -DestinationPath $installPath
 
-    # 다운로드한 임시 파일 및 체크섬 파일 삭제
+    # Delete downloaded temp files and checksum
     Remove-Item -Force $downloadResult.OutputFile
     Remove-Item -Force "$( $downloadResult.OutputFile ).sha256"
+    
+    # Add installation directory to PATH if enabled
+    if ($AddToPath)
+    {
+        Update-PathVariable -AddedPath $installPath
+    }
 
-    # 6. 설치 후 안내
+    # 6. Post-installation guide
     $currentStep++
     Show-Progress -Step $currentStep -TotalSteps $totalSteps -Message "Finishing installation"
     Show-PostInstallInstructions
 
-    # 완료 표시
+    # Show completion
     Write-Progress -Activity "Installing pyhub.mcptools" -Completed
     Write-Host "`nInstallation complete!"
 }
 
-# 설치 실행
+# Run installation
 Install-PyHubMCPTools

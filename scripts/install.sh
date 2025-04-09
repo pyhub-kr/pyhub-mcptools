@@ -42,7 +42,12 @@ setup_path() {
     EXTRACT_BASE="$DEFAULT_EXTRACT_BASE"
   fi
 
-  EXTRACT_PATH="$EXTRACT_BASE/pyhub.mcptools"
+  # 경로가 이미 'pyhub.mcptools'로 끝나는지 확인
+  if [[ "$EXTRACT_BASE" == */pyhub.mcptools ]]; then
+    EXTRACT_PATH="$EXTRACT_BASE"
+  else
+    EXTRACT_PATH="$EXTRACT_BASE/pyhub.mcptools"
+  fi
   
   # 기존 폴더가 있으면 삭제 여부 확인
   if [ -d "$EXTRACT_PATH" ]; then
@@ -144,16 +149,28 @@ extract_and_install() {
   local extract_path=$3
   
   echo "📦 Extracting files..."
+  # 임시 디렉토리에 압축 해제
   unzip -q "$file" -d "$tmp_dir"
   show_progress 50
   
-  # Move to final destination
+  # 최종 목적지 디렉토리 생성
   mkdir -p "$extract_path"
-  mv "$tmp_dir"/* "$extract_path"
+  
+  # 압축 해제된 내용 중 첫 번째 디렉토리 찾기 (압축 파일이 하나의 루트 디렉토리를 포함한다고 가정)
+  first_dir=$(find "$tmp_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)
+  
+  if [ -n "$first_dir" ]; then
+    # 첫 번째 디렉토리 내의 내용물만 이동
+    mv "$first_dir"/* "$extract_path"
+  else
+    # 압축 해제된 모든 파일을 직접 이동
+    mv "$tmp_dir"/* "$extract_path"
+  fi
+  
   show_progress 100
   echo ""
   
-  # Clean up
+  # 정리
   rm -rf "$tmp_dir"
   echo "✅ Installation complete at: $extract_path"
 }
