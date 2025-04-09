@@ -28,8 +28,8 @@ function Show-Progress
 # 환경 설정 및 OS 감지 함수
 function Initialize-Environment
 {
-    # 운영체제 감지
-    $script:os = $PSVersionTable.OS
+    # 운영체제 감지 (pwsh와 기본 파워쉘 호환)
+    $script:os = [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
 
     # 경로 구분자 설정 - Windows는 세미콜론, 그 외는 콜론
     $script:PathSeparator = if ($script:os -match "Windows")
