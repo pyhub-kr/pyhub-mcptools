@@ -1,5 +1,9 @@
 # 릴리즈 노트
 
+## v0.6.3
+
++ `setup-add` 명령에서 Claude Desktop 미설치 상황에 대한 안내 메시지 추가
+
 ## v0.6.2
 
 + 엑셀 도구, 시트 추가 도구 지원 : `excel_add_sheet`

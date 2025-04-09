@@ -201,10 +201,7 @@ def setup_add(
     current_cmd = sys.argv[0]
     current_exe_path = Path(current_cmd).resolve()
 
-    # 뒤에 또 다른 mcptools가 나오면 매칭하지 않음 (lookahead)
-    matched = re.search(r"mcptools[/.]([a-zA-Z0-9_]+)(?!.*mcptools)", str(current_exe_path))
-    command_category = matched.group(1)  # ex) "excel"
-    config_name = f"pyhub.mcptools.{command_category}"
+    config_name = "pyhub.mcptools"
 
     # 실행 파일이 아닌 경우 오류 처리
     if getattr(sys, "frozen", False) is False:
@@ -248,9 +245,15 @@ def setup_add(
         config_data["mcpServers"][config_name] = new_config
 
         config_path = get_config_path(mcp_host, is_verbose)
-        with open(config_path, "wt", encoding="utf-8") as f:
-            json_str = json.dumps(config_data, indent=2, ensure_ascii=False)
-            f.write(json_str)
+
+        # Claude 설정 폴더가 없다면, FileNotFoundError 예외가 발생합니다.
+        try:
+            with open(config_path, "wt", encoding="utf-8") as f:
+                json_str = json.dumps(config_data, indent=2, ensure_ascii=False)
+                f.write(json_str)
+        except FileNotFoundError as e:
+            console.print("[red]Claude Desktop 프로그램을 먼저 설치해주세요. - https://claude.ai/download[/red]")
+            raise typer.Abort() from e
 
         console.print(f"'{config_path}' 경로에 {config_name} 설정을 추가했습니다.", highlight=False)
     else:
