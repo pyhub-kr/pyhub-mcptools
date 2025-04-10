@@ -103,3 +103,7 @@ MEDIA_ROOT = env.path("MEDIA_ROOT", default=PYHUB_CONFIG_DIR / "mediafiles")
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# pyhub.mcptools
+
+EXPERIMENTAL = env.bool("PYHUB_MCPTOOLS_EXPERIMENTAL", default=False)

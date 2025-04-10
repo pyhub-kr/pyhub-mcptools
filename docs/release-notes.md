@@ -1,5 +1,10 @@
 # 릴리즈 노트
 
+## v0.6.7
+
++ `setup-add` 명령에서 Cursor 설정 지원 (only 윈도우)
++ MCP 도구 등록 장식자에 `experimental` 인자를 추가하여, 실험적 도구는 별도 플래그를 통해서만 활성화
+
 ## v0.6.6
 
 + `update` 명령에서 Claude Desktop, Cursor 종료 여부를 묻는 기능이 추가되었습니다.
