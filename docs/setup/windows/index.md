@@ -321,8 +321,29 @@ $env:PATH += ";c:\mcptools\pyhub.mcptools\"
 
 Claude Desktop을 다시 실행해주시면 업데이트 끝입니다.
 
-## 소스 코드로 직접 구성하기
+## 이슈 해결
+
+### 업데이트 시 "Access is denied" 오류
+
+`pyhub.mcptools.exe update` 명령 실행 시 Claude Desktop이 실행 중이면 `"Access is denied"` 오류가 발생할 수 있습니다. 이는 Windows에서 실행 중인 프로그램 파일을 수정할 수 없기 때문입니다.
+
+![](./assets/access-is-denifed.png)
+
+1. Claude Desktop 프로세스를 모두 종료해주세요.
+    - 작업관리자를 통해 직접 프로세스 종료시키기
+    - 혹은 윈도우를 재부팅
+2. 페이지 상단의 PowerShell 설치 스크립트를 다시 실행하여 최신 버전으로 재설치하시면, 업데이트 끝.
 
 !!! note
+    Claude Desktop에 이미 MCP 도구가 등록되어 있다면 `setup-add` 명령을 다시 실행할 필요가 없습니다.
 
-    작성 예정
+### Excel 작업 시 "com.error -2147352530 unknown name" 오류 
+
+이 오류는 주로 Excel 파일이 보호된 보기 상태이거나 편집이 제한된 상태일 때 발생합니다.
+
+해결 방법:
+
+1. Excel 프로그램을 완전히 종료
+2. Excel 파일을 다시 열어 편집 가능 상태인지 확인
+3. 보호된 보기를 해제하고 편집을 활성화
+4. 이후 Claude를 통해 작업을 다시 시도
