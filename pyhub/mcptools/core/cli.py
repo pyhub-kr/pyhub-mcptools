@@ -1,14 +1,11 @@
 import json
 import re
 import shutil
-import subprocess
 import sys
-from enum import Enum
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Optional, Sequence
 
-import psutil
 import typer
 from asgiref.sync import async_to_sync
 from click import Choice, ClickException
@@ -20,8 +17,10 @@ from typer.models import OptionInfo
 
 from pyhub.mcptools.core.choices import McpHostChoices, TransportChoices
 from pyhub.mcptools.core.init import mcp
+from pyhub.mcptools.core.types import FormatEnum, McpClientEnum
 from pyhub.mcptools.core.updater import apply_update
 from pyhub.mcptools.core.utils import get_config_path, open_with_default_editor, read_config_file
+from pyhub.mcptools.core.utils.process import kill_mcp_client_process
 from pyhub.mcptools.core.versions import PackageVersionChecker
 
 app = typer.Typer(add_completion=False)
@@ -184,11 +183,6 @@ def prompts_list():
     """프롬프트 목록 출력"""
     prompts = async_to_sync(mcp.list_prompts)()
     print_as_table("prompts", prompts)
-
-
-class FormatEnum(str, Enum):
-    JSON = "json"
-    TABLE = "table"
 
 
 @app.command()
@@ -492,46 +486,13 @@ def update(
     apply_update(version_check.latest, verbose)
 
 
-# https://modelcontextprotocol.io/clients
-
-
-class McpClientEnum(str, Enum):
-    CLAUDE = "claude"
-    CURSOR = "cursor"
-
-
 @app.command()
 def kill(
     target: McpClientEnum = typer.Argument(..., help="프로세스를 죽일 MCP 클라이언트"),
 ):
     """MCP 설정 적용을 위해 Claude 등의 MCP 클라이언트 프로세스를 죽입니다."""
 
-    def kill_in_windows(proc_name: str):
-        for proc in psutil.process_iter(["pid", "name"]):
-            proc_pid = proc.pid
-            try:
-                if proc.info["name"].lower() == proc_name.lower():
-                    console.print(f"Killing: {proc_name} (PID {proc_pid})")
-                    proc.terminate()
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
-
-    if sys.platform.startswith("win"):
-        if target == McpClientEnum.CLAUDE:
-            kill_in_windows("claude.exe")
-        elif target == McpClientEnum.CURSOR:
-            kill_in_windows("cursor.exe")
-        else:
-            raise typer.BadParameter(f"Unsupported target : {target.value}")
-    elif sys.platform == "darwin":
-        if target == McpClientEnum.CLAUDE:
-            subprocess.run("pkill -f '/Applications/Claude.app/'", shell=True)
-        elif target == McpClientEnum.CURSOR:
-            subprocess.run("pkill -f '/Applications/Cursor.app/'", shell=True)
-        else:
-            raise typer.BadParameter(f"Unsupported target : {target.value}")
-    else:
-        raise typer.BadParameter(f"Unsupported platform : {sys.platform}")
+    kill_mcp_client_process(target)
 
     console.print(f"[green]Killed {target.value} processes[/green]")
 
