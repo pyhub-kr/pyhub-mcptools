@@ -294,14 +294,11 @@ Claude Desktop 내부에서 MCP 서버를 새롭게 띄웁니다.
 .\pyhub.mcptools.exe update
 ```
 
-!!! warning
-
-    압축을 푸시고 덮어쓰기 하시기 전에 `c:\mcptools\pyhub.mcptools\` 폴더 내의 `_internal` 폴더를 반드시 먼저 삭제해주세요.
-    삭제하지 않으시면 앞선 버전의 메타 파일들이 남아있게 됩니다.
-
-    `update` 명령은 `_internal` 폴더를 먼저 삭제합니다.
-
 Claude Desktop을 다시 실행해주시면 업데이트 끝입니다.
+
+!!! note
+
+    v0.6.6 (2024.04.10) 버전에서는 `update` 명령에서 Claude Desktop, Cursor 종료 여부를 묻는 기능이 추가되었습니다.
 
 ## 이슈 해결
 

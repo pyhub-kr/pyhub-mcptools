@@ -1,5 +1,9 @@
 # 릴리즈 노트
 
+## v0.6.6
+
++ `update` 명령에서 Claude Desktop, Cursor 종료 여부를 묻는 기능이 추가되었습니다.
+
 ## v0.6.5
 
 + `excel_set_formula` Tool 추가 : 엑셀 수식 지원

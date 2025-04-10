@@ -471,6 +471,11 @@ def update(
         version_check.latest = version_check.installed
         console.print(f"[yellow]같은 버전({version_check.installed})이라도 강제 업데이트를 진행합니다.[/yellow]")
 
+    for mcp_host in McpHostChoices:
+        if typer.confirm(f"{mcp_host}를(을) 강제 종료하시겠습니까?", default=True):
+            kill_mcp_host_process(mcp_host)
+            console.print(f"[green]Killed {mcp_host} processes[/green]")
+
     # 업데이트 진행 여부를 한 번 더 확인합니다.
     if not yes:
         confirm = typer.confirm(
