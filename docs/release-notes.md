@@ -1,5 +1,9 @@
 # 릴리즈 노트
 
+## v0.6.4
+
++ `setup-add` 명령에 Claude 설정명 인자 (`--config-name`) 지원
+
 ## v0.6.3
 
 + `setup-add` 명령에서 Claude Desktop 미설치 상황에 대한 안내 메시지 추가

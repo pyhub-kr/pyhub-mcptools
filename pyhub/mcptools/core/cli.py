@@ -194,6 +194,7 @@ class FormatEnum(str, Enum):
 @app.command()
 def setup_add(
     mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    config_name: Optional[str] = typer.Option("pyhub.mcptools", "--config-=name", "-n", help="Server Name"),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """[MCP 설정파일] 설정에 자동 추가 (팩키징된 실행파일만 지원)"""
@@ -201,11 +202,9 @@ def setup_add(
     current_cmd = sys.argv[0]
     current_exe_path = Path(current_cmd).resolve()
 
-    config_name = "pyhub.mcptools"
-
     # 실행 파일이 아닌 경우 오류 처리
     if getattr(sys, "frozen", False) is False:
-        console.print("[red]패키징된 실행파일이 아닌 환경은 아직 지원하지 않습니다.[/red]")
+        console.print("[red]패키징된 실행파일에 대해서만 지원합니다.[/red]")
         new_config = None
 
     # 윈도우 실행파일 실행
@@ -238,7 +237,7 @@ def setup_add(
         config_data.setdefault("mcpServers", {})
 
         if config_name in config_data["mcpServers"]:
-            is_confirm = typer.confirm(f"{config_name} 설정이 이미 있습니다. 덮어쓰시겠습니까?")
+            is_confirm = typer.confirm(f"{config_path} 설정에 {config_name} 설정이 이미 있습니다. 덮어쓰시겠습니까?")
             if not is_confirm:
                 raise typer.Abort()
 
