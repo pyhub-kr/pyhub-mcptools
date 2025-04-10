@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Literal, Optional, TypeAlias
+from typing import Literal, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
@@ -15,6 +15,8 @@ from environ import Env
 from rich.console import Console
 from typer import Exit
 from tzlocal import get_localzone
+
+from pyhub.mcptools.core.choices import OS, McpHostChoices
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +126,7 @@ def get_current_timezone() -> str:
 def get_current_language_code(default: Literal["en-US", "ko-KR"] = "en-US") -> str:
     lang_code = None
 
-    if sys.platform.lower() == "darwin":  # macOS
+    if OS.current_is_macos():
         try:
             result = subprocess.run(
                 ["defaults", "read", "-g", "AppleLocale"],
@@ -155,45 +157,23 @@ def get_current_language_code(default: Literal["en-US", "ko-KR"] = "en-US") -> s
     return lang_code.replace("_", "-")
 
 
-OsLabel: TypeAlias = Literal["windows", "macos"] | str
-
-
-def get_os_label() -> OsLabel:
-    """현재 운영체제 레이블을 반환합니다. ('windows', 'macos' 또는 기타)"""
-
-    os_system = sys.platform.lower()
-
-    match os_system:
-        case os_name if os_name.startswith("darwin"):
-            return "macos"
-        case os_name if os_name.startswith("win"):
-            return "windows"
-        case _:
-            # 예상치 못한 os_system 값에 대한 경고 로깅을 고려할 수 있습니다.
-            # logger.warning(f"지원되지 않는 OS 플랫폼 감지됨: {os_system}")
-            return os_system
-
-
-def get_config_path(host: str, is_verbose: bool = False) -> Path:
+def get_config_path(mcp_host: McpHostChoices, is_verbose: bool = False) -> Path:
     """현재 운영체제에 맞는 설정 파일 경로를 반환합니다."""
 
-    os_label = get_os_label()
-
+    current_os = OS.get_current()
     home = Path.home()
 
-    try:
-        path = {
-            ("macos", "claude"): home / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json",
-            ("windows", "claude"): home / "AppData" / "Roaming" / "Claude" / "claude_desktop_config.json",
-        }[(os_label, host)]
-    except KeyError:
-        pass
-    else:
-        if is_verbose:
-            console.print(f"[INFO] config path : {path}", highlight=False)
-        return path
+    match mcp_host, current_os:
+        case McpHostChoices.CLAUDE, OS.WINDOWS:
+            config_path = home / "AppData/Roaming/Claude/claude_desktop_config.json"
+        case McpHostChoices.CLAUDE, OS.MACOS:
+            config_path = home / "Library/Application Support/Claude/claude_desktop_config.json"
+        case _:
+            raise ValueError(f"{current_os.value}의 {mcp_host.value} 프로그램은 지원하지 않습니다.")
 
-    raise ValueError(f"{os_label}의 {host} 프로그램은 지원하지 않습니다.")
+    if is_verbose:
+        console.print(f"[INFO] config path : {config_path}", highlight=False)
+    return config_path
 
 
 def read_config_file(path: Path, is_verbose: bool = False) -> dict:
@@ -258,23 +238,18 @@ def open_with_default_editor(file_path: Path, is_verbose: bool = False) -> bool:
             last_error = e
             continue
 
-    # 플랫폼 기본 명령 시도
     try:
-        if sys.platform.startswith("win"):
-            subprocess.run(["start", file_path_str], shell=True, check=True)
-            if is_verbose:
-                console.print("[green]Windows 기본 프로그램으로 파일을 열었습니다.[/green]")
-            return True
-        elif sys.platform.startswith("darwin"):
-            subprocess.run(["open", file_path_str], check=True)
-            if is_verbose:
-                console.print("[green]macOS 기본 프로그램으로 파일을 열었습니다.[/green]")
-            return True
-        else:
-            subprocess.run(["xdg-open", file_path_str], check=True)
-            if is_verbose:
-                console.print("[green]Linux 기본 프로그램으로 파일을 열었습니다.[/green]")
-            return True
+        match OS.get_current():
+            case OS.WINDOWS:
+                subprocess.run(["start", file_path_str], shell=True, check=True)
+                if is_verbose:
+                    console.print("[green]Windows 기본 프로그램으로 파일을 열었습니다.[/green]")
+                return True
+            case OS.MACOS:
+                subprocess.run(["open", file_path_str], check=True)
+                if is_verbose:
+                    console.print("[green]macOS 기본 프로그램으로 파일을 열었습니다.[/green]")
+                return True
     except (subprocess.SubprocessError, FileNotFoundError):
         pass
 

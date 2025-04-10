@@ -3,19 +3,20 @@ import sys
 
 import psutil
 
-from pyhub.mcptools.core.types import McpClientEnum
+from pyhub.mcptools.core.choices import OS, McpHostChoices
 
 
-def kill_mcp_client_process(target: McpClientEnum) -> None:
-    if sys.platform.startswith("win"):
-        kill_in_windows(target)
-    elif sys.platform == "darwin":
-        kill_in_macos(target)
-    else:
-        raise ValueError(f"Unsupported platform : {sys.platform}")
+def kill_mcp_host_process(mcp_host: McpHostChoices) -> None:
+    match OS.get_current():
+        case OS.WINDOWS:
+            kill_in_windows(mcp_host)
+        case OS.MACOS:
+            kill_in_macos(mcp_host)
+        case _:
+            raise ValueError(f"Unsupported platform : {sys.platform}")
 
 
-def kill_in_windows(target: McpClientEnum) -> None:
+def kill_in_windows(mcp_host: McpHostChoices) -> None:
     def _kill(proc_name: str) -> None:
         for proc in psutil.process_iter(["pid", "name"]):
             proc_pid = proc.pid
@@ -26,18 +27,18 @@ def kill_in_windows(target: McpClientEnum) -> None:
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
-    if target == McpClientEnum.CLAUDE:
+    if mcp_host == McpHostChoices.CLAUDE:
         _kill("claude.exe")
-    elif target == McpClientEnum.CURSOR:
+    elif mcp_host == McpHostChoices.CURSOR:
         _kill("cursor.exe")
     else:
-        raise ValueError(f"Unsupported target : {target}")
+        raise ValueError(f"Unsupported MCP Host : {mcp_host}")
 
 
-def kill_in_macos(target: McpClientEnum) -> None:
-    if target == McpClientEnum.CLAUDE:
+def kill_in_macos(mcp_host: McpHostChoices) -> None:
+    if mcp_host == McpHostChoices.CLAUDE:
         subprocess.run("pkill -f '/Applications/Claude.app/'", shell=True)
-    elif target == McpClientEnum.CURSOR:
+    elif mcp_host == McpHostChoices.CURSOR:
         subprocess.run("pkill -f '/Applications/Cursor.app/'", shell=True)
     else:
-        raise ValueError(f"Unsupported target : {target.value}")
+        raise ValueError(f"Unsupported MCP Host : {mcp_host.value}")

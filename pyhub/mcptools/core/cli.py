@@ -15,12 +15,11 @@ from rich.console import Console
 from rich.table import Table
 from typer.models import OptionInfo
 
-from pyhub.mcptools.core.choices import McpHostChoices, TransportChoices
+from pyhub.mcptools.core.choices import FormatChoices, McpHostChoices, TransportChoices
 from pyhub.mcptools.core.init import mcp
-from pyhub.mcptools.core.types import FormatEnum, McpClientEnum
 from pyhub.mcptools.core.updater import apply_update
 from pyhub.mcptools.core.utils import get_config_path, open_with_default_editor, read_config_file
-from pyhub.mcptools.core.utils.process import kill_mcp_client_process
+from pyhub.mcptools.core.utils.process import kill_mcp_host_process
 from pyhub.mcptools.core.versions import PackageVersionChecker
 
 app = typer.Typer(add_completion=False)
@@ -256,7 +255,7 @@ def setup_add(
 @app.command()
 def setup_print(
     mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
-    fmt: FormatEnum = typer.Option(FormatEnum.JSON, "--format", "-f", help="출력 포맷"),
+    fmt: FormatChoices = typer.Option(FormatChoices.JSON, "--format", "-f", help="출력 포맷"),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """[MCP 설정파일] 표준 출력"""
@@ -269,7 +268,7 @@ def setup_print(
         console.print(f"{config_path} 파일이 없습니다.")
         raise typer.Abort() from e
 
-    if fmt == FormatEnum.TABLE:
+    if fmt == FormatChoices.TABLE:
         mcp_servers = config_data.get("mcpServers", {})
 
         config_keys: set = set()
@@ -339,7 +338,7 @@ def setup_remove(
     if len(mcp_servers) == 0:
         raise ClickException("등록된 mcpServers 설정이 없습니다.")
 
-    setup_print(mcp_host=mcp_host, fmt=FormatEnum.TABLE, is_verbose=is_verbose)
+    setup_print(mcp_host=mcp_host, fmt=FormatChoices.TABLE, is_verbose=is_verbose)
 
     # choice >= 1
     choice: str = typer.prompt(
@@ -488,13 +487,13 @@ def update(
 
 @app.command()
 def kill(
-    target: McpClientEnum = typer.Argument(..., help="프로세스를 죽일 MCP 클라이언트"),
+    mcp_host: McpHostChoices = typer.Argument(..., help="프로세스를 죽일 MCP 클라이언트"),
 ):
     """MCP 설정 적용을 위해 Claude 등의 MCP 클라이언트 프로세스를 죽입니다."""
 
-    kill_mcp_client_process(target)
+    kill_mcp_host_process(mcp_host)
 
-    console.print(f"[green]Killed {target.value} processes[/green]")
+    console.print(f"[green]Killed {mcp_host.value} processes[/green]")
 
 
 def print_as_table(title: str, rows: list[BaseModel], columns: Optional[list[str]] = None) -> None:

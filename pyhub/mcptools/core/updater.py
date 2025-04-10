@@ -9,24 +9,18 @@ from pathlib import Path
 import httpx
 from rich.progress import BarColumn, DownloadColumn, Progress, TextColumn, TimeRemainingColumn, TransferSpeedColumn
 
-
-def get_os_type():
-    """현재 OS 타입을 반환합니다."""
-
-    # .github/workflows/release.yml 에서 명시한 파일명 포댓을 따릅니다.
-    if sys.platform.startswith("win"):
-        return "windows"
-    elif sys.platform == "darwin":
-        return "macOS"
-    else:
-        raise ValueError(f"지원하지 않는 OS입니다: {sys.platform}")
+from pyhub.mcptools.core.choices import OS
 
 
 def download_update(version: str, target_dir: str = ".", verbose: bool = False) -> None:
     """새 버전을 다운로드하고 지정 경로에 압축을 풉니다."""
 
-    os_type = get_os_type()
-    url = f"https://github.com/pyhub-kr/pyhub-mcptools/releases/download/v{version}/pyhub.mcptools-{os_type}-v{version}.zip"
+    # .github/workflows/release.yml 에서 명시한 파일명 포댓을 따릅니다.
+
+    url = (
+        f"https://github.com/pyhub-kr/pyhub-mcptools/releases/download/v{version}/"
+        f"pyhub.mcptools-{OS.get_current_os_type()}-v{version}.zip"
+    )
     if verbose:
         print("Download", url)
 
@@ -125,7 +119,7 @@ def apply_update(version: str, verbose: bool) -> None:
     # 현재 실행 파일 경로
     current_exe = sys.executable
     app_dir = os.path.dirname(current_exe)
-    os_type = get_os_type()
+    current_os = OS.get_current()
 
     if verbose:
         print("current_exe :", current_exe)
@@ -142,7 +136,7 @@ def apply_update(version: str, verbose: bool) -> None:
             print(f"[red]업데이트 다운로드 실패: {e}[/red]")
             return
 
-        if os_type == "windows":
+        if current_os == OS.WINDOWS:
             script = rf"""
 @echo off
 setlocal
@@ -185,7 +179,7 @@ endlocal
             script_path.write_text(script)
             subprocess.Popen(["cmd", "/c", script_path], shell=True)
 
-        elif os_type == "macOS":
+        elif current_os == OS.MACOS:
             script = f"""#!/bin/bash
 
 echo "The update will be applied soon. Please wait a moment."
