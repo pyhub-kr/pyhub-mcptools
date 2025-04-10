@@ -1,7 +1,8 @@
 # 릴리즈 노트
 
-## v0.6.4
+## v0.6.5
 
++ `excel_set_formula` Tool 추가 : 엑셀 수식 지원
 + `setup-add` 명령에 Claude 설정명 인자 (`--config-name`) 지원
 
 ## v0.6.3

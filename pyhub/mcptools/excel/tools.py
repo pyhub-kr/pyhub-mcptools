@@ -10,7 +10,7 @@ from typing import Optional, Union
 import xlwings as xw
 
 from pyhub.mcptools import mcp
-from pyhub.mcptools.excel.types import ExcelRange
+from pyhub.mcptools.excel.types import ExcelFormula, ExcelRange
 
 #
 # macOS 보안정책에 창의 가시성을 조절하거나, 워크북 수를 세는 명령은 자동화 권한을 허용한 앱에서만 가능
@@ -78,20 +78,8 @@ def excel_get_values(
         JSON string containing the data.
     """
 
-    if book_name is None:
-        book = xw.books.active
-    else:
-        book = xw.books[book_name]
-
-    if sheet_name is None:
-        sheet = book.sheets.active
-    else:
-        sheet = book.sheets[sheet_name]
-
-    if sheet_range is None:
-        data = sheet.used_range.value
-    else:
-        data = sheet.range(sheet_range).value
+    range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
+    data = range_.value
 
     if data is None:
         return "[]"
@@ -133,22 +121,50 @@ def excel_set_values(
     - CORRECT way: sheet_range="A1:A5" json_values='[["v1"], ["v2"], ["v3"], ["v4"], ["v5"]]'
     """
 
-    if book_name is None:
-        book = xw.books.active
-    else:
-        book = xw.books[book_name]
-
-    if sheet_name is None:
-        sheet = book.sheets.active
-    else:
-        sheet = book.sheets[sheet_name]
-
-    if sheet_range is None:
-        range_ = sheet.used_range
-    else:
-        range_ = sheet.range(sheet_range)
-
+    range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
     range_.value = fix_data(sheet_range, json_loads(json_values))
+
+
+@mcp.tool()
+def excel_set_formula(
+    sheet_range: ExcelRange,
+    formula: ExcelFormula,
+    book_name: Optional[str] = None,
+    sheet_name: Optional[str] = None,
+):
+    """Set a formula in a specified range of an Excel workbook.
+
+    Applies an Excel formula to the specified range. The formula will be evaluated by Excel
+    after being set. Uses the active workbook and sheet if no specific book_name or sheet_name
+    is provided.
+
+    Parameters:
+        sheet_range (ExcelRange): Excel range where the formula should be applied (e.g., "A1", "B2:B10").
+            For multiple cells, the formula will be adjusted relatively.
+        formula (ExcelFormula): Excel formula to set. Must start with "=" and follow Excel formula syntax.
+            Examples:
+            - "=SUM(A1:A10)"
+            - "=AVERAGE(B1:B5)"
+            - "=CONCATENATE(A1, \" \", B1)"
+            - "=IF(A1>10, \"High\", \"Low\")"
+        book_name (Optional[str], optional): Name of workbook to use. Defaults to None, which uses active workbook.
+        sheet_name (Optional[str], optional): Name of sheet to use. Defaults to None, which uses active sheet.
+
+    Note:
+        - The formula will be applied using Excel's formula2 property, which supports modern
+          Excel features and dynamic arrays.
+        - When applying to a range of cells, Excel will automatically adjust cell references
+          in the formula according to each cell's position.
+        - Formulas must follow Excel's syntax rules and use valid function names and cell references.
+        - Array formulas (CSE formulas) are supported and will be automatically detected by Excel.
+
+    Examples:
+        >>> excel_set_formula("A1", "=SUM(B1:B10)")
+        >>> excel_set_formula("C1:C10", "=A1*B1", book_name="Sales.xlsx", sheet_name="Q1")
+        >>> excel_set_formula("D1", "=VLOOKUP(A1, Sheet2!A:B, 2, FALSE)")
+    """
+    range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
+    range_.formula2 = formula
 
 
 @mcp.tool()
@@ -204,6 +220,29 @@ def excel_add_sheet(
     book.sheets.add(name=name, before=before_sheet, after=after_sheet)
 
     return f"Successfully added a new sheet{' named ' + name if name else ''}."
+
+
+def get_range(
+    sheet_range: ExcelRange,
+    book_name: Optional[str] = None,
+    sheet_name: Optional[str] = None,
+) -> xw.Range:
+    if book_name is None:
+        book = xw.books.active
+    else:
+        book = xw.books[book_name]
+
+    if sheet_name is None:
+        sheet = book.sheets.active
+    else:
+        sheet = book.sheets[sheet_name]
+
+    if sheet_range is None:
+        range_ = sheet.used_range
+    else:
+        range_ = sheet.range(sheet_range)
+
+    return range_
 
 
 def fix_data(sheet_range: ExcelRange, values: Union[str, list]) -> Union[str, list]:
