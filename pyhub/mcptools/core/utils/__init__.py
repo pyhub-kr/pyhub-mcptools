@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Literal, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import typer
 from django.conf import settings
 from django.utils import timezone
 from environ import Env
@@ -157,7 +158,11 @@ def get_current_language_code(default: Literal["en-US", "ko-KR"] = "en-US") -> s
     return lang_code.replace("_", "-")
 
 
-def get_config_path(mcp_host: McpHostChoices, is_verbose: bool = False) -> Path:
+def get_config_path(
+    mcp_host: McpHostChoices,
+    is_verbose: bool = False,
+    allow_exit: bool = False,
+) -> Path:
     """현재 운영체제에 맞는 설정 파일 경로를 반환합니다."""
 
     current_os = OS.get_current()
@@ -168,8 +173,17 @@ def get_config_path(mcp_host: McpHostChoices, is_verbose: bool = False) -> Path:
             config_path = home / "AppData/Roaming/Claude/claude_desktop_config.json"
         case McpHostChoices.CLAUDE, OS.MACOS:
             config_path = home / "Library/Application Support/Claude/claude_desktop_config.json"
+        case McpHostChoices.CURSOR, OS.WINDOWS:
+            config_path = home / ".cursor/mcp.json"
+        case McpHostChoices.CURSOR, OS.MACOS:
+            config_path = home / ".cursor/mcp.json"
         case _:
-            raise ValueError(f"{current_os.value}의 {mcp_host.value} 프로그램은 지원하지 않습니다.")
+            error_msg = f"{current_os.value}의 {mcp_host.value} 프로그램은 지원하지 않습니다."
+            if allow_exit is False:
+                raise ValueError(error_msg)
+            else:
+                console.print(f"[red]{error_msg}[/red]")
+                raise typer.Exit(1)
 
     if is_verbose:
         console.print(f"[INFO] config path : {config_path}", highlight=False)

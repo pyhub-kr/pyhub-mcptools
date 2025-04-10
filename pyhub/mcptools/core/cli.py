@@ -220,7 +220,7 @@ def setup_add(
         # new_config = {"command": mcp_proxy_abs_path, "args": [pyhub_mcptools_excel_sse_path]}
 
     if new_config:
-        config_path = get_config_path(mcp_host, is_verbose)
+        config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
 
         try:
             config_data = read_config_file(config_path)
@@ -235,8 +235,6 @@ def setup_add(
                 raise typer.Abort()
 
         config_data["mcpServers"][config_name] = new_config
-
-        config_path = get_config_path(mcp_host, is_verbose)
 
         # Claude 설정 폴더가 없다면, FileNotFoundError 예외가 발생합니다.
         try:
@@ -260,7 +258,7 @@ def setup_print(
 ):
     """[MCP 설정파일] 표준 출력"""
 
-    config_path = get_config_path(mcp_host, is_verbose)
+    config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
 
     try:
         config_data = read_config_file(config_path)
@@ -309,7 +307,7 @@ def setup_edit(
 ):
     """[MCP 설정파일] 가용 에디터로 편집"""
 
-    config_path = get_config_path(mcp_host)
+    config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
     open_with_default_editor(config_path, is_verbose)
 
 
@@ -323,7 +321,7 @@ def setup_remove(
 ):
     """[MCP 설정파일] 지정 서버 제거"""
 
-    config_path = get_config_path(mcp_host, is_verbose)
+    config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
 
     try:
         config_data = read_config_file(config_path)
@@ -361,7 +359,7 @@ def setup_remove(
     config_data["mcpServers"] = mcp_servers
 
     # 설정 파일에 저장
-    config_path = get_config_path(mcp_host, is_verbose)
+    config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
     with open(config_path, "wt", encoding="utf-8") as f:
         json_str = json.dumps(config_data, indent=2, ensure_ascii=False)
         f.write(json_str)
@@ -379,7 +377,7 @@ def setup_backup(
     """[MCP 설정파일] 지정 경로로 백업"""
 
     dest_path = dest.resolve()
-    src_path = get_config_path(mcp_host, is_verbose)
+    src_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
 
     if dest_path.is_dir():
         dest_path = dest_path / src_path.name
@@ -405,7 +403,7 @@ def setup_restore(
     """[MCP 설정파일] 복원"""
 
     src_path = src.resolve()
-    dest_path = get_config_path(mcp_host, is_verbose)
+    dest_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
 
     if src_path.is_dir():
         src_path = src_path / dest_path.name
@@ -472,7 +470,7 @@ def update(
         console.print(f"[yellow]같은 버전({version_check.installed})이라도 강제 업데이트를 진행합니다.[/yellow]")
 
     for mcp_host in McpHostChoices:
-        if typer.confirm(f"{mcp_host}를(을) 강제 종료하시겠습니까?", default=True):
+        if typer.confirm(f"{mcp_host}를(을) 강제 종료하시겠습니까?"):
             kill_mcp_host_process(mcp_host)
             console.print(f"[green]Killed {mcp_host} processes[/green]")
 
