@@ -16,6 +16,7 @@ class FastMCP(OrigFastMCP):
         name: str | None = None,
         description: str | None = None,
         experimental: bool = False,
+        enabled: bool | Callable[[], bool] = True,
     ) -> Callable[[AnyFunction], AnyFunction]:
         """MCP 도구를 등록하기 위한 데코레이터입니다.
 
@@ -24,6 +25,8 @@ class FastMCP(OrigFastMCP):
             description (str | None, optional): 도구에 대한 설명. 기본값은 None입니다.
             experimental (bool, optional): 실험적 기능 여부. 기본값은 False입니다.
                 True로 설정하면 settings.EXPERIMENTAL이 True일 때만 도구가 등록됩니다.
+            enabled (bool | Callable[[], bool], optional): 도구 활성화 여부. 기본값은 True입니다.
+                함수가 주어진 경우, 해당 함수를 호출하여 반환값이 True일 때만 도구가 등록됩니다.
 
         Returns:
             Callable[[AnyFunction], AnyFunction]: 데코레이터 함수
@@ -41,11 +44,22 @@ class FastMCP(OrigFastMCP):
             @mcp.tool(experimental=True)
             def experimental_tool():
                 pass
+
+            # 조건부 활성화
+            def is_feature_enabled():
+                return settings.FEATURE_FLAG_ENABLED
+
+            @mcp.tool(enabled=is_feature_enabled)
+            def conditional_tool():
+                pass
             ```
 
         Note:
             experimental=True로 설정된 도구는 settings.EXPERIMENTAL=True인 경우에만
             MCP 도구로 등록되어 사용할 수 있습니다. False인 경우 일반 함수이며 도구로 사용되지 않습니다.
+
+            enabled 인자에 함수를 전달하면, 해당 함수의 반환값에 따라 도구 등록 여부가 결정됩니다.
+            False가 반환되면 도구로 등록되지 않고 일반 함수로만 동작합니다.
         """
         if callable(name):
             raise TypeError(
@@ -58,6 +72,11 @@ class FastMCP(OrigFastMCP):
                 return fn(*args, **kwargs)
 
             if experimental and not settings.EXPERIMENTAL:
+                return wrapper
+
+            # enabled 조건 확인
+            is_enabled = enabled() if callable(enabled) else enabled
+            if not is_enabled:
                 return wrapper
 
             self.add_tool(fn, name=name, description=description)
