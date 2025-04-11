@@ -38,13 +38,14 @@ def main(
             v = "not found"
         console.print(v, highlight=False)
     else:
-        # 사용할 Tools 들을 임포트
-        import_module("pyhub.mcptools.excel.tools")
-
         if ctx.invoked_subcommand is None:
             console.print(logo)
             console.print(ctx.get_help())
 
 
 if __name__ == "__main__":
+    # import_module("pyhub.mcptools.browser.tools")
+    import_module("pyhub.mcptools.excel.tools")
+    # import_module("pyhub.mcptools.images.tools")
+
     app()
