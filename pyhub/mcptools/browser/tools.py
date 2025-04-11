@@ -9,7 +9,7 @@ from pydantic import Field
 from pyhub.mcptools import mcp
 
 
-@mcp.tool()
+@mcp.tool(experimental=True)
 async def get_webpage_metadata(
     url: str = Field(description="webpage url"),
 ) -> dict:
