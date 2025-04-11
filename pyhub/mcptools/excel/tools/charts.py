@@ -1,11 +1,13 @@
 from typing import Optional
 
 from pyhub.mcptools import mcp
+from pyhub.mcptools.excel.decorators import macos_excel_request_permission
 from pyhub.mcptools.excel.types import ExcelChartType, ExcelRange
 from pyhub.mcptools.excel.utils import get_range, get_sheet, json_dumps
 
 
 @mcp.tool(experimental=True)
+@macos_excel_request_permission
 def excel_get_charts(
     book_name: Optional[str] = None,
     sheet_name: Optional[str] = None,
@@ -50,6 +52,7 @@ def excel_get_charts(
 
 
 @mcp.tool(experimental=True)
+@macos_excel_request_permission
 def excel_add_chart(
     source_sheet_range: ExcelRange,
     dest_sheet_range: ExcelRange,
@@ -104,6 +107,7 @@ def excel_add_chart(
 
 
 @mcp.tool(experimental=True)
+@macos_excel_request_permission
 def excel_set_chart_props(
     name: Optional[str] = None,
     index: Optional[int] = None,

@@ -7,27 +7,13 @@ from typing import Optional, Union
 import xlwings as xw
 
 from pyhub.mcptools import mcp
+from pyhub.mcptools.excel.decorators import macos_excel_request_permission
 from pyhub.mcptools.excel.types import ExcelExpandMode, ExcelFormula, ExcelRange
 from pyhub.mcptools.excel.utils import fix_data, get_range, json_dumps, json_loads
 
-#
-# macOS 보안정책에 창의 가시성을 조절하거나, 워크북 수를 세는 명령은 자동화 권한을 허용한 앱에서만 가능
-# Claude 앱에서는 Excel에 대해 자동화 권한을 부여하지 않았음.
-#
-# Claude 앱내에서 STDIN 방식의 직접 실행 방식이기에 CLAUDE 앱의 실행권한이 영향을 받음.
-# MCP Server를 별도 서버로 띄우고, SSE 방식으로 접근한다면 이를 해결할 수도 있겠음.
-# 장기적으로 별도 애플리케이션으로 띄울 수 있어야, 다양한 기능 구현이 가능하겠음.
-#
-#  - https://github.com/xlwings/xlwings/issues/1262
-#  - https://github.com/xlwings/xlwings/issues/1851
-#  - https://github.com/xlwings/xlwings/issues/1966
-#
-# Claude 밖에서 별도 프로세스로 SSE 서버를 띄운 다음 pyhub.mcptools.excel run sse --port 9999
-# Claude 에서는 uvx mcp-proxy http://localhost:9999/sse 명령으로 접속 가능
-#
-
 
 @mcp.tool()
+@macos_excel_request_permission
 def excel_get_opened_workbooks() -> str:
     """Get a list of all open workbooks and their sheets in Excel"""
 
@@ -57,6 +43,7 @@ def excel_get_opened_workbooks() -> str:
 
 
 @mcp.tool()
+@macos_excel_request_permission
 def excel_get_values(
     sheet_range: Optional[ExcelRange] = None,
     book_name: Optional[str] = None,
@@ -103,6 +90,7 @@ def excel_get_values(
 
 
 @mcp.tool()
+@macos_excel_request_permission
 def excel_set_values(
     sheet_range: ExcelRange,
     json_values: Union[str, list],
@@ -153,6 +141,7 @@ def excel_set_values(
 
 
 @mcp.tool()
+@macos_excel_request_permission
 def excel_autofit(
     sheet_range: ExcelRange,
     book_name: Optional[str] = None,
@@ -192,6 +181,7 @@ def excel_autofit(
 
 
 @mcp.tool()
+@macos_excel_request_permission
 def excel_set_formula(
     sheet_range: ExcelRange,
     formula: ExcelFormula,
@@ -229,6 +219,7 @@ def excel_set_formula(
 
 
 @mcp.tool()
+@macos_excel_request_permission
 def excel_add_sheet(
     name: Optional[str] = None,
     book_name: Optional[str] = None,

@@ -206,18 +206,8 @@ def setup_add(
         new_config = {"command": str(current_exe_path), "args": ["run", "stdio"]}
 
     # 맥 실행파일 실행
-    #  - macOS에서는 Claude 내에서 엑셀 프로그램에 대한 접근 권한 문제로 stdio 방식을 지원하지 않겠습니다.
     else:
-        console.print("[red]macOS는 지원예정입니다.[/red]")
-        raise typer.Exit(1)
-
-        # TODO: 현재 머신에서 (현재 가상환경 포함) 가용한 mcp-proxy 명령의 절대경로를 찾습니다.
-        # mcp_proxy_abs_path = "mcp-proxy"
-        #
-        # TODO: pyhub.mcptools.excel SSE 서버 URL 찾기
-        # pyhub_mcptools_excel_sse_path = "http://localhost:9999/sse"
-        #
-        # new_config = {"command": mcp_proxy_abs_path, "args": [pyhub_mcptools_excel_sse_path]}
+        new_config = {"command": str(current_exe_path), "args": ["run", "stdio"]}
 
     if new_config:
         config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)

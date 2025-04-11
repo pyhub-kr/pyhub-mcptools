@@ -1,9 +1,12 @@
+import asyncio
 import json
 import re
+import subprocess
 from ast import literal_eval
 from typing import Optional, Union
 
 import xlwings as xw
+from django.template import Context, Template
 
 from pyhub.mcptools.excel.types import ExcelRange
 
@@ -107,3 +110,56 @@ def json_loads(json_str: str) -> Union[dict, str]:
 
 def json_dumps(json_data: Union[list, dict]) -> str:
     return json.dumps(json_data, ensure_ascii=False)
+
+
+async def applescript_run(
+    script: Union[str, Template],
+    context: Optional[dict] = None,
+) -> str:
+    if context is None:
+        context = {}
+
+    if isinstance(script, Template):
+        rendered_script = script.render(Context(context))
+    else:
+        rendered_script = script.format(**context)
+
+    process = await asyncio.create_subprocess_exec(
+        "osascript",
+        "-e",
+        rendered_script,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout_bytes, stderr_bytes = await process.communicate()
+    stdout = stdout_bytes.decode().strip()
+    stderr = stderr_bytes.decode().strip()
+
+    if process.returncode != 0:
+        raise RuntimeError(stderr)
+
+    return stdout
+
+
+def applescript_run_sync(
+    script: Union[str, Template],
+    context: Optional[dict] = None,
+) -> str:
+    if context is None:
+        context = {}
+
+    if isinstance(script, Template):
+        rendered_script = script.render(Context(context))
+    else:
+        rendered_script = script.format(**context)
+
+    process = subprocess.run(
+        ["osascript", "-e", rendered_script],
+        capture_output=True,
+        text=True,
+    )
+
+    if process.returncode != 0:
+        raise RuntimeError(process.stderr.strip())
+
+    return process.stdout.strip()
