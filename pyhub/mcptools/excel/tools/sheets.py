@@ -91,6 +91,7 @@ def excel_set_values(
     json_values: Union[str, list],
     book_name: Optional[str] = None,
     sheet_name: Optional[str] = None,
+    autofit: bool = False,
 ) -> None:
     """Write data to a specified range in the active sheet of an open Excel workbook.
 
@@ -108,6 +109,14 @@ def excel_set_values(
     - For rows, each row must have the same number of columns
     - For columns, each column must have the same number of rows
 
+    Parameters:
+        sheet_range (ExcelRange): Excel range where to write the data (e.g., "A1", "B2:B10").
+        json_values (Union[str, list]): Data to write, either as a JSON string or Python list.
+        book_name (Optional[str], optional): Name of workbook to use. Defaults to None (active workbook).
+        sheet_name (Optional[str], optional): Name of sheet to use. Defaults to None (active sheet).
+        autofit (bool, optional): If True, automatically adjusts the column widths to fit the content.
+                                Defaults to False.
+
     Examples:
     - Write horizontally (1 row): sheet_range="A10" json_values='["v1", "v2", "v3"]'
     - Write vertically (1 column): sheet_range="A10" json_values='[["v1"], ["v2"], ["v3"]]'
@@ -121,6 +130,35 @@ def excel_set_values(
 
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
     range_.value = fix_data(sheet_range, json_loads(json_values))
+
+    if autofit:
+        range_.autofit()
+
+
+@mcp.tool()
+def excel_autofit(
+    sheet_range: ExcelRange,
+    book_name: Optional[str] = None,
+    sheet_name: Optional[str] = None,
+) -> None:
+    """Automatically adjusts column widths to fit the content in the specified Excel range.
+
+    Adjusts the width of columns in the specified range to fit the content, making all data visible
+    without truncation. By default uses the active workbook and sheet if no specific book_name
+    or sheet_name is provided.
+
+    Parameters:
+        sheet_range (ExcelRange): Excel range to autofit (e.g., "A1:C10", "B:B" for entire column).
+        book_name (Optional[str], optional): Name of workbook to use. Defaults to None (active workbook).
+        sheet_name (Optional[str], optional): Name of sheet to use. Defaults to None (active sheet).
+
+    Examples:
+        >>> excel_autofit("A1:D10")  # Autofit specific range
+        >>> excel_autofit("A:E")     # Autofit entire columns A through E
+        >>> excel_autofit("A:A", book_name="Sales.xlsx", sheet_name="Q1")  # Autofit column A in specific sheet
+    """
+    range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
+    range_.autofit()
 
 
 @mcp.tool()
