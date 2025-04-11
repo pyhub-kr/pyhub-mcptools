@@ -1,5 +1,68 @@
 # macOS
 
+## 설치 스크립트
+
+```
+bash <(curl -fsSL https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.sh)
+```
+
+위 명령을 복사해서 터미널 창에 붙여넣고 실행해주세요.
+
+![](./assets/install.png)
+
+디폴트 경로인 `~/mcptools/pyhub.mcptools/` 디렉토리에 설치가 됩니다. 아래 명령으로 디렉토리 이동해주세요.
+
+```
+cd ~/mcptools/pyhub.mcptools/
+```
+
+아래 명령으로 현재 버전을 출력하실 수 있구요.
+
+```
+./pyhub.mcptools --version
+```
+
+Claude Desktop MCP 설정을 추가하기 전에, 모든 Claude Desktop 프로세스를 꺼주시구요.
+
+```
+./pyhub.mcptools kill claude
+```
+
+현재 Claude Desktop MCP 설정을 확인해주시고,
+
+```
+./pyhub.mcptools setup-print
+```
+
+Claude Desktop MCP 설정에 pyhub.mcptools 서버를 추가합니다.
+
+```
+./pyhub.mcptools setup-add
+```
+
+`setup-print` 명령으로 Claude Desktop MCP 설정을 출력해보시면
+
+```
+./pyhub.mcptools setup-print
+```
+
+아래와 같이 `pyhub.mcptools` 설정을 확인하실 수 있습니다. `"command"` 항목의 `/Users/유저명/`은
+각자 다를 수 있습니다.
+
+``` json
+{
+    "mcpServers": {
+        "pyhub.mcptools": {
+            "command": "/Users/allieus/mcptools/pyhub.mcptools/pyhub.mcptools",
+            "args": [
+                "run",
+                "stdio"
+            ]
+        }
+    }
+}
+```
+
 ## 자동화 권한
 
 macOS에서는 다른 앱을 제어하기 위해서는 자동화 권한을 유저로부터 인가받아야 합니다.
