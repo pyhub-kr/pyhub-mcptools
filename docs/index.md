@@ -5,6 +5,12 @@
     이 MCP 도구는 오픈소스로 개발되어 모든 코드가 [소스코드 저장소](https://github.com/pyhub-kr/pyhub-mcptools)에 공개되어 있습니다.
     사용자의 정보를 수집하거나 악의적인 코드가 포함되어 있지 않으니 안심하고 사용하실 수 있습니다.
 
+## Videos
+
+<div class="video-container">
+    <iframe src="https://www.youtube.com/embed/MfPBhVPGz_4?si=zXk_m7HhIKCHeYmX" allowfullscreen></iframe>
+</div>
+
 ## 지원 도구
 
 ### 엑셀 MCP 도구
