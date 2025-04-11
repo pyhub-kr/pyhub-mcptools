@@ -28,20 +28,23 @@ dependencies = [
     "mcp",
     "typer",
     "tzlocal",
+    "httpx",
     "psutil",
 ]
 
 [project.optional-dependencies]
 browser = [
     "bs4",
-    "httpx",
     "playwright",
+]
+music = [
+    "bs4",
 ]
 excel = [
     "xlwings",
 ]
 all = [
-    "pyhub-mcptools[excel,browser]",
+    "pyhub-mcptools[music,excel,browser]",
 ]
 dev = [
     "pytest",

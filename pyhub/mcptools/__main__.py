@@ -47,5 +47,6 @@ if __name__ == "__main__":
     # import_module("pyhub.mcptools.browser.tools")
     import_module("pyhub.mcptools.excel.tools")
     # import_module("pyhub.mcptools.images.tools")
+    import_module("pyhub.mcptools.music.tools")
 
     app()

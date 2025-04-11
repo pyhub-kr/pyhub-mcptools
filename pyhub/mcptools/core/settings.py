@@ -11,6 +11,11 @@ from pyhub.mcptools.core.utils import (
 
 env = Env()
 
+if "ENV_PATH" in env:
+    env_path = env.path("ENV_PATH")
+    env.read_env(env_path, overwrite=True)
+
+
 HOME_DIR = Path.home().resolve()
 PYHUB_CONFIG_DIR = HOME_DIR / ".pyhub"
 BASE_DIR = Path(__file__).parent.parent.parent.resolve()
@@ -107,3 +112,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # pyhub.mcptools
 
 EXPERIMENTAL = env.bool("PYHUB_MCPTOOLS_EXPERIMENTAL", default=False)
+
+# https://api.together.xyz/
+TOGETHER_API_KEY = env.str("TOGETHER_API_KEY", default=None)
+
+# https://unsplash.com/oauth/applications/
+UNSPLASH_ACCESS_KEY = env.str("UNSPLASH_ACCESS_KEY", default=None)
+UNSPLASH_SECRET_KEY = env.str("UNSPLASH_SECRET_KEY", default=None)
