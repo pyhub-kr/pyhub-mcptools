@@ -4,6 +4,7 @@
 
 + `excel_set_values` 도구에 `autofit` 인자 지원 추가 (디폴트: False) : 자동 맞춤 기능
 + `excel_autofit` 도구 추가
++ `excel_get_valuess`, `excel_autofit` 도구에 `expand_mode` 인자 추가 (table, right, down)
 + `setup-add` 명령에서 Cursor 설정 지원 (only 윈도우)
 + MCP 도구 등록 장식자에 실험실 `experimental` 인자를 추가하여, 실험적 도구는 별도 플래그를 통해서만 활성화
 + 멜론 노래 검색 도구 추가 (실험실)

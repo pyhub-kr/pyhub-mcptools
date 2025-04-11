@@ -22,6 +22,12 @@ ExcelRange = Annotated[
 ]
 
 
+class ExcelExpandMode(TextChoices):
+    TABLE = "table"
+    RIGHT = "right"
+    DOWN = "down"
+
+
 class ExcelChartType(TextChoices):
     THREE_D_AREA = "3d_area", "3D Area"
     THREE_D_AREA_STACKED = "3d_area_stacked", "3D Area Stacked"

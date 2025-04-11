@@ -7,7 +7,7 @@ from typing import Optional, Union
 import xlwings as xw
 
 from pyhub.mcptools import mcp
-from pyhub.mcptools.excel.types import ExcelFormula, ExcelRange
+from pyhub.mcptools.excel.types import ExcelExpandMode, ExcelFormula, ExcelRange
 from pyhub.mcptools.excel.utils import fix_data, get_range, json_dumps, json_loads
 
 #
@@ -61,6 +61,7 @@ def excel_get_values(
     sheet_range: Optional[ExcelRange] = None,
     book_name: Optional[str] = None,
     sheet_name: Optional[str] = None,
+    expand_mode: Optional[ExcelExpandMode] = None,
 ) -> str:
     """Get data from Excel workbook.
 
@@ -71,12 +72,28 @@ def excel_get_values(
         sheet_range: Excel range to get data from (e.g., "A1:C10"). If None, gets entire used range.
         book_name: Name of workbook to use. If None, uses active workbook.
         sheet_name: Name of sheet to use. If None, uses active sheet.
+        expand_mode: Mode for automatically expanding the selection range. Supports:
+            - "table": Expands only to the right and down from the starting cell
+            - "right": Expands horizontally to include all contiguous data to the right
+            - "down": Expands vertically to include all contiguous data below
+            Note: All expand modes only work in the right/down direction from the starting cell.
+                  No expansion occurs to the left or upward direction.
 
     Returns:
         JSON string containing the data.
+
+    Examples:
+        >>> excel_get_values("A1")  # Gets single cell value
+        >>> excel_get_values("A1", expand_mode="table")  # Gets all contiguous data to the right and down from A1
+        >>> excel_get_values("A1", expand_mode="right")  # Gets all contiguous data to the right of A1
+        >>> excel_get_values("A1", expand_mode="down")  # Gets all contiguous data below A1
     """
 
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
+
+    if expand_mode is not None:
+        range_ = range_.expand(mode=expand_mode.value.lower())
+
     data = range_.value
 
     if data is None:
@@ -140,6 +157,7 @@ def excel_autofit(
     sheet_range: ExcelRange,
     book_name: Optional[str] = None,
     sheet_name: Optional[str] = None,
+    expand_mode: Optional[ExcelExpandMode] = None,
 ) -> None:
     """Automatically adjusts column widths to fit the content in the specified Excel range.
 
@@ -151,13 +169,25 @@ def excel_autofit(
         sheet_range (ExcelRange): Excel range to autofit (e.g., "A1:C10", "B:B" for entire column).
         book_name (Optional[str], optional): Name of workbook to use. Defaults to None (active workbook).
         sheet_name (Optional[str], optional): Name of sheet to use. Defaults to None (active sheet).
+        expand_mode (Optional[ExcelExpandMode], optional): Mode for automatically expanding the selection range.
+            Supports:
+            - "table": Expands only to the right and down from the starting cell
+            - "right": Expands horizontally to include all contiguous data to the right
+            - "down": Expands vertically to include all contiguous data below
+            Note: All expand modes only work in the right/down direction from the starting cell.
+                  No expansion occurs to the left or upward direction.
 
     Examples:
         >>> excel_autofit("A1:D10")  # Autofit specific range
         >>> excel_autofit("A:E")     # Autofit entire columns A through E
         >>> excel_autofit("A:A", book_name="Sales.xlsx", sheet_name="Q1")  # Autofit column A in specific sheet
+        >>> excel_autofit("A1", expand_mode="table")  # Autofit all contiguous data to the right and down from A1
+        >>> excel_autofit("A1", expand_mode="right")  # Autofit all contiguous data to the right of A1
+        >>> excel_autofit("A1", expand_mode="down")   # Autofit all contiguous data below A1
     """
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
+    if expand_mode is not None:
+        range_ = range_.expand(mode=expand_mode.value.lower())
     range_.autofit()
 
 
