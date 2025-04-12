@@ -1,5 +1,9 @@
 # 릴리즈 노트
 
+## v0.7.3
+
++ `update` 명령에서 Claude Desktop 앱에 한해서만 강제 종료 수행여부 확인
+
 ## v0.7.2
 
 + `excel_get_opened_workbooks` 도구에서 워크북 이름, 시트 이름에 대한 한글 자소 분리 대응
