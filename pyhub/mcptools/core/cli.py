@@ -6,6 +6,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Optional, Sequence
 
+import httpx
 import typer
 from asgiref.sync import async_to_sync
 from click import Choice, ClickException
@@ -487,6 +488,24 @@ def kill(
     kill_mcp_host_process(mcp_host)
 
     console.print(f"[green]Killed {mcp_host.value} processes[/green]")
+
+
+@app.command()
+def release_note():
+    """릴리스 노트 출력"""
+
+    url = "https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/docs/release-notes.md"
+
+    try:
+        response = httpx.get(url)
+        response.raise_for_status()  # HTTP 오류 발생 시 예외 발생
+        print(response.text)
+    except httpx.HTTPError as e:
+        console.print(f"[red]릴리스 노트를 가져오는 중 오류가 발생했습니다: {e}[/red]")
+        raise typer.Exit(1) from e
+    except Exception as e:
+        console.print(f"[red]예상치 못한 오류가 발생했습니다: {e}[/red]")
+        raise typer.Exit(1) from e
 
 
 def print_as_table(title: str, rows: list[BaseModel], columns: Optional[list[str]] = None) -> None:
