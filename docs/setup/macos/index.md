@@ -66,14 +66,13 @@ Claude Desktop MCP 설정에 pyhub.mcptools 서버를 추가합니다.
 ## 자동화 권한
 
 macOS에서는 다른 앱을 제어하기 위해서는 자동화 권한을 유저로부터 인가받아야 합니다.
-
-Claude Desktop 앱을 통해 엑셀 도구에 접근할 때 아래와 같이 인가 여부를 물어봅니다. 
+Claude Desktop 앱을 통해 엑셀 도구에 접근할 때 아래와 같이 인가 여부를 물어봅니다.
+반드시 "허용" 버튼을 클릭해주세요.
 
 ![](./assets/request-automation-permission.jpg)
 
 "허용 안 함"을 하시면 엑셀 도구를 통해 "Microsoft Excel에 Apple 이벤트를 보낼 권한이 없습니다." 응답을 받으시게 되고,
 엑셀 도구를 사용하실 수 없게 됩니다.
-
 만약 "허용 안 함" 버튼을 클릭하셨다면, 다음 순서로 Claude 앱에게 Microsoft Excel 앱에 대한 자동화 권한을 부여하실 수 있습니다. 
 
 1. "시스템 설정" 앱
