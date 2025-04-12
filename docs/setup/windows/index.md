@@ -185,7 +185,11 @@ Claude 에서 AI가 알아서 MCP 도구를 호출할 테지만, 지원하는 �
 ### 5. Claude Desktop에 등록하기
 
 이제 Claude Desktop에 등록해서, AI가 알아서 엑셀 도구 호출을 요청해서 데이터를 읽어가고 값을 변경할 수 있도록 해보겠습니다.
-[Claude Desktop 프로그램](https://claude.ai/download)이 아직 설치되어 있지 않으시다면 다운받아서 설치해주세요.
+[Claude Desktop 프로그램](https://claude.ai/download)이 아직 설치되어 있지 않으시다면 다운받아서 설치하시고 로그인까지 해주세요.
+
+!!! note
+
+    Claude 무료 계정에서도 MCP를 사용하실 수 있습니다. 단, 유료 계정에 비해서 제한적으로 적은 횟수의 채팅만 지원됩니다.
 
 !!! note
 
@@ -200,20 +204,19 @@ Claude Desktop 프로그램을 실행하시고, "파일" -> "설정" 창을 띄�
 
 ![](./assets/11-claude-desktop.png)
 
-개발자 탭에서 MCP 서버 설정 내역을 확인하실 수 있습니다.
-
+개발자 탭에서 MCP 서버 설정 내역을 확인하실 수 있습니다. 지금은 등록된 MCP 서버가 없어서 목록이 비워진 상황입니다.
 "설정 편집" 버튼을 클릭하시면
 윈도우 탐색기를 통해 `c:\Users\사용자\AppData\Roaming\Clauide\claude_desktop_config.json` 경로의 파일을 확인하실 수 있습니다.
 
 ![](./assets/12-claude-settings-developer.png)
 
-이 파일을 메모장 등의 텍스트 편집기를 여셔서 아래 내용으로 직접 설정을 수정해주셔야 하는 데요.
+이 파일을 메모장 등의 텍스트 편집기를 통해 여셔서 아래 내용으로 직접 설정을 수정해주셔야 하는 데요.
 이 부분에서 실수할 여지가 많습니다. (경로명 오타, JSON 문법 오류, 관련 프로그램 미설치 등)
 
 ```json
 {
     "mcpServers": {
-        "pyhub.mcptools.exe": {
+        "pyhub.mcptools": {
             "command": "C:\\mcptools\\pyhub.mcptools\\pyhub.mcptools.exe",
             "args": [
                 "run",
@@ -268,7 +271,7 @@ Claude Desktop 내부에서 MCP 서버를 새롭게 띄웁니다.
 
 ![](./assets/18-claude-mcp-tools.png)
 
-이제 Claude를 대화를 하면, Claude가 엑셀 도구가 필요하다고 판단하는 시점에 알아서 엑셀 도구를 호출합니다.
+이제 Claude와 대화를 하면, Claude가 엑셀 도구가 필요하다고 판단하는 시점에 알아서 엑셀 도구를 호출합니다.
 
 ### 7. Claude를 통해 엑셀 협업하기
 
