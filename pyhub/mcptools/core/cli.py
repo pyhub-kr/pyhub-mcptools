@@ -188,10 +188,27 @@ def prompts_list():
 @app.command()
 def setup_add(
     mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
-    config_name: Optional[str] = typer.Option("pyhub.mcptools", "--config-=name", "-n", help="Server Name"),
+    config_name: Optional[str] = typer.Option("pyhub.mcptools", "--config-name", "-n", help="Server Name"),
+    environment: Optional[list[str]] = typer.Option(
+        None,
+        "--environment",
+        "-e",
+        help="환경변수 설정 (예: -e KEY=VALUE). 여러 번 사용 가능",
+    ),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """[MCP 설정파일] 설정에 자동 추가 (팩키징된 실행파일만 지원)"""
+
+    # 환경변수 처리
+    env_dict = {}
+    if environment:
+        for env_str in environment:
+            try:
+                key, value = env_str.split("=", 1)
+                env_dict[key.strip()] = value.strip()
+            except ValueError:
+                console.print(f"[red]잘못된 환경변수 형식: {env_str}[/red]")
+                raise typer.Exit(1)
 
     current_cmd = sys.argv[0]
     current_exe_path = Path(current_cmd).resolve()
@@ -203,12 +220,21 @@ def setup_add(
 
     # 윈도우 실행파일 실행
     elif current_exe_path.suffix == ".exe":
-        # current_cmd 경로를 그대로 활용하면 됨
-        new_config = {"command": str(current_exe_path), "args": ["run", "stdio"]}
+        new_config = {
+            "command": str(current_exe_path),
+            "args": ["run", "stdio"],
+        }
+        if env_dict:
+            new_config["env"] = env_dict
 
     # 맥 실행파일 실행
     else:
-        new_config = {"command": str(current_exe_path), "args": ["run", "stdio"]}
+        new_config = {
+            "command": str(current_exe_path),
+            "args": ["run", "stdio"],
+        }
+        if env_dict:
+            new_config["env"] = env_dict
 
     if new_config:
         config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)

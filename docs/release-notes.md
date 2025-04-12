@@ -1,5 +1,9 @@
 # 릴리즈 노트
 
+## 0.7.4
+
++ `setup-add` 명령에서 환경변수 추가 옵션 `--environment`, `-e` 지원
+
 ## v0.7.3
 
 + `update` 명령에서 Claude Desktop 앱에 한해서만 강제 종료 수행여부 확인
