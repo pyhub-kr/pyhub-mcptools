@@ -1,9 +1,11 @@
 import asyncio
+import csv
 import json
 import re
 import subprocess
 from ast import literal_eval
-from typing import Optional, Union
+from io import StringIO
+from typing import Any, Optional, Union
 
 import xlwings as xw
 from django.template import Context, Template
@@ -110,6 +112,24 @@ def json_loads(json_str: str) -> Union[dict, str]:
 
 def json_dumps(json_data: Union[list, dict]) -> str:
     return json.dumps(json_data, ensure_ascii=False)
+
+
+def convert_to_csv(data: list[list[Any]]) -> str:
+    """Convert 2D data to CSV string format.
+
+    Args:
+        data: 2D list of data from Excel
+
+    Returns:
+        String in CSV format
+    """
+    if not data:
+        return ""
+
+    output = StringIO()
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerows(data)
+    return output.getvalue()
 
 
 async def applescript_run(

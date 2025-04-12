@@ -9,7 +9,7 @@ import xlwings as xw
 from pyhub.mcptools import mcp
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
 from pyhub.mcptools.excel.types import ExcelExpandMode, ExcelFormula, ExcelRange
-from pyhub.mcptools.excel.utils import fix_data, get_range, json_dumps, json_loads
+from pyhub.mcptools.excel.utils import convert_to_csv, fix_data, get_range, json_dumps, json_loads
 
 
 @mcp.tool()
@@ -67,15 +67,13 @@ def excel_get_values(
                   No expansion occurs to the left or upward direction.
 
     Returns:
-        JSON string containing the data.
+        String containing the data in CSV format.
 
     Examples:
         >>> excel_get_values("A1")  # Gets single cell value
-        >>> excel_get_values("A1", expand_mode="table")  # Gets all contiguous data to the right and down from A1
-        >>> excel_get_values("A1", expand_mode="right")  # Gets all contiguous data to the right of A1
-        >>> excel_get_values("A1", expand_mode="down")  # Gets all contiguous data below A1
+        >>> excel_get_values("A1:B10")  # Gets range in CSV format
+        >>> excel_get_values("A1", expand_mode="table")  # Gets table data in CSV
     """
-
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
 
     if expand_mode is not None:
@@ -84,9 +82,15 @@ def excel_get_values(
     data = range_.value
 
     if data is None:
-        return "[]"
+        return ""
 
-    return json_dumps(data)
+    # Convert single value to 2D list format
+    if not isinstance(data, list):
+        data = [[data]]
+    elif data and not isinstance(data[0], list):
+        data = [data]
+
+    return convert_to_csv(data)
 
 
 @mcp.tool()
