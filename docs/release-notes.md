@@ -2,6 +2,7 @@
 
 ## v0.7.2
 
++ `excel_get_opened_workbooks` 도구에서 워크북 이름, 시트 이름에 대한 한글 자소 분리 대응
 + `excel_get_values` 도구의 응답 포맷을 JSON에서 CSV로 변경
 + `release-note` 명령 추가 : 웹페이지를 방문하지 않아도 콘솔에서 릴리즈 노트 즉시 확인 가능
 

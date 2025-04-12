@@ -3,6 +3,7 @@ import csv
 import json
 import re
 import subprocess
+import unicodedata
 from ast import literal_eval
 from io import StringIO
 from typing import Any, Optional, Union
@@ -130,6 +131,13 @@ def convert_to_csv(data: list[list[Any]]) -> str:
     writer = csv.writer(output, lineterminator="\n")
     writer.writerows(data)
     return output.getvalue()
+
+
+def normalize_text(text: str) -> str:
+    """Normalize Unicode text to NFC form for consistent handling of Korean characters."""
+    if not text:
+        return text
+    return unicodedata.normalize('NFC', text)
 
 
 async def applescript_run(

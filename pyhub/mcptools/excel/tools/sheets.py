@@ -9,7 +9,7 @@ import xlwings as xw
 from pyhub.mcptools import mcp
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
 from pyhub.mcptools.excel.types import ExcelExpandMode, ExcelFormula, ExcelRange
-from pyhub.mcptools.excel.utils import convert_to_csv, fix_data, get_range, json_dumps, json_loads
+from pyhub.mcptools.excel.utils import convert_to_csv, fix_data, get_range, json_dumps, json_loads, normalize_text
 
 
 @mcp.tool()
@@ -21,11 +21,11 @@ def excel_get_opened_workbooks() -> str:
         {
             "books": [
                 {
-                    "name": book.name,
-                    "fullname": book.fullname,
+                    "name": normalize_text(book.name),
+                    "fullname": normalize_text(book.fullname),
                     "sheets": [
                         {
-                            "name": sheet.name,
+                            "name": normalize_text(sheet.name),
                             "index": sheet.index,
                             "range": sheet.used_range.get_address(),  # "$A$1:$E$665"
                             "count": sheet.used_range.count,  # 3325 (total number of cells)
