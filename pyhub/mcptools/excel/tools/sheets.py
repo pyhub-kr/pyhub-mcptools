@@ -5,10 +5,11 @@ Excel automation
 from typing import Optional, Union
 
 import xlwings as xw
+from pydantic import Field
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
-from pyhub.mcptools.excel.types import ExcelExpandMode, ExcelFormula, ExcelRange
+from pyhub.mcptools.excel.types import ExcelExpandMode, ExcelFormula, ExcelGetValuesResponse, ExcelRange
 from pyhub.mcptools.excel.utils import convert_to_csv, fix_data, get_range, json_dumps, json_loads, normalize_text
 
 
@@ -45,29 +46,40 @@ def excel_get_opened_workbooks() -> str:
 @mcp.tool()
 @macos_excel_request_permission
 def excel_get_values(
-    sheet_range: Optional[ExcelRange] = None,
-    book_name: Optional[str] = None,
-    sheet_name: Optional[str] = None,
-    expand_mode: Optional[ExcelExpandMode] = None,
-) -> str:
-    """Get data from Excel workbook.
-
-    Retrieves data from a specified Excel range. By default uses the active workbook and sheet
-    if no specific book_name or sheet_name is provided.
-
-    Parameters:
-        sheet_range: Excel range to get data from (e.g., "A1:C10"). If None, gets entire used range.
-        book_name: Name of workbook to use. If None, uses active workbook.
-        sheet_name: Name of sheet to use. If None, uses active sheet.
-        expand_mode: Mode for automatically expanding the selection range. Supports:
+    sheet_range: Optional[ExcelRange] = Field(
+        default=None,
+        description="Excel range to get data. If not specified, uses the entire used range of the sheet.",
+        examples=["A1:C10", "Sheet1!A1:B5"],
+    ),
+    book_name: Optional[str] = Field(
+        default=None,
+        description="Name of workbook to use. If not specified, uses the active workbook.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: Optional[str] = Field(
+        default=None,
+        description="Name of sheet to use. If not specified, uses the active sheet.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    expand_mode: Optional[ExcelExpandMode] = Field(
+        default=None,
+        description="""Mode for automatically expanding the selection range. Supports:
             - "table": Expands only to the right and down from the starting cell
             - "right": Expands horizontally to include all contiguous data to the right
             - "down": Expands vertically to include all contiguous data below
             Note: All expand modes only work in the right/down direction from the starting cell.
                   No expansion occurs to the left or upward direction.
+        """,
+        examples=["table", "right", "down"],
+    ),
+) -> ExcelGetValuesResponse:
+    """Get data from Excel workbook.
+
+    Retrieves data from a specified Excel range. By default uses the active workbook and sheet
+    if no specific book_name or sheet_name is provided.
 
     Returns:
-        String containing the data in CSV format.
+        ExcelGetValuesResponse: A response model containing the data in CSV format.
 
     Examples:
         >>> excel_get_values("A1")  # Gets single cell value
@@ -82,7 +94,7 @@ def excel_get_values(
     data = range_.value
 
     if data is None:
-        return ""
+        return ExcelGetValuesResponse(data="")
 
     # Convert single value to 2D list format
     if not isinstance(data, list):
@@ -90,53 +102,60 @@ def excel_get_values(
     elif data and not isinstance(data[0], list):
         data = [data]
 
-    return convert_to_csv(data)
+    return ExcelGetValuesResponse(data=convert_to_csv(data))
 
 
 @mcp.tool()
 @macos_excel_request_permission
 def excel_set_values(
-    sheet_range: ExcelRange,
-    json_values: Union[str, list],
-    book_name: Optional[str] = None,
-    sheet_name: Optional[str] = None,
-    autofit: bool = False,
+    sheet_range: ExcelRange = Field(
+        description="Excel range where to write the data",
+        examples=["A1", "B2:B10", "Sheet1!A1:C5"],
+    ),
+    json_values: Union[str, list] = Field(
+        description="Data to write, either as a JSON string or Python list.",
+        examples=['["v1", "v2", "v3"]', '[["v1"], ["v2"], ["v3"]]', '[["v1", "v2"], ["v3", "v4"]]'],
+    ),
+    book_name: Optional[str] = Field(
+        default=None,
+        description="Name of workbook to use. If None, uses active workbook.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: Optional[str] = Field(
+        default=None,
+        description="Name of sheet to use. If None, uses active sheet.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    autofit: bool = Field(
+        default=False,
+        description="If True, automatically adjusts the column widths to fit the content.",
+    ),
 ) -> None:
-    """Write data to a specified range in the active sheet of an open Excel workbook.
+    """Write data to a specified range in an Excel workbook.
 
     When adding values to consecutive cells, you only need to specify the starting cell coordinate,
     and the data will be populated according to the dimensions of the input.
 
-    IMPORTANT: The data orientation (row vs column) is determined by the format of json_values:
-    - Flat list ["v1", "v2", "v3"] will always be written horizontally (row orientation)
-    - Nested list [["v1"], ["v2"], ["v3"]] will be written vertically (column orientation)
+    Data Orientation Rules:
+        - Flat list ["v1", "v2", "v3"] will always be written horizontally (row orientation)
+        - Nested list [["v1"], ["v2"], ["v3"]] will be written vertically (column orientation)
+        - For multiple rows/columns: [["v1", "v2"], ["v3", "v4"]] creates a 2x2 grid
 
-    If your sheet_range spans multiple columns (e.g., "A1:C1"), use a flat list format.
-    If your sheet_range spans multiple rows (e.g., "A1:A10"), you MUST use a nested list format.
+    Range Format Rules:
+        - For multiple columns (e.g., "A1:C1"), use a flat list format
+        - For multiple rows (e.g., "A1:A10"), use a nested list format
+        - Each row must have the same number of columns
+        - Each column must have the same number of rows
 
-    The dimensions of the input must match the expected format:
-    - For rows, each row must have the same number of columns
-    - For columns, each column must have the same number of rows
-
-    Parameters:
-        sheet_range (ExcelRange): Excel range where to write the data (e.g., "A1", "B2:B10").
-        json_values (Union[str, list]): Data to write, either as a JSON string or Python list.
-        book_name (Optional[str], optional): Name of workbook to use. Defaults to None (active workbook).
-        sheet_name (Optional[str], optional): Name of sheet to use. Defaults to None (active sheet).
-        autofit (bool, optional): If True, automatically adjusts the column widths to fit the content.
-                                Defaults to False.
+    Returns:
+        None
 
     Examples:
-    - Write horizontally (1 row): sheet_range="A10" json_values='["v1", "v2", "v3"]'
-    - Write vertically (1 column): sheet_range="A10" json_values='[["v1"], ["v2"], ["v3"]]'
-    - Multiple rows/columns: sheet_range="A10" json_values='[["v1", "v2"], ["v3", "v4"]]'
-
-    INCORRECT USAGE:
-    - DO NOT use sheet_range="A1:A5" with json_values='["v1", "v2", "v3", "v4", "v5"]'
-      This will write horizontally instead of vertically.
-    - CORRECT way: sheet_range="A1:A5" json_values='[["v1"], ["v2"], ["v3"], ["v4"], ["v5"]]'
+        >>> excel_set_values("A1", '["v1", "v2", "v3"]')  # Write horizontally
+        >>> excel_set_values("A1", '[["v1"], ["v2"], ["v3"]]')  # Write vertically
+        >>> excel_set_values("A1", '[["v1", "v2"], ["v3", "v4"]]')  # Write 2x2 grid
+        >>> excel_set_values("Sheet2!A1", '["v1", "v2"]', book_name="Sales.xlsx")  # Write to specific sheet
     """
-
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
     range_.value = fix_data(sheet_range, json_loads(json_values))
 
@@ -147,36 +166,49 @@ def excel_set_values(
 @mcp.tool()
 @macos_excel_request_permission
 def excel_autofit(
-    sheet_range: ExcelRange,
-    book_name: Optional[str] = None,
-    sheet_name: Optional[str] = None,
-    expand_mode: Optional[ExcelExpandMode] = None,
+    sheet_range: ExcelRange = Field(
+        description="Excel range to autofit",
+        examples=["A1:D10", "A:E", "Sheet1!A:A"],
+    ),
+    book_name: Optional[str] = Field(
+        default=None,
+        description="Name of workbook to use. If None, uses active workbook.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: Optional[str] = Field(
+        default=None,
+        description="Name of sheet to use. If None, uses active sheet.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    expand_mode: Optional[ExcelExpandMode] = Field(
+        default=None,
+        description="""Mode for automatically expanding the selection range. Options:
+            - "table": Expands right and down from starting cell
+            - "right": Expands horizontally to include contiguous data
+            - "down": Expands vertically to include contiguous data""",
+        examples=["table", "right", "down"],
+    ),
 ) -> None:
     """Automatically adjusts column widths to fit the content in the specified Excel range.
 
-    Adjusts the width of columns in the specified range to fit the content, making all data visible
-    without truncation. By default uses the active workbook and sheet if no specific book_name
-    or sheet_name is provided.
+    Makes all data visible without truncation by adjusting column widths. Uses the active workbook
+    and sheet by default if no specific book_name or sheet_name is provided.
 
-    Parameters:
-        sheet_range (ExcelRange): Excel range to autofit (e.g., "A1:C10", "B:B" for entire column).
-        book_name (Optional[str], optional): Name of workbook to use. Defaults to None (active workbook).
-        sheet_name (Optional[str], optional): Name of sheet to use. Defaults to None (active sheet).
-        expand_mode (Optional[ExcelExpandMode], optional): Mode for automatically expanding the selection range.
-            Supports:
-            - "table": Expands only to the right and down from the starting cell
-            - "right": Expands horizontally to include all contiguous data to the right
-            - "down": Expands vertically to include all contiguous data below
-            Note: All expand modes only work in the right/down direction from the starting cell.
-                  No expansion occurs to the left or upward direction.
+    Expand Mode Behavior:
+        - All expand modes only work in the right/down direction
+        - No expansion occurs to the left or upward direction
+        - "table": Expands both right and down to include all contiguous data
+        - "right": Expands only horizontally to include contiguous data
+        - "down": Expands only vertically to include contiguous data
+
+    Returns:
+        None
 
     Examples:
         >>> excel_autofit("A1:D10")  # Autofit specific range
-        >>> excel_autofit("A:E")     # Autofit entire columns A through E
-        >>> excel_autofit("A:A", book_name="Sales.xlsx", sheet_name="Q1")  # Autofit column A in specific sheet
-        >>> excel_autofit("A1", expand_mode="table")  # Autofit all contiguous data to the right and down from A1
-        >>> excel_autofit("A1", expand_mode="right")  # Autofit all contiguous data to the right of A1
-        >>> excel_autofit("A1", expand_mode="down")   # Autofit all contiguous data below A1
+        >>> excel_autofit("A:E")  # Autofit entire columns A through E
+        >>> excel_autofit("A:A", book_name="Sales.xlsx", sheet_name="Q1")  # Specific sheet
+        >>> excel_autofit("A1", expand_mode="table")  # Autofit table data
     """
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
     if expand_mode is not None:
@@ -187,36 +219,45 @@ def excel_autofit(
 @mcp.tool()
 @macos_excel_request_permission
 def excel_set_formula(
-    sheet_range: ExcelRange,
-    formula: ExcelFormula,
-    book_name: Optional[str] = None,
-    sheet_name: Optional[str] = None,
-):
+    sheet_range: ExcelRange = Field(
+        description="Excel range where to apply the formula",
+        examples=["A1", "B2:B10", "Sheet1!C1:C10"],
+    ),
+    formula: ExcelFormula = Field(
+        description="Excel formula to set. Must start with '=' and follow Excel formula syntax.",
+        examples=["=SUM(B1:B10)", "=A1*B1", "=VLOOKUP(A1, Sheet2!A:B, 2, FALSE)"],
+    ),
+    book_name: Optional[str] = Field(
+        default=None,
+        description="Name of workbook to use. If None, uses active workbook.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: Optional[str] = Field(
+        default=None,
+        description="Name of sheet to use. If None, uses active sheet.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+) -> None:
     """Set a formula in a specified range of an Excel workbook.
 
-    Applies an Excel formula to the specified range. The formula will be evaluated by Excel
-    after being set. Uses the active workbook and sheet if no specific book_name or sheet_name
-    is provided.
+    Applies an Excel formula to the specified range using Excel's formula2 property,
+    which supports modern Excel features and dynamic arrays. The formula will be
+    evaluated by Excel after being set.
 
-    Parameters:
-        sheet_range (ExcelRange): Excel range where the formula should be applied (e.g., "A1", "B2:B10").
-            For multiple cells, the formula will be adjusted relatively.
-        formula (ExcelFormula): Excel formula to set. Must start with "=" and follow Excel formula syntax.
-        book_name (Optional[str], optional): Name of workbook to use. Defaults to None, which uses active workbook.
-        sheet_name (Optional[str], optional): Name of sheet to use. Defaults to None, which uses active sheet.
+    Formula Behavior:
+        - Must start with "=" and follow Excel formula syntax
+        - Cell references are automatically adjusted for multiple cells
+        - Supports array formulas (CSE formulas)
+        - Uses modern dynamic array features via formula2 property
 
-    Note:
-        - The formula will be applied using Excel's formula2 property, which supports modern
-          Excel features and dynamic arrays.
-        - When applying to a range of cells, Excel will automatically adjust cell references
-          in the formula according to each cell's position.
-        - Formulas must follow Excel's syntax rules and use valid function names and cell references.
-        - Array formulas (CSE formulas) are supported and will be automatically detected by Excel.
+    Returns:
+        None
 
     Examples:
-        >>> excel_set_formula("A1", "=SUM(B1:B10)")
-        >>> excel_set_formula("C1:C10", "=A1*B1", book_name="Sales.xlsx", sheet_name="Q1")
-        >>> excel_set_formula("D1", "=VLOOKUP(A1, Sheet2!A:B, 2, FALSE)")
+        >>> excel_set_formula("A1", "=SUM(B1:B10)")  # Basic sum formula
+        >>> excel_set_formula("C1:C10", "=A1*B1")  # Multiply columns
+        >>> excel_set_formula("D1", "=VLOOKUP(A1, Sheet2!A:B, 2, FALSE)")  # Lookup
+        >>> excel_set_formula("Sheet1!E1", "=AVERAGE(A1:D1)", book_name="Sales.xlsx")  # Average
     """
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
     range_.formula2 = formula
@@ -225,37 +266,55 @@ def excel_set_formula(
 @mcp.tool()
 @macos_excel_request_permission
 def excel_add_sheet(
-    name: Optional[str] = None,
-    book_name: Optional[str] = None,
-    at_start: bool = False,
-    at_end: bool = False,
-    before_sheet_name: Optional[str] = None,
-    after_sheet_name: Optional[str] = None,
+    name: Optional[str] = Field(
+        default=None,
+        description="Name of the new sheet. If None, Excel assigns a default name.",
+        examples=["Sales2024", "Summary", "Data"],
+    ),
+    book_name: Optional[str] = Field(
+        default=None,
+        description="Name of workbook to add sheet to. If None, uses active workbook.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    at_start: bool = Field(
+        default=False,
+        description="If True, adds the sheet at the beginning of the workbook.",
+    ),
+    at_end: bool = Field(
+        default=False,
+        description="If True, adds the sheet at the end of the workbook.",
+    ),
+    before_sheet_name: Optional[str] = Field(
+        default=None,
+        description="Name of the sheet before which to insert the new sheet.",
+        examples=["Sheet1", "Summary"],
+    ),
+    after_sheet_name: Optional[str] = Field(
+        default=None,
+        description="Name of the sheet after which to insert the new sheet.",
+        examples=["Sheet1", "Summary"],
+    ),
 ) -> str:
-    """
-    Adds a new sheet to the specified Excel workbook.
+    """Add a new sheet to an Excel workbook.
 
-    Parameters:
-        name (Optional[str]): The name of the new sheet. If None, Excel assigns a default name (e.g., "Sheet1").
-        book_name (Optional[str]): The name of the workbook to add the sheet to.
-                                   If None, the currently active workbook is used.
-        at_start (bool): If True, adds the sheet at the beginning of the workbook. Default is False.
-        at_end (bool): If True, adds the sheet at the end of the workbook. Default is False.
-        before_sheet_name (Optional[str]): The name of the sheet before which the new sheet should be inserted.
-                                           Optional.
-        after_sheet_name (Optional[str]): The name of the sheet after which the new sheet should be inserted.
-                                          Optional.
+    Creates a new worksheet in the specified workbook with options for positioning.
+    Uses the active workbook by default if no book_name is provided.
+
+    Position Priority Order:
+        1. at_start: Places sheet at the beginning
+        2. at_end: Places sheet at the end
+        3. before_sheet_name: Places sheet before specified sheet
+        4. after_sheet_name: Places sheet after specified sheet
 
     Returns:
-        str: A message indicating the sheet has been successfully added.
+        str: Success message indicating sheet creation
 
-    Note:
-        - Parameters for sheet placement have the following priority order:
-            at_start > at_end > before_sheet_name > after_sheet_name.
-        - If multiple placement parameters are provided, only the highest priority one will be considered.
-        - The function uses xlwings and requires an active Excel session.
+    Examples:
+        >>> excel_add_sheet("Sales2024")  # Add with specific name
+        >>> excel_add_sheet(at_end=True)  # Add at end with default name
+        >>> excel_add_sheet("Summary", book_name="Report.xlsx")  # Add to specific workbook
+        >>> excel_add_sheet("Data", before_sheet_name="Sheet2")  # Add before existing sheet
     """
-
     before_sheet = None
     after_sheet = None
 

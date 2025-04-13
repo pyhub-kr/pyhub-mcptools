@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from django.db.models.enums import TextChoices
-from pydantic import BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, Field
 
 from pyhub.mcptools.excel.validators import validate_excel_range, validate_formula
 
@@ -103,3 +103,9 @@ class ExcelChartType(TextChoices):
     XY_SCATTER_LINES_NO_MARKERS = "xy_scatter_lines_no_markers", "XY Scatter Lines No Markers"
     XY_SCATTER_SMOOTH = "xy_scatter_smooth", "XY Scatter Smooth"
     XY_SCATTER_SMOOTH_NO_MARKERS = "xy_scatter_smooth_no_markers", "XY Scatter Smooth No Markers"
+
+
+class ExcelGetValuesResponse(BaseModel):
+    """Excel 데이터 응답 모델"""
+
+    data: str = Field(description="CSV 형식의 Excel 데이터", examples=["value1,value2\nvalue3,value4"])

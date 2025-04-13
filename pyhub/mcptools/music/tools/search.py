@@ -5,7 +5,7 @@ import webbrowser
 from bs4 import BeautifulSoup
 
 from pyhub.mcptools import mcp
-from pyhub.mcptools.music.types import MusicServiceVendor, SongUid
+from pyhub.mcptools.music.types import Field, MusicServiceVendor, SongUid
 from pyhub.mcptools.music.utils import get_number_from_string, get_response, remove_quotes
 
 MELON_HEADERS = {
@@ -18,15 +18,19 @@ MELON_HEADERS = {
 
 
 @mcp.tool(experimental=True)
-async def music_get_top100_songs(vendor: MusicServiceVendor) -> str:
+async def music_get_top100_songs(
+    vendor: MusicServiceVendor = Field(
+        description="Music service provider. Currently only supports MELON.",
+        examples=["MusicServiceVendor.MELON"],
+    )
+) -> str:
     """Fetches the real-time TOP 100 chart information from a music streaming service.
 
-    Args:
-        vendor (MusicServiceVendor): Music service provider. Currently only supports MELON.
+    Retrieves the current TOP 100 songs chart from the specified music service,
+    including detailed information about each song, artist, and album.
 
     Returns:
-        str: JSON string containing TOP 100 songs list.
-            Each song contains the following fields:
+        str: JSON string containing TOP 100 songs list with the following fields for each song:
             - song_uid (int): Unique identifier for the song
             - rank (str): Current chart ranking
             - song_name (str): Title of the song
@@ -34,6 +38,12 @@ async def music_get_top100_songs(vendor: MusicServiceVendor) -> str:
             - artist_name (str): Name of the artist
             - album_uid (int): Unique identifier for the album
             - album_name (str): Name of the album
+            - url (str): Direct link to the song's detail page
+            - likes (int): Number of likes/hearts for the song
+
+    Examples:
+        >>> music_get_top100_songs(MusicServiceVendor.MELON)
+        # Returns JSON string with top 100 songs from Melon
 
     Raises:
         ValueError: If an unsupported music service vendor is specified
@@ -97,20 +107,32 @@ async def music_get_top100_songs(vendor: MusicServiceVendor) -> str:
 
 
 @mcp.tool(experimental=True)
-async def music_search_songs(vendor: MusicServiceVendor, query: str) -> str:
+async def music_search_songs(
+    vendor: MusicServiceVendor = Field(
+        description="Music service provider. Currently only supports MELON.",
+        examples=["MusicServiceVendor.MELON"],
+    ),
+    query: str = Field(
+        description="""Search query for song titles, artist names, or album names.
+            For MELON, use only essential keywords instead of natural language.""",
+        examples=["아이유 라일락", "라일락", "BTS Butter"],
+    ),
+) -> str:
     """Searches for songs, artists, and albums in a music streaming service.
 
-    Args:
-        vendor (MusicServiceVendor): Music service provider. Currently only supports MELON.
-        query (str): Search query for song titles, artist names, or album names.
-            For MELON, use only essential keywords instead of natural language.
-            Examples:
-                Good: "아이유 라일락" or "라일락"
-                Bad: "아이유가 부른 라일락이라는 노래 찾아줘"
+    Performs a comprehensive search across songs, artists, and albums using the provided
+    query string. Returns separate lists for matching songs, artists, and albums.
+
+    Search Best Practices:
+        1. Use only essential keywords (artist name, song title) for better results
+        2. Natural language queries are not supported and may yield no results
+        3. Best practice is to:
+           - First search with artist name or song title
+           - Then find the exact song from the returned song_list
 
     Returns:
-        str: JSON string containing search results with the following lists:
-            - song_list: List of matching songs
+        str: JSON string containing search results with three main sections:
+            song_list: List of matching songs with fields:
                 - song_uid (int): Unique identifier for the song
                 - song_name (str): Title of the song
                 - album_img_url (str): URL of the album cover image
@@ -118,7 +140,9 @@ async def music_search_songs(vendor: MusicServiceVendor, query: str) -> str:
                 - album_name (str): Name of the album
                 - artist_uid (int): Unique identifier for the artist
                 - artist_name (str): Name of the artist
-            - artist_list: List of matching artists
+                - url (str): Direct link to the song's detail page
+
+            artist_list: List of matching artists with fields:
                 - artist_uid (int): Unique identifier for the artist
                 - artist_name (str): Name of the artist
                 - artist_name_display (str): Display name of the artist
@@ -126,21 +150,21 @@ async def music_search_songs(vendor: MusicServiceVendor, query: str) -> str:
                 - nationality (str): Artist's nationality
                 - gender (str): Artist's gender
                 - act_type (str): Type of artist activity
-            - album_list: List of matching albums
+                - url (str): Direct link to the artist's page
+
+            album_list: List of matching albums with fields:
                 - album_uid (int): Unique identifier for the album
                 - album_name (str): Name of the album
                 - album_name_display (str): Display name of the album
                 - album_img_url (str): URL of the album cover image
                 - artist_name (str): Name of the artist
                 - release_date (str): Album release date
+                - url (str): Direct link to the album's detail page
 
-    Notes:
-        For MELON search:
-        1. Use only essential keywords (artist name, song title) for better results
-        2. Natural language queries are not supported and may yield no results
-        3. Best practice is to:
-           - First search with artist name or song title
-           - Then find the exact song from the returned song_list
+    Examples:
+        >>> music_search_songs(MusicServiceVendor.MELON, "아이유 라일락")
+        >>> music_search_songs(MusicServiceVendor.MELON, "BTS")
+        >>> music_search_songs(MusicServiceVendor.MELON, "NewJeans")
 
     Raises:
         ValueError: If an unsupported music service vendor is specified
@@ -224,12 +248,20 @@ async def music_search_songs(vendor: MusicServiceVendor, query: str) -> str:
 
 
 @mcp.tool(experimental=True)
-async def music_get_song_detail(vendor: MusicServiceVendor, song_uid: SongUid) -> str:
+async def music_get_song_detail(
+    vendor: MusicServiceVendor = Field(
+        description="Music service provider. Currently only supports MELON.",
+        examples=["MusicServiceVendor.MELON"],
+    ),
+    song_uid: SongUid = Field(
+        description="Unique identifier for the song to retrieve details for.",
+        examples=["33487916", "35338198"],
+    ),
+) -> str:
     """Retrieves detailed information about a specific song from a music streaming service.
 
-    Args:
-        vendor (MusicServiceVendor): Music service provider. Currently only supports MELON.
-        song_uid (SongUid): Unique identifier for the song.
+    Fetches comprehensive details about a song including its metadata, lyrics, and related
+    information using the song's unique identifier.
 
     Returns:
         str: JSON string containing detailed song information with the following fields:
@@ -237,9 +269,13 @@ async def music_get_song_detail(vendor: MusicServiceVendor, song_uid: SongUid) -
             - album_name (str): Name of the album
             - artist_name (str): Name of the artist
             - cover_url (str|None): URL of the album cover image
-            - lyric (str): Song lyrics
+            - lyric (str): Song lyrics (maybe empty if not available)
             - genre (list[str]): List of genres
             - published_date (str|None): Release date in YYYY-MM-DD format
+
+    Examples:
+        >>> music_get_song_detail(MusicServiceVendor.MELON, "33487916")  # IU - 라일락
+        >>> music_get_song_detail(MusicServiceVendor.MELON, "35338198")  # NewJeans - Super Shy
 
     Raises:
         ValueError: If an unsupported music service vendor is specified
@@ -301,22 +337,35 @@ async def music_get_song_detail(vendor: MusicServiceVendor, song_uid: SongUid) -
 
 
 @mcp.tool(experimental=True)
-async def music_open_song_page(vendor: MusicServiceVendor, song_uid: SongUid) -> str:
+async def music_open_song_page(
+    vendor: MusicServiceVendor = Field(
+        description="Music service provider. Currently only supports MELON.",
+        examples=["MusicServiceVendor.MELON"],
+    ),
+    song_uid: SongUid = Field(
+        description="Unique identifier for the song to open in browser.",
+        examples=["33487916", "35338198"],
+    ),
+) -> str:
     """Opens the webpage for a specific song in the default web browser.
 
-    Args:
-        vendor (MusicServiceVendor): Music service provider. Currently only supports MELON.
-        song_uid (SongUid): Unique identifier for the song.
+    Launches the default web browser and navigates to the song's detail page
+    on the specified music streaming service.
 
     Returns:
         str: Message containing the opened webpage URL.
 
-    Raises:
-        ValueError: If an unsupported music service vendor is specified
+    Examples:
+        >>> music_open_song_page(MusicServiceVendor.MELON, "33487916")  # Opens IU - 라일락
+        >>> music_open_song_page(MusicServiceVendor.MELON, "35338198")  # Opens NewJeans - Super Shy
 
-    Note:
+    Notes:
         This is an experimental feature.
         It may be modified or removed in future versions.
+        The behavior depends on the system's default web browser settings.
+
+    Raises:
+        ValueError: If an unsupported music service vendor is specified
     """
 
     if vendor == MusicServiceVendor.MELON:

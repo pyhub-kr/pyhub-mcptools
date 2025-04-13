@@ -206,9 +206,9 @@ def setup_add(
             try:
                 key, value = env_str.split("=", 1)
                 env_dict[key.strip()] = value.strip()
-            except ValueError:
+            except ValueError as e:
                 console.print(f"[red]잘못된 환경변수 형식: {env_str}[/red]")
-                raise typer.Exit(1)
+                raise typer.Exit(1) from e
 
     current_cmd = sys.argv[0]
     current_exe_path = Path(current_cmd).resolve()

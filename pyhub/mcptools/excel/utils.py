@@ -137,7 +137,7 @@ def normalize_text(text: str) -> str:
     """Normalize Unicode text to NFC form for consistent handling of Korean characters."""
     if not text:
         return text
-    return unicodedata.normalize('NFC', text)
+    return unicodedata.normalize("NFC", text)
 
 
 async def applescript_run(
