@@ -191,3 +191,24 @@ def applescript_run_sync(
         raise RuntimeError(process.stderr.strip())
 
     return process.stdout.strip()
+
+
+def csv_loads(csv_str: str) -> list[list[str]]:
+    """Convert a CSV string to a list of lists.
+
+    Args:
+        csv_str: CSV formatted string with newlines and commas
+
+    Returns:
+        List of lists containing the CSV data
+
+    Examples:
+        >>> csv_loads("a,b,c\\n1,2,3")
+        [['a', 'b', 'c'], ['1', '2', '3']]
+    """
+    if not csv_str.strip():
+        return [[""]]
+
+    f = StringIO(csv_str)
+    reader = csv.reader(f, dialect="excel")
+    return [row for row in reader]

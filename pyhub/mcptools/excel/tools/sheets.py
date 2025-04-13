@@ -2,6 +2,8 @@
 Excel automation
 """
 
+import csv
+import json
 from typing import Optional, Union
 
 import xlwings as xw
@@ -10,7 +12,15 @@ from pydantic import Field
 from pyhub.mcptools import mcp
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
 from pyhub.mcptools.excel.types import ExcelExpandMode, ExcelFormula, ExcelGetValuesResponse, ExcelRange
-from pyhub.mcptools.excel.utils import convert_to_csv, fix_data, get_range, json_dumps, json_loads, normalize_text
+from pyhub.mcptools.excel.utils import (
+    convert_to_csv,
+    csv_loads,
+    fix_data,
+    get_range,
+    json_dumps,
+    json_loads,
+    normalize_text,
+)
 
 
 @mcp.tool()
@@ -113,8 +123,16 @@ def excel_set_values(
         examples=["A1", "B2:B10", "Sheet1!A1:C5"],
     ),
     json_values: Union[str, list] = Field(
-        description="Data to write, either as a JSON string or Python list.",
-        examples=['["v1", "v2", "v3"]', '[["v1"], ["v2"], ["v3"]]', '[["v1", "v2"], ["v3", "v4"]]'],
+        description="""Data to write, either as:
+        1. CSV string (recommended): "v1,v2,v3\\nv4,v5,v6"
+        2. JSON string: '["v1", "v2", "v3"]'
+        3. Python list: [["v1", "v2"], ["v3", "v4"]]""",
+        examples=[
+            "v1,v2,v3\nv4,v5,v6",  # CSV format
+            '["v1", "v2", "v3"]',  # JSON format
+            '[["v1"], ["v2"], ["v3"]]',
+            '[["v1", "v2"], ["v3", "v4"]]',
+        ],
     ),
     book_name: Optional[str] = Field(
         default=None,
@@ -136,14 +154,29 @@ def excel_set_values(
     When adding values to consecutive cells, you only need to specify the starting cell coordinate,
     and the data will be populated according to the dimensions of the input.
 
+    Input Format Priority (Recommended Order):
+        1. CSV String (Recommended):
+           - Most readable and natural format for tabular data
+           - Example: "v1,v2,v3\\nv4,v5,v6"
+           - Each line represents a row
+           - Values separated by commas
+           - Handles quoted values and escaping automatically
+           - Uses Python's csv module for robust parsing
+
+        2. JSON String/Python List:
+           - Alternative format for programmatic use
+           - Supports both flat and nested structures
+           - More verbose but offers precise control over data structure
+
     Data Orientation Rules:
+        For JSON/List format:
         - Flat list ["v1", "v2", "v3"] will always be written horizontally (row orientation)
         - Nested list [["v1"], ["v2"], ["v3"]] will be written vertically (column orientation)
         - For multiple rows/columns: [["v1", "v2"], ["v3", "v4"]] creates a 2x2 grid
 
     Range Format Rules:
-        - For multiple columns (e.g., "A1:C1"), use a flat list format
-        - For multiple rows (e.g., "A1:A10"), use a nested list format
+        - For multiple columns (e.g., "A1:C1"), ensure data matches the range width
+        - For multiple rows (e.g., "A1:A10"), ensure data matches the range height
         - Each row must have the same number of columns
         - Each column must have the same number of rows
 
@@ -151,14 +184,39 @@ def excel_set_values(
         None
 
     Examples:
+        # CSV format (recommended)
+        >>> excel_set_values("A1", "v1,v2,v3\\nv4,v5,v6")  # 2x3 grid using CSV
+        >>> excel_set_values("A1", "name,age\\nJohn,30\\nJane,25")  # Table with headers
+        >>> excel_set_values("A1", '"Smith, John",age\\n"Doe, Jane",25')  # Handles commas in values
+
+        # JSON/List format
         >>> excel_set_values("A1", '["v1", "v2", "v3"]')  # Write horizontally
         >>> excel_set_values("A1", '[["v1"], ["v2"], ["v3"]]')  # Write vertically
         >>> excel_set_values("A1", '[["v1", "v2"], ["v3", "v4"]]')  # Write 2x2 grid
         >>> excel_set_values("Sheet2!A1", '["v1", "v2"]', book_name="Sales.xlsx")  # Write to specific sheet
     """
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
-    range_.value = fix_data(sheet_range, json_loads(json_values))
 
+    # Try parsing as CSV first if the input is a string
+    if isinstance(json_values, str):
+        try:
+            # First try CSV parsing
+            data = csv_loads(json_values)
+            range_.value = fix_data(sheet_range, data)
+            if autofit:
+                range_.autofit()
+            return
+        except (csv.Error, ValueError):
+            # CSV 파싱 실패 시 JSON 파싱 시도
+            try:
+                data = json_loads(json_values)
+            except json.JSONDecodeError as je:
+                raise ValueError(f"Invalid input format. Expected CSV or JSON format. Error: {str(je)}") from je
+    else:
+        # If input is already a list, use it directly
+        data = json_values
+
+    range_.value = fix_data(sheet_range, data)
     if autofit:
         range_.autofit()
 
