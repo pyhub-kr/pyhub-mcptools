@@ -7,6 +7,11 @@
 
 ## Videos
 
+추가 툴 설치나 인증 과정도 없습니다. Microsoft 365 구독도 없어도 됩니다.
+엑셀 정품 인증도 요구하지 않습니다.
+
+편집이 가능한 엑셀 + Claude Desktop + "파이썬 사랑방 MCP 도구" 끝.
+
 <div class="video-container">
     <iframe src="https://www.youtube.com/embed/MfPBhVPGz_4?si=zXk_m7HhIKCHeYmX" allowfullscreen></iframe>
 </div>
