@@ -8,19 +8,21 @@ from collections import deque
 from datetime import datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence
 
 import httpx
 import typer
 from asgiref.sync import async_to_sync
 from click import Choice, ClickException
+from django.conf import settings
 from django.template.defaultfilters import filesizeformat
 from django.utils import timezone
 from mcp.types import EmbeddedResource, ImageContent, TextContent
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
 from rich.table import Table
-from typer.models import OptionInfo
+from typer.core import TyperCommand
+from typer.models import CommandFunctionType, OptionInfo
 
 from pyhub.mcptools.core.choices import OS, FormatChoices, McpHostChoices, TransportChoices
 from pyhub.mcptools.core.init import mcp
@@ -35,7 +37,25 @@ from pyhub.mcptools.core.utils import (
 from pyhub.mcptools.core.utils.process import kill_mcp_host_process
 from pyhub.mcptools.core.versions import PackageVersionChecker
 
-app = typer.Typer(add_completion=False)
+
+class PyhubTyper(typer.Typer):
+    def command(
+        self,
+        *args,
+        experimental: bool = False,
+        **kwargs,
+    ) -> Callable[[CommandFunctionType], TyperCommand]:
+        if experimental and not settings.EXPERIMENTAL:
+
+            def empty_decorator(f: CommandFunctionType) -> CommandFunctionType:
+                return f
+
+            return empty_decorator
+
+        return super().command(*args, **kwargs)
+
+
+app = PyhubTyper(add_completion=False)
 console = Console()
 
 
