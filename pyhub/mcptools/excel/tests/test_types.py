@@ -7,6 +7,7 @@ from pyhub.mcptools.excel.types import validate_excel_range, validate_formula
     "value,expected",
     [
         ("A1", "A1"),  # 기본 셀 참조
+        ("A:C", "A:C"),
         ("$A$1", "$A$1"),  # 절대 참조
         ("A1:B2", "A1:B2"),  # 셀 범위
         ("$A$1:$B$2", "$A$1:$B$2"),  # 절대 참조 범위

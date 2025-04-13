@@ -812,9 +812,6 @@ def log_tail(
     except PermissionError as e:
         console.print(f"\n[red]로그 파일에 접근 권한이 없습니다: {path}[/red]")
         raise typer.Exit(1) from e
-    except Exception as e:
-        console.print(f"[red]예상치 못한 오류가 발생했습니다: {e}[/red]")
-        raise typer.Exit(1) from e
 
 
 def print_as_table(title: str, rows: list[BaseModel], columns: Optional[list[str]] = None) -> None:
