@@ -141,7 +141,16 @@ def run_sse_proxy(
     # 인증이 필요할 때, 헤더 활용
     # headers["Authorization"] = f"Bearer {api_access_token}"
 
-    asyncio.run(run_sse_client(sse_url, headers=headers))
+    try:
+        asyncio.run(run_sse_client(sse_url, headers=headers))
+    except Exception as e:
+        if sys.version_info >= (3, 11) and isinstance(e, ExceptionGroup):
+            for sub in e.exceptions:
+                if isinstance(sub, httpx.ConnectError):
+                    console.print(f"[red]SSE 연결 실패: {sub}[/red]")
+                    raise typer.Exit(1) from e
+        console.print(f"[red]예외 발생: {e}[/red]")
+        raise typer.Exit(1) from e
 
 
 @app.command(name="list")
