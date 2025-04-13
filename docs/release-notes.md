@@ -3,6 +3,7 @@
 ## 0.7.4
 
 + `setup-add` 명령에서 환경변수 추가 옵션 `--environment`, `-e` 지원
++ 로그 모니터링을 위한 `log-tail`, `log-folder` 명령 추가
 
 ## v0.7.3
 

@@ -158,6 +158,26 @@ def get_current_language_code(default: Literal["en-US", "ko-KR"] = "en-US") -> s
     return lang_code.replace("_", "-")
 
 
+def get_log_dir_path(mcp_host: McpHostChoices) -> Path:
+    current_os = OS.get_current()
+
+    match mcp_host, current_os:
+        case McpHostChoices.CLAUDE, OS.WINDOWS:
+            dir_path = Path(os.environ["APPDATA"]) / "Claude/logs"
+        case McpHostChoices.CLAUDE, OS.MACOS:
+            dir_path = Path.home() / "Library/Logs/Claude"
+        case _:
+            error_msg = f"{current_os.value}의 {mcp_host.value} 프로그램은 지원하지 않습니다."
+            console.print(f"[red]{error_msg}[/red]")
+            raise typer.Exit(1)
+
+    return dir_path
+
+
+def get_log_path_list(mcp_host: McpHostChoices) -> list[Path]:
+    return list(get_log_dir_path(mcp_host).glob("mcp*.log"))
+
+
 def get_config_path(
     mcp_host: McpHostChoices,
     is_verbose: bool = False,
@@ -166,17 +186,16 @@ def get_config_path(
     """현재 운영체제에 맞는 설정 파일 경로를 반환합니다."""
 
     current_os = OS.get_current()
-    home = Path.home()
 
     match mcp_host, current_os:
         case McpHostChoices.CLAUDE, OS.WINDOWS:
-            config_path = home / "AppData/Roaming/Claude/claude_desktop_config.json"
+            config_path = Path(os.environ["APPDATA"]) / "Claude/claude_desktop_config.json"
         case McpHostChoices.CLAUDE, OS.MACOS:
-            config_path = home / "Library/Application Support/Claude/claude_desktop_config.json"
+            config_path = Path.home() / "Library/Application Support/Claude/claude_desktop_config.json"
         case McpHostChoices.CURSOR, OS.WINDOWS:
-            config_path = home / ".cursor/mcp.json"
+            config_path = Path.home() / ".cursor/mcp.json"
         case McpHostChoices.CURSOR, OS.MACOS:
-            config_path = home / ".cursor/mcp.json"
+            config_path = Path.home() / ".cursor/mcp.json"
         case _:
             error_msg = f"{current_os.value}의 {mcp_host.value} 프로그램은 지원하지 않습니다."
             if allow_exit is False:

@@ -1,7 +1,11 @@
 import json
 import re
 import shutil
+import subprocess
 import sys
+import time
+from collections import deque
+from datetime import datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Optional, Sequence
@@ -10,16 +14,24 @@ import httpx
 import typer
 from asgiref.sync import async_to_sync
 from click import Choice, ClickException
+from django.template.defaultfilters import filesizeformat
+from django.utils import timezone
 from mcp.types import EmbeddedResource, ImageContent, TextContent
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
 from rich.table import Table
 from typer.models import OptionInfo
 
-from pyhub.mcptools.core.choices import FormatChoices, McpHostChoices, TransportChoices
+from pyhub.mcptools.core.choices import OS, FormatChoices, McpHostChoices, TransportChoices
 from pyhub.mcptools.core.init import mcp
 from pyhub.mcptools.core.updater import apply_update
-from pyhub.mcptools.core.utils import get_config_path, open_with_default_editor, read_config_file
+from pyhub.mcptools.core.utils import (
+    get_config_path,
+    get_log_dir_path,
+    get_log_path_list,
+    open_with_default_editor,
+    read_config_file,
+)
 from pyhub.mcptools.core.utils.process import kill_mcp_host_process
 from pyhub.mcptools.core.versions import PackageVersionChecker
 
@@ -529,6 +541,178 @@ def release_note():
         print(response.text)
     except httpx.HTTPError as e:
         console.print(f"[red]릴리스 노트를 가져오는 중 오류가 발생했습니다: {e}[/red]")
+        raise typer.Exit(1) from e
+    except Exception as e:
+        console.print(f"[red]예상치 못한 오류가 발생했습니다: {e}[/red]")
+        raise typer.Exit(1) from e
+
+
+@app.command()
+def log_folder(
+    mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    is_open: bool = typer.Option(False, "--open", "-o", help="OS의 기본 파일 탐색기로 로그 폴더 열기"),
+):
+    """MCP 호스트 프로그램의 로그 폴더 경로를 출력하거나 파일 탐색기로 엽니다.
+
+    Args:
+        mcp_host: MCP 호스트 프로그램 선택 (기본값: CLAUDE)
+        is_open: True일 경우 OS의 기본 파일 탐색기로 로그 폴더를 엽니다.
+    """
+    dir_path = get_log_dir_path(mcp_host)
+
+    if is_open:
+        match OS.get_current():
+            case OS.WINDOWS:
+                subprocess.run(["explorer", dir_path])
+            case OS.MACOS:
+                subprocess.run(["open", dir_path])
+            case _:
+                try:
+                    subprocess.run(["xdg-open", dir_path])
+                except FileNotFoundError:
+                    console.print("[yellow]현재 OS에서는 디렉토리 열기를 지원하지 않습니다.[/yellow]")
+                    console.print(f"로그 디렉토리 경로: {dir_path}")
+    else:
+        # 경로만 출력
+        console.print(f"로그 디렉토리 경로: {dir_path}")
+
+
+@app.command()
+def log_tail(
+    mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    name: Optional[str] = typer.Option(None, "--name"),
+    n_lines: int = typer.Option(10, "--lines", "-n", help="마지막 N줄만 출력"),
+    is_follow: bool = typer.Option(False, "--follow", "-f", help="로그 파일을 모니터링하면서 계속 출력"),
+    is_verbose: bool = typer.Option(False, "--verbose", "-v"),
+    timestamp_format: str = typer.Option(
+        "%Y-%m-%d %H:%M:%S",
+        "--timestamp-format",
+        "-t",
+        help="타임스탬프 출력 포맷",
+    ),
+):
+    """MCP 호스트 프로그램의 로그 파일을 tail 형식으로 출력합니다.
+
+    여러 로그 파일이 있는 경우 선택할 수 있으며, 로그의 타임스탬프는 로컬 시간대로 변환되어 출력됩니다.
+
+    Args:
+        mcp_host: MCP 호스트 프로그램 선택 (기본값: CLAUDE)
+        name: 로그 파일명에 포함된 문자열로 필터링
+        n_lines: 출력할 마지막 라인 수 (기본값: 10)
+        is_follow: 실시간으로 로그 파일 모니터링 (tail -f와 유사)
+        is_verbose: 상세 정보 출력 여부
+        timestamp_format: 타임스탬프 출력 포맷 (기본값: "%Y-%m-%d %H:%M:%S")
+    """
+    try:
+        path_list = get_log_path_list(mcp_host)
+        if not path_list:
+            console.print(f"[yellow]{mcp_host} 로그 파일이 없습니다.[/yellow]")
+            raise typer.Exit(0)
+
+        # name 인자가 지정된 경우 필터링
+        if name:
+            path_list = [p for p in path_list if name in p.name]
+            if not path_list:
+                console.print(
+                    f"[yellow]{mcp_host} 로그 파일 중에 파일명에 '{name}' 문자열이 "
+                    f"포함된 로그 파일이 없습니다.[/yellow]"
+                )
+                raise typer.Exit(0)
+
+        # 파일들을 찾아서 수정시각 기준으로 내림차순 정렬
+        path_list = sorted(path_list, key=lambda p: p.stat().st_mtime, reverse=True)
+
+        # 단일 경로인 경우 자동 선택
+        if len(path_list) == 1:
+            path = path_list[0]
+            if is_verbose:
+                console.print(f"\n단일 로그 파일을 자동 선택합니다: {path}")
+        else:
+            table = Table()
+            table.add_column("id", justify="right")
+            table.add_column("name")
+            table.add_column("mtime")
+            table.add_column("size", justify="right")  # 우측 정렬 지정
+
+            def get_size_color(size_bytes: int) -> str:
+                if size_bytes >= 100 * 1024 * 1024:  # 100MB 이상
+                    return "red bold"
+                elif size_bytes >= 10 * 1024 * 1024:  # 10MB 이상
+                    return "yellow bold"
+                elif size_bytes >= 1024 * 1024:  # 1MB 이상
+                    return "green bold"
+                elif size_bytes >= 100 * 1024:  # 100KB 이상
+                    return "blue"
+                else:
+                    return "white"
+
+            def replace_timestamp(match):
+                utc_str = match.group(1)
+                # UTC 시간을 파싱
+                utc_dt = datetime.strptime(utc_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+                local_dt = utc_dt.astimezone(tz)
+                # 시간과 함께 timezone 정보도 출력
+                return f"{local_dt.strftime(timestamp_format)}"
+
+            for idx, path in enumerate(path_list, start=1):
+                stat = path.stat()
+                mtime_timestamp = stat.st_mtime
+                tz = timezone.get_current_timezone()
+                mtime_datetime = datetime.fromtimestamp(mtime_timestamp, tz=tz)
+
+                table.add_row(
+                    str(idx),
+                    path.name,
+                    mtime_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                    f"[{get_size_color(stat.st_size)}]{filesizeformat(stat.st_size)}[/{get_size_color(stat.st_size)}]",
+                )
+
+            console.print(table)
+
+            choice: str = typer.prompt(
+                "출력할 로그를 선택하세요",
+                type=Choice(list(map(str, range(1, len(path_list) + 1)))),
+                prompt_suffix=": ",
+                show_choices=False,
+            )
+
+            idx = int(choice) - 1
+            path = path_list[idx]
+
+        if is_verbose:
+            console.print(f"\n로그 파일 경로: {path}")
+
+        with open(path, "r", encoding="utf-8") as f:
+            # 파일의 마지막 N줄만 읽기
+            last_lines = deque(f, n_lines)
+
+            # ISO 8601 형식의 UTC 타임스탬프를 찾아서 현재 timezone으로 변환
+            iso_pattern = re.compile(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)")
+            tz = timezone.get_current_timezone()
+
+            for line in last_lines:
+                converted_line = iso_pattern.sub(replace_timestamp, line)
+                print(converted_line, end="")
+
+            if is_follow:
+                # 파일의 끝으로 이동
+                f.seek(0, 2)
+                while True:
+                    line = f.readline()
+                    if line:
+                        # 실시간 모니터링에서도 타임스탬프 변환 적용
+                        converted_line = iso_pattern.sub(replace_timestamp, line)
+                        print(converted_line, end="")
+                    else:
+                        # 새로운 라인이 없으면 잠시 대기
+                        time.sleep(0.1)
+    except KeyboardInterrupt:
+        console.print("\n로그 모니터링을 종료합니다.")
+    except FileNotFoundError as e:
+        console.print(f"\n[red]로그 파일을 찾을 수 없습니다: {path}[/red]")
+        raise typer.Exit(1) from e
+    except PermissionError as e:
+        console.print(f"\n[red]로그 파일에 접근 권한이 없습니다: {path}[/red]")
         raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"[red]예상치 못한 오류가 발생했습니다: {e}[/red]")
