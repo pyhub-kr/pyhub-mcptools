@@ -1,9 +1,15 @@
 # 릴리즈 노트
 
-## 0.7.4
+## v0.7.4
 
-+ `setup-add` 명령에서 환경변수 추가 옵션 `--environment`, `-e` 지원
-+ 로그 모니터링을 위한 `log-tail`, `log-folder` 명령 추가
++ `setup-add` 명령
+    - `--dry` 옵션 지원 : 설정 적용없이 출력
+    - `--environment`, `-e` 옵션 지원 : 설정에 환경변수 추가
++ `log-tail`, `log-folder` 명령 추가 : 로그 모니터링
++ SSE 서버 지원 강화
+    - `run-sse-proxy` 명령 지원 : SSE 서버와의 STDIO 방식으로 프록시 지원 (Claude Desktop에서는 STDIO 방식만 지원)
+    - `setup-add --transport sse` 명령에서 `run-sse-proxy` 명령 지원
+    - SSE 서버 구동에서 `django ASGI` 서버 구동
 
 ## v0.7.3
 

@@ -97,6 +97,7 @@ if not settings.configured:
         name="pyhub-mcptools",
         # instructions=None,
         # ** settings,
+        # debug=settings.DEBUG,
     )
 
 

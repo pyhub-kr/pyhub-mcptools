@@ -16,6 +16,9 @@ if "ENV_PATH" in env:
     env.read_env(env_path, overwrite=True)
 
 
+# ASGI_APPLICATION = "pyhub.mcptools.core.asgi.application"
+ROOT_URLCONF = "pyhub.mcptools.urls"
+
 HOME_DIR = Path.home().resolve()
 PYHUB_CONFIG_DIR = HOME_DIR / ".pyhub"
 BASE_DIR = Path(__file__).parent.parent.parent.resolve()

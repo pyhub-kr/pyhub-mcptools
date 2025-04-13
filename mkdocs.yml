@@ -28,7 +28,11 @@ markdown_extensions:
   - admonition
   - pymdownx.highlight:
       anchor_linenums: true
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.inlinehilite
   - pymdownx.tabbed:
       alternate_style: true
@@ -73,6 +77,7 @@ nav:
       - setup/index.md
       - setup/windows/index.md
       - setup/macos/index.md
+      - setup/sse/index.md
   - MCP 도구:
       - mcptools/index.md
       - mcptools/excel/index.md

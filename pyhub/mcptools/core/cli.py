@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 import shutil
@@ -18,6 +19,7 @@ from django.conf import settings
 from django.template.defaultfilters import filesizeformat
 from django.utils import timezone
 from mcp.types import EmbeddedResource, ImageContent, TextContent
+from mcp_proxy.sse_client import run_sse_client
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
 from rich.table import Table
@@ -35,6 +37,7 @@ from pyhub.mcptools.core.utils import (
     read_config_file,
 )
 from pyhub.mcptools.core.utils.process import kill_mcp_host_process
+from pyhub.mcptools.core.utils.sse import is_mcp_sse_server_alive
 from pyhub.mcptools.core.versions import PackageVersionChecker
 
 
@@ -79,22 +82,66 @@ def main(
 @app.command()
 def run(
     transport: TransportChoices = typer.Argument(default=TransportChoices.STDIO),
-    host: str = typer.Option("0.0.0.0", help="SSE Host (SSE transport 방식에서만 사용)"),
+    host: str = typer.Option("127.0.0.1", help="SSE Host (SSE transport 방식에서만 사용)"),
     port: int = typer.Option(8000, help="SSE Port (SSE transport 방식에서만 사용)"),
+    is_experimental: bool = typer.Option(False, "--experimental"),
 ):
     """지정 transport로 MCP 서버 실행 (디폴트: stdio)"""
 
-    if ":" in host:
-        try:
-            host, port = host.split(":")
-            port = int(port)
-        except ValueError as e:
-            raise ValueError("Host 포맷이 잘못되었습니다. --host 'ip:port' 형식이어야 합니다.") from e
+    if transport == TransportChoices.STDIO:
+        mcp.run(transport="stdio")
 
-    mcp.settings.host = host
-    mcp.settings.port = port
+    else:
+        if is_experimental is False:
+            console.print(f"Starting SSE MCP Server on {host}:{port}", highlight=False)
+            mcp.settings.host = host
+            mcp.settings.port = port
+            mcp.run(transport="sse")
 
-    mcp.run(transport=transport)
+        else:
+            console.print(f"Starting Experimental SSE MCP Server on {host}:{port}", highlight=False)
+
+            import uvicorn
+
+            from pyhub.mcptools.core.asgi import application as asgi_application
+
+            if ":" in host:
+                try:
+                    host, port = host.split(":")
+                    port = int(port)
+                except ValueError as e:
+                    raise ValueError("Host 포맷이 잘못되었습니다. --host 'ip:port' 형식이어야 합니다.") from e
+
+            uvicorn.run(
+                app=asgi_application,
+                host=host,
+                port=port,
+                reload=False,
+                workers=1,
+            )
+
+
+@app.command()
+def run_sse_proxy(
+    sse_url: str = typer.Argument("http://127.0.0.1:8000/sse", help="SSE Endpoint"),
+):
+    """지정한 SSE Endpoint와 stdio를 통해 프록시 연결을 수행 (default: http://127.0.0.1:8000/sse)
+
+    서버로부터 수신된 SSE 이벤트는 표준 출력(stdout)으로 전달되며, 표준 입력(stdin)으로부터 입력을 수신하여
+    필요한 경우 서버로 전송하거나 처리할 수 있습니다. 이 명령은 LLM 응답의 스트리밍 중계를 위한
+    표준 입출력 기반 인터페이스를 제공합니다.
+
+    기본 SSE Endpoint는 'http://127.0.0.1:8000/sse'이며, --sse-url 옵션으로 변경 가능합니다.
+    """
+
+    # https://github.com/sparfenyuk/mcp-proxy?tab=readme-ov-file#1-stdio-to-sse
+
+    headers = {}
+
+    # 인증이 필요할 때, 헤더 활용
+    # headers["Authorization"] = f"Bearer {api_access_token}"
+
+    asyncio.run(run_sse_client(sse_url, headers=headers))
 
 
 @app.command(name="list")
@@ -219,7 +266,9 @@ def prompts_list():
 
 @app.command()
 def setup_add(
-    mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    mcp_host: McpHostChoices = typer.Argument(McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    transport: TransportChoices = typer.Option(TransportChoices.STDIO, "--transport", "-t"),
+    sse_url: Optional[str] = typer.Option(None, "--sse-url", "-s", help="SSE Endpoint (SSE transport 방식에서만 사용)"),
     config_name: Optional[str] = typer.Option("pyhub.mcptools", "--config-name", "-n", help="Server Name"),
     environment: Optional[list[str]] = typer.Option(
         None,
@@ -228,8 +277,21 @@ def setup_add(
         help="환경변수 설정 (예: -e KEY=VALUE). 여러 번 사용 가능",
     ),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
+    is_dry: bool = typer.Option(False, "--dry", help="실제 적용하지 않고 설정값만 확인합니다."),
 ):
     """[MCP 설정파일] 설정에 자동 추가 (팩키징된 실행파일만 지원)"""
+
+    if transport == TransportChoices.SSE and sse_url is None:
+        sse_url = "http://127.0.0.1:8000/sse"
+
+    if sse_url:
+        if sse_url.startswith(("http://", "https://")) is False:
+            console.print(f"[red]ERROR: --sse-url 인자가 URL 포맷이 아닙니다.[/red]")
+            raise typer.Exit(1)
+
+        if transport == TransportChoices.STDIO:
+            console.print(f"[yellow]INFO: --sse-url 인자가 지정되어 연결 방식을 SSE 방식으로 조정합니다.[/yellow]")
+            transport = TransportChoices.SSE
 
     # 환경변수 처리
     env_dict = {}
@@ -243,32 +305,41 @@ def setup_add(
                 raise typer.Exit(1) from e
 
     current_cmd = sys.argv[0]
-    current_exe_path = Path(current_cmd).resolve()
+    current_exe_path = str(Path(current_cmd).resolve())
 
-    # 실행 파일이 아닌 경우 오류 처리
     if getattr(sys, "frozen", False) is False:
-        console.print("[red]패키징된 실행파일에 대해서만 지원합니다.[/red]")
-        new_config = None
+        # 소스 파일을 직접 실행할 때, 현재 실행된 python 경로를 파이썬 entry 소스 파일 경로 앞에 추가
+        current_exe_path = sys.executable + " " + current_exe_path
 
-    # 윈도우 실행파일 실행
-    elif current_exe_path.suffix == ".exe":
-        new_config = {
-            "command": str(current_exe_path),
-            "args": ["run", "stdio"],
-        }
-        if env_dict:
-            new_config["env"] = env_dict
+    if transport == TransportChoices.STDIO:
+        run_command = f"{current_exe_path} run stdio"
 
-    # 맥 실행파일 실행
     else:
-        new_config = {
-            "command": str(current_exe_path),
-            "args": ["run", "stdio"],
-        }
-        if env_dict:
-            new_config["env"] = env_dict
+        if async_to_sync(is_mcp_sse_server_alive)(sse_url=sse_url):
+            if is_verbose:
+                console.print(f"[green]✔ SSE 서버 연결 성공: {sse_url}[/green]")
+        else:
+            raise typer.BadParameter(
+                f"""{sse_url} 주소의 서버에 접속할 수 없습니다. 먼저 서버를 실행시켜주세요.
 
-    if new_config:
+ex) {current_exe_path} run sse
+"""
+            )
+
+        run_command = f"{current_exe_path} run-sse-proxy {sse_url}"
+
+    words = run_command.split()
+    new_config = {
+        "command": words[0],
+        "args": words[1:],
+    }
+    if env_dict:
+        new_config["env"] = env_dict
+
+    if is_dry is True:
+        console.print(json.dumps(new_config, indent=4, ensure_ascii=False))
+
+    else:
         config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
 
         try:
@@ -295,8 +366,6 @@ def setup_add(
             raise typer.Abort() from e
 
         console.print(f"'{config_path}' 경로에 {config_name} 설정을 추가했습니다.", highlight=False)
-    else:
-        raise typer.Exit(1)
 
 
 @app.command()

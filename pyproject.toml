@@ -24,8 +24,10 @@ classifiers = [
 ]
 dependencies = [
     "django>=4.0",
+    "uvicorn",
     "django-environ",
     "mcp",
+    "mcp-proxy",
     "typer",
     "tzlocal",
     "httpx",
