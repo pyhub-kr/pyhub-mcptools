@@ -2,6 +2,11 @@
 
 [퍼플렉시티 API](https://docs.perplexity.ai/home)를 활용한 검색 도구를 지원합니다.
 
+<figure markdown="span">
+    ![](./assets/perplexity.png#noborder)
+    <figcaption>반드시 `PERPLEXITY_API_KEY`를 환경변수로 등록하셔야만, 퍼플렉시티 도구가 활성화됩니다.</figcaption>
+</figure>
+
 ## 환경변수
 
 환경변수를 통해 옵션을 변경하실 수 있습니다.
