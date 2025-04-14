@@ -76,7 +76,7 @@ def excel_find_data_ranges(
 
     Detection Rules:
         - Identifies contiguous blocks of non-empty cells
-        - Uses Excel’s native “table” expansion (`expand("table")`)
+        - Uses Excel's native "table" expansion (`expand("table")`)
         - Empty or whitespace-only cells serve as block boundaries
         - Overlapping or adjacent blocks are merged to avoid duplication
 
@@ -87,14 +87,6 @@ def excel_find_data_ranges(
         >>> excel_find_data_ranges()
         >>> excel_find_data_ranges(book_name="Sales.xlsx")
         >>> excel_find_data_ranges(book_name="Report.xlsx", sheet_name="Q1")
-
-    Best Practices:
-        1. Use this function **before writing data** to avoid overwriting existing content.
-        2. Leverage the returned ranges to:
-            - Find suitable empty areas for new data
-            - Suggest meaningful positions near related data blocks
-            - Preserve worksheet structure and readability
-        3. Integrate this step into your data workflow as a **pre-check** before any modification.
 
     Note:
         This function is particularly useful when automating Excel report generation,
@@ -237,17 +229,12 @@ def excel_set_values(
         description="Excel range where to write the data",
         examples=["A1", "B2:B10", "Sheet1!A1:C5"],
     ),
-    json_values: Union[str, list] = Field(
+    values: Union[str, list] = Field(
         description="""Data to write, either as:
         1. CSV string (recommended): "v1,v2,v3\\nv4,v5,v6"
         2. JSON string: '["v1", "v2", "v3"]'
         3. Python list: [["v1", "v2"], ["v3", "v4"]]""",
-        examples=[
-            "v1,v2,v3\nv4,v5,v6",  # CSV format
-            '["v1", "v2", "v3"]',  # JSON format
-            '[["v1"], ["v2"], ["v3"]]',
-            '[["v1", "v2"], ["v3", "v4"]]',
-        ],
+        examples=["v1,v2,v3\nv4,v5,v6"],
     ),
     book_name: Optional[str] = Field(
         default=None,
@@ -263,7 +250,7 @@ def excel_set_values(
         default=False,
         description="If True, automatically adjusts the column widths to fit the content.",
     ),
-) -> None:
+) -> str:
     """Write data to a specified range in an Excel workbook.
 
     When adding values to consecutive cells, you only need to specify the starting cell coordinate,
@@ -271,23 +258,10 @@ def excel_set_values(
 
     Input Format Priority (Recommended Order):
         1. CSV String (Recommended):
-           - Most readable and natural format for tabular data
-           - Example: "v1,v2,v3\\nv4,v5,v6"
-           - Each line represents a row
-           - Values separated by commas
-           - Handles quoted values and escaping automatically
-           - Uses Python's csv module for robust parsing
-
         2. JSON String/Python List:
-           - Alternative format for programmatic use
-           - Supports both flat and nested structures
-           - More verbose but offers precise control over data structure
-
-    Data Orientation Rules:
-        For JSON/List format:
-        - Flat list ["v1", "v2", "v3"] will always be written horizontally (row orientation)
-        - Nested list [["v1"], ["v2"], ["v3"]] will be written vertically (column orientation)
-        - For multiple rows/columns: [["v1", "v2"], ["v3", "v4"]] creates a 2x2 grid
+            - Flat list ["v1", "v2", "v3"] will always be written horizontally (row orientation)
+            - Nested list [["v1"], ["v2"], ["v3"]] will be written vertically (column orientation)
+            - For multiple rows/columns: [["v1", "v2"], ["v3", "v4"]] creates a 2x2 grid
 
     Range Format Rules:
         - For multiple columns (e.g., "A1:C1"), ensure data matches the range width
@@ -296,7 +270,8 @@ def excel_set_values(
         - Each column must have the same number of rows
 
     Returns:
-        None
+        str: The address of the range where data was written (e.g., "A1:C3").
+             This represents the actual range that was populated with data.
 
     Examples:
         # CSV format (recommended)
@@ -313,27 +288,29 @@ def excel_set_values(
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
 
     # Try parsing as CSV first if the input is a string
-    if isinstance(json_values, str):
+    if isinstance(values, str):
         try:
             # First try CSV parsing
-            data = csv_loads(json_values)
+            data = csv_loads(values)
             range_.value = fix_data(sheet_range, data)
             if autofit:
                 range_.autofit()
-            return
+            return range_.expand("table").get_address()
         except (csv.Error, ValueError):
             # CSV 파싱 실패 시 JSON 파싱 시도
             try:
-                data = json_loads(json_values)
+                data = json_loads(values)
             except json.JSONDecodeError as je:
                 raise ValueError(f"Invalid input format. Expected CSV or JSON format. Error: {str(je)}") from je
     else:
         # If input is already a list, use it directly
-        data = json_values
+        data = values
 
     range_.value = fix_data(sheet_range, data)
     if autofit:
         range_.autofit()
+
+    return range_.expand("table").get_address()
 
 
 @mcp.tool()

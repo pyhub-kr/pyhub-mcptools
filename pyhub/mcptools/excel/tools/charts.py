@@ -106,6 +106,18 @@ def excel_add_chart(
     Creates a new chart in the destination range using data from the source range. The chart can be
     customized with different chart types and can be named for easier reference.
 
+    Best Practices for Chart Placement:
+        1. Range Selection:
+           - If no specific destination range is provided, use excel_find_data_ranges() to:
+             * Identify existing data and chart areas
+             * Find suitable empty areas for chart placement
+           - Choose a range that doesn't overlap with existing content
+
+        2. Data Protection:
+           - ALWAYS check if the destination range contains existing content
+           - If existing content is found, confirm with the user before overwriting
+           - Consider using adjacent empty areas for better worksheet organization
+
     Chart Behavior:
         - The destination range determines the size and position of the chart
         - Chart types are defined in the ExcelChartType enum
@@ -116,6 +128,10 @@ def excel_add_chart(
         str: The name of the created chart.
 
     Examples:
+        # First check for existing data
+        >>> ranges = excel_find_data_ranges()  # Check existing data blocks
+        >>> # Choose appropriate empty range based on ranges result
+
         >>> excel_add_chart("A1:B10", "D1:E10")  # Basic line chart
         >>> excel_add_chart("Sheet1!A1:C5", "D1:F10", type=ExcelChartType.BAR)  # Bar chart
         >>> excel_add_chart("Data!A1:B10", "Chart!C1:D10", name="SalesChart")  # Named chart
@@ -210,6 +226,22 @@ def excel_set_chart_props(
     The chart can be identified by its name or index, and the function allows updating the chart name,
     source data range, and/or the chart's position and size.
 
+    Best Practices for Chart Updates:
+        1. Range Changes:
+           - When updating chart position (dest_sheet_range), use excel_find_data_ranges() to:
+             * Identify existing data and chart areas
+             * Find suitable empty areas for the new chart position
+           - Choose a range that doesn't overlap with existing content
+
+        2. Data Protection:
+           - ALWAYS check if the new destination range contains existing content
+           - If existing content is found, confirm with the user before moving the chart
+           - Consider using adjacent empty areas for better worksheet organization
+
+        3. Source Data Changes:
+           - When updating source data range, verify the data format is compatible
+           - Ensure the new data range contains appropriate data for the chart type
+
     Chart Update Rules:
         - At least one of new_name, source_sheet_range, dest_sheet_range,
           or new_chart_type must be provided to make any changes
@@ -222,6 +254,10 @@ def excel_set_chart_props(
         str: The name of the chart after modifications (either original name or new name if changed).
 
     Examples:
+        # When moving chart to new position, first check for existing data
+        >>> ranges = excel_find_data_ranges()  # Check existing data blocks
+        >>> # Choose appropriate empty range based on ranges result
+
         >>> excel_set_chart_props(name="SalesChart", new_name="Q2Sales")  # Rename chart
         >>> excel_set_chart_props(index=0, new_chart_type="bar")  # Change type
         >>> excel_set_chart_props("RevenueChart", source_sheet_range="A1:B20")  # Update data

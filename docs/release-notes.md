@@ -13,6 +13,10 @@
 pyhub.mcptools update
 ```
 
+## v0.7.9
+
++
+
 ## v0.7.8
 
 + 차트 생성 시에 Claude Desktop 애플리케이션이 죽는 버그 해결 : TextChoices로 생성한 타입에 대해서 Optional을 지정하지 않으면, Claude Desktop이 죽는 데 로그도 남기지 않네요. :-(
