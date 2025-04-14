@@ -13,6 +13,10 @@
 pyhub.mcptools update
 ```
 
+## v0.7.8
+
++ 차트 생성 시에 Claude Desktop 애플리케이션이 죽는 버그 해결 : TextChoices로 생성한 타입에 대해서 Optional을 지정하지 않으면, Claude Desktop이 죽는 데 로그도 남기지 않네요. :-(
+
 ## v0.7.7
 
 + `excel_find_data_ranges` 도구 추가 : 지정 시트에서 각 데이터의 범위 목록을 반환

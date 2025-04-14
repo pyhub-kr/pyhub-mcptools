@@ -89,10 +89,11 @@ def excel_add_chart(
         description="Name of sheet where chart will be created. If None, uses active sheet.",
         examples=["Sheet1", "Sales2023"],
     ),
-    type: ExcelChartType = Field(
+    # TextChoices로 생성한 타입에 대해서 Optional을 지정하지 않으면, Claude Desktop이 죽습니다.
+    # 로그도 남겨지지 않아 이유를 알 수 없습니다.
+    type: Optional[ExcelChartType] = Field(
         default=ExcelChartType.LINE,
         description="Type of chart to create.",
-        examples=["LINE", "BAR", "PIE", "COLUMN"],
     ),
     name: Optional[str] = Field(
         default=None,
@@ -222,7 +223,7 @@ def excel_set_chart_props(
 
     Examples:
         >>> excel_set_chart_props(name="SalesChart", new_name="Q2Sales")  # Rename chart
-        >>> excel_set_chart_props(index=0, new_chart_type=ExcelChartType.BAR)  # Change type
+        >>> excel_set_chart_props(index=0, new_chart_type="bar")  # Change type
         >>> excel_set_chart_props("RevenueChart", source_sheet_range="A1:B20")  # Update data
         >>> excel_set_chart_props("TrendChart", dest_sheet_range="E1:F10")  # Move chart
     """
