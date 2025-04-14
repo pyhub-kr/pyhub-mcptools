@@ -58,8 +58,10 @@ def excel_get_opened_workbooks() -> str:
 def excel_get_values(
     sheet_range: Optional[ExcelRange] = Field(
         default=None,
-        description="Excel range to get data. If not specified, uses the entire used range of the sheet.",
-        examples=["A1:C10", "Sheet1!A1:B5"],
+        description="""Excel range to get data. If not specified, uses the entire used range of the sheet.
+            Important: When using expand_mode, specify ONLY the starting cell (e.g., 'A1' not 'A1:B10')
+            as the range will be automatically expanded.""",
+        examples=["A1", "Sheet1!A1", "A1:C10"],  # expand_mode 사용 시에는 A1 형식만 사용
     ),
     book_name: Optional[str] = Field(
         default=None,
@@ -73,13 +75,16 @@ def excel_get_values(
     ),
     expand_mode: Optional[ExcelExpandMode] = Field(
         default=None,
-        description="""Mode for automatically expanding the selection range. Supports:
+        description="""Mode for automatically expanding the selection range. When using expand_mode,
+            specify ONLY the starting cell in sheet_range (e.g., 'A1').
+
+            Supports:
             - "table": Expands only to the right and down from the starting cell
             - "right": Expands horizontally to include all contiguous data to the right
             - "down": Expands vertically to include all contiguous data below
+
             Note: All expand modes only work in the right/down direction from the starting cell.
-                  No expansion occurs to the left or upward direction.
-        """,
+                  No expansion occurs to the left or upward direction.""",
         examples=["table", "right", "down"],
     ),
 ) -> ExcelGetValuesResponse:
@@ -88,14 +93,26 @@ def excel_get_values(
     Retrieves data from a specified Excel range. By default uses the active workbook and sheet
     if no specific book_name or sheet_name is provided.
 
+    Important:
+        When using expand_mode, specify ONLY the starting cell (e.g., 'A1') in sheet_range.
+        The range will be automatically expanded based on the specified expand_mode.
+
     Returns:
         ExcelGetValuesResponse: A response model containing the data in CSV format.
 
     Examples:
         >>> excel_get_values("A1")  # Gets single cell value
-        >>> excel_get_values("A1:B10")  # Gets range in CSV format
-        >>> excel_get_values("A1", expand_mode="table")  # Gets table data in CSV
+        >>> excel_get_values("A1:B10")  # Gets fixed range in CSV format
+        >>> excel_get_values("A1", expand_mode="table")  # Gets table data starting from A1
+        >>> excel_get_values("B2", expand_mode="right")  # Gets row data starting from B2
+        >>> excel_get_values("C1", expand_mode="down")  # Gets column data starting from C1
     """
+
+    # expand_mode가 지정되어있을 때, 시트 범위에서 시작 셀 좌표만 추출.
+    # Claude에서 expand_mode를 지정했을 때에도 sheet range를 너무 크게 잡을 때가 있음.
+    if expand_mode is not None:
+        sheet_range = sheet_range.split(":", 1)[0]
+
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
 
     if expand_mode is not None:
@@ -226,7 +243,7 @@ def excel_set_values(
 def excel_autofit(
     sheet_range: ExcelRange = Field(
         description="Excel range to autofit",
-        examples=["A1:D10", "A:E", "Sheet1!A:A"],
+        examples=["A1:D10", "A:E"],
     ),
     book_name: Optional[str] = Field(
         default=None,
@@ -268,6 +285,10 @@ def excel_autofit(
         >>> excel_autofit("A:A", book_name="Sales.xlsx", sheet_name="Q1")  # Specific sheet
         >>> excel_autofit("A1", expand_mode="table")  # Autofit table data
     """
+
+    if expand_mode is not None:
+        sheet_range = sheet_range.split(":", 1)[0]
+
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
     if expand_mode is not None:
         range_ = range_.expand(mode=expand_mode.value.lower())
