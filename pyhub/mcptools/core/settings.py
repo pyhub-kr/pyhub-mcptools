@@ -122,3 +122,25 @@ TOGETHER_API_KEY = env.str("TOGETHER_API_KEY", default=None)
 # https://unsplash.com/oauth/applications/
 UNSPLASH_ACCESS_KEY = env.str("UNSPLASH_ACCESS_KEY", default=None)
 UNSPLASH_SECRET_KEY = env.str("UNSPLASH_SECRET_KEY", default=None)
+
+# perplexity
+# https://docs.perplexity.ai/guides/prompt-guide
+PERPLEXITY_SYSTEM_PROMPT = env.str(
+    "PERPLEXITY_SYSTEM_PROMPT",
+    default="""You are a helpful AI assistant.
+
+Rules:
+1. Provide only the final answer. It is important that you do not include any explanation on the steps below.
+2. Do not show the intermediate steps information.
+
+Steps:
+1. Decide if the answer should be a brief sentence or a list of suggestions.
+2. If it is a list of suggestions, first, write a brief and natural introduction based on the original query.
+3. Followed by a list of suggestions, each suggestion should be split by two newlines.""",
+)
+PERPLEXITY_MODEL = env.str("PERPLEXITY_MODEL", default="sonar")
+PERPLEXITY_API_KEY = env.str("PERPLEXITY_API_KEY", default=None)
+PERPLEXITY_MAX_TOKENS = env.int("PERPLEXITY_MAX_TOKENS", 1024)
+PERPLEXITY_TEMPERATURE = env.float("PERPLEXITY_TEMPERATURE", default=0.2)
+# low, medium, high
+PERPLEXITY_SEARCH_CONTEXT_SIZE = env.str("PERPLEXITY_SEARCH_CONTEXT_SIZE", default="low")

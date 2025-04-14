@@ -15,7 +15,7 @@ pyhub.mcptools update
 
 ## v0.7.9
 
-+
++ [퍼플렉시티 검색 도구 추가](./mcptools/search/perplexity.md)
 
 ## v0.7.8
 

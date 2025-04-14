@@ -28,6 +28,8 @@ markdown_extensions:
   - admonition
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -81,6 +83,9 @@ nav:
   - MCP 도구:
       - mcptools/index.md
       - mcptools/excel/index.md
+      - 검색도구:
+          - mcptools/search/index.md
+          - mcptools/search/perplexity.md
 #     - mcptools/hometax/index.md
 #     - mcptools/shopping/index.md
   - release-notes.md

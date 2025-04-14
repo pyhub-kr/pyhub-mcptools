@@ -49,11 +49,13 @@ if __name__ == "__main__":
     #
     import_module("pyhub.mcptools.excel.__main__")
     import_module("pyhub.mcptools.music.__main__")
+    import_module("pyhub.mcptools.search.__main__")
 
     #
     # Tools
     #
     import_module("pyhub.mcptools.excel.tools")
     import_module("pyhub.mcptools.music.tools")
+    import_module("pyhub.mcptools.search.tools")
 
     app()
