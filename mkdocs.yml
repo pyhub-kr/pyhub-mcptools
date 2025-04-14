@@ -80,6 +80,7 @@ nav:
       - setup/windows/index.md
       - setup/macos/index.md
       - setup/sse/index.md
+      - setup/env.md
   - MCP 도구:
       - mcptools/index.md
       - mcptools/excel/index.md

@@ -1,4 +1,5 @@
 import os
+import re
 from functools import wraps
 from typing import Callable
 
@@ -78,6 +79,22 @@ class FastMCP(OrigFastMCP):
             is_enabled = enabled() if callable(enabled) else enabled
             if not is_enabled:
                 return wrapper
+
+            if settings.ONLY_EXPOSE_TOOLS:
+                # 도구 이름이 ONLY_EXPOSE_TOOLS의 패턴 중 하나와 정확히 일치하는지 확인
+                tool_name = name or fn.__name__
+
+                def normalize_name(_name: str) -> str:
+                    """도구 이름을 정규화합니다. 하이픈과 언더바를 모두 동일하게 처리합니다."""
+                    return _name.replace("-", "_")
+
+                normalized_tool_name = normalize_name(tool_name)
+                is_allowed = any(
+                    re.fullmatch(normalize_name(pattern), normalized_tool_name)
+                    for pattern in settings.ONLY_EXPOSE_TOOLS
+                )
+                if not is_allowed:
+                    return wrapper
 
             self.add_tool(fn, name=name, description=description)
             return wrapper

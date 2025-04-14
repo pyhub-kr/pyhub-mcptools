@@ -13,6 +13,14 @@
 pyhub.mcptools update
 ```
 
+## v0.7.10
+
++ `ONLY_EXPOSE_TOOLS` 환경변수를 통해 지정 패턴의 도구만 노출
+
+!!! note
+
+    [환경변수 설정법](./setup/env.md)
+
 ## v0.7.9
 
 + [퍼플렉시티 검색 도구 추가](./mcptools/search/perplexity.md)
