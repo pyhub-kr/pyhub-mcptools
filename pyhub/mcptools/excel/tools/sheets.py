@@ -17,6 +17,7 @@ from pyhub.mcptools.excel.utils import (
     csv_loads,
     fix_data,
     get_range,
+    get_sheet,
     json_dumps,
     json_loads,
     normalize_text,
@@ -51,6 +52,103 @@ def excel_get_opened_workbooks() -> str:
             ]
         }
     )
+
+
+@mcp.tool()
+@macos_excel_request_permission
+def excel_find_data_ranges(
+    book_name: Optional[str] = Field(
+        default=None,
+        description="Name of workbook to use. If None, uses active workbook.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: Optional[str] = Field(
+        default=None,
+        description="Name of sheet to use. If None, uses active sheet.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+) -> str:
+    """Detects and returns all distinct data block ranges in an Excel worksheet.
+
+    Scans the used range of the worksheet to identify contiguous blocks of non-empty cells,
+    interpreted as distinct tables. By default, it uses the active workbook and sheet unless
+    `book_name` or `sheet_name` is specified.
+
+    Detection Rules:
+        - Identifies contiguous blocks of non-empty cells
+        - Uses Excel’s native “table” expansion (`expand("table")`)
+        - Empty or whitespace-only cells serve as block boundaries
+        - Overlapping or adjacent blocks are merged to avoid duplication
+
+    Returns:
+        str: A JSON-encoded list of data range addresses (absolute reference format, e.g., ["A1:I11", "K1:P11"])
+
+    Examples:
+        >>> excel_find_data_ranges()
+        >>> excel_find_data_ranges(book_name="Sales.xlsx")
+        >>> excel_find_data_ranges(book_name="Report.xlsx", sheet_name="Q1")
+
+    Best Practices:
+        1. Use this function **before writing data** to avoid overwriting existing content.
+        2. Leverage the returned ranges to:
+            - Find suitable empty areas for new data
+            - Suggest meaningful positions near related data blocks
+            - Preserve worksheet structure and readability
+        3. Integrate this step into your data workflow as a **pre-check** before any modification.
+
+    Note:
+        This function is particularly useful when automating Excel report generation,
+        layout validation, or intelligent placement of new content within structured worksheets.
+    """
+
+    sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
+
+    data_ranges = []
+    visited = set()
+
+    used = sheet.used_range
+    start_row = used.row
+    start_col = used.column
+    n_rows = used.rows.count
+    n_cols = used.columns.count
+
+    # 전체 데이터를 메모리로 한 번에 가져옴 (2D 리스트)
+    data_grid = used.value
+
+    # 엑셀 한 셀일 경우, data_grid 값은 단일 값이므로 보정
+    if not isinstance(data_grid, list):
+        data_grid = [[data_grid]]
+    elif isinstance(data_grid[0], (str, int, float, type(None))):
+        data_grid = [data_grid]
+
+    for r in range(n_rows):
+        for c in range(n_cols):
+            abs_row = start_row + r
+            abs_col = start_col + c
+            addr = (abs_row, abs_col)
+
+            if addr in visited:
+                continue
+
+            # 데이터 시작 부분에 대해서 범위 좌표 계산
+            val = data_grid[r][c]
+            if val is not None and str(val).strip() != "":
+                cell = sheet.range((abs_row, abs_col))
+                block = cell.expand("table")
+
+                top = block.row
+                left = block.column
+                bottom = top + block.rows.count - 1
+                right = left + block.columns.count - 1
+
+                for rr in range(top, bottom + 1):
+                    for cc in range(left, right + 1):
+                        visited.add((rr, cc))
+
+                # $ 기호를 제거한 범위 주소를 추가
+                data_ranges.append(block.address.replace("$", ""))
+
+    return json_dumps(data_ranges)
 
 
 @mcp.tool()
