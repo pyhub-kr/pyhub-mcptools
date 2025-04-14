@@ -1,5 +1,18 @@
 # 릴리즈 노트
 
+## How to update
+
+[릴리즈 페이지](https://github.com/pyhub-kr/pyhub-mcptools/releases/)에서 최신 버전을 다운받으실 수 있습니다. 설치 방법은 아래 문서를 참고해주세요.
+
++ [윈도우에서 설치하기](./setup/windows/index.md)
++ [macOS에서 설치하기](./setup/macos/index.md)
+
+이미 `pyhub.mcptools`가 설치되어있으시다면, 설치 경로에서 `update` 명령으로 최신 버전으로 업데이트하실 수 있습니다.
+
+```
+pyhub.mcptools update
+```
+
 ## v0.7.7
 
 + `excel_find_data_ranges` 도구 추가 : 지정 시트에서 각 데이터의 범위 목록을 반환
