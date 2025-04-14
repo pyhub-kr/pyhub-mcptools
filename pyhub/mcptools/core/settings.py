@@ -12,7 +12,7 @@ from pyhub.mcptools.core.utils import (
 env = Env()
 
 if "ENV_PATH" in env:
-    env_path = env.path("ENV_PATH")
+    env_path = Path(env.str("ENV_PATH")).expanduser().resolve()
     env.read_env(env_path, overwrite=True)
 
 
@@ -147,3 +147,15 @@ PERPLEXITY_SEARCH_CONTEXT_SIZE = env.str("PERPLEXITY_SEARCH_CONTEXT_SIZE", defau
 
 # ONLY_EXPOSE_TOOLS
 ONLY_EXPOSE_TOOLS = env.list("ONLY_EXPOSE_TOOLS", default=None)
+
+#
+# filesystem
+#
+_path = env.str("FILESYSTEM_LOCAL_HOME", default=None)
+FILESYSTEM_LOCAL_HOME = None if _path is None else Path(_path).expanduser().resolve()
+
+FILESYSTEM_LOCAL_ALLOWED_DIRECTORIES = [
+    Path(_path).expanduser().resolve() for _path in env.list("FILESYSTEM_LOCAL_ALLOWED_DIRECTORIES", default=[])
+]
+if FILESYSTEM_LOCAL_HOME is not None:
+    FILESYSTEM_LOCAL_ALLOWED_DIRECTORIES.append(FILESYSTEM_LOCAL_HOME)
