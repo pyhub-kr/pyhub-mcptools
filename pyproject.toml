@@ -1,6 +1,6 @@
 [project]
 name = "pyhub-mcptools"
-version = "0.8.0"
+version = "0.8.1"
 description = "파이썬사랑방 MCP 도구"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -108,7 +108,7 @@ disallow_incomplete_defs = true
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 select = ["E", "F", "B", "I"]
 ignore = []
 

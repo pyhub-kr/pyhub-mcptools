@@ -217,6 +217,7 @@ def read_config_file(path: Path, is_verbose: bool = False) -> dict:
     try:
         with open(path, "r", encoding="utf-8") as f:
             config_data: dict = json.load(f)
+            config_data.setdefault("mcpServers", {})
             return config_data
     except json.JSONDecodeError as e:
         raise ValueError("JSON 설정 파일에 오류가 있습니다.") from e

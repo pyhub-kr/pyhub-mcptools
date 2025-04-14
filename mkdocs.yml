@@ -82,14 +82,14 @@ nav:
       - setup/windows/index.md
       - setup/macos/index.md
       - setup/sse/index.md
-      - setup/env.md
+      - setup/env/index.md
   - MCP 도구:
       - mcptools/index.md
       - mcptools/excel/index.md
+      - mcptools/fs/index.md
       - 검색도구:
           - mcptools/search/index.md
           - mcptools/search/perplexity.md
-      - mcptools/fs/index.md
 #     - mcptools/hometax/index.md
 #     - mcptools/shopping/index.md
   - release-notes.md

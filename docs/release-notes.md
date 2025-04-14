@@ -13,6 +13,10 @@
 pyhub.mcptools update
 ```
 
+## v0.8.1
+
++ MCP 설정의 [환경변수 조회/추가/제거 명령 지원](./setup/env/index.md)
+
 ## v0.8.0
 
 + 파일시스템 도구 추가 : `FS_LOCAL_HOME` 환경변수가 지정되면 자동 활성화
