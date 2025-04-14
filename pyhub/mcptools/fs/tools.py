@@ -91,10 +91,10 @@ def fs__write_file(
         description="Content to write to the file",
         examples=["Hello World", "{'key': 'value'}"],
     ),
-    bytes_content: Optional[bytes] = Field(
+    base64_content: Optional[str] = Field(
         None,
-        description="Content to write to the file",
-        examples=[b"Hello World", b"{'key': 'value'}"],
+        description="Base64 encoded binary content to write to the file",
+        examples=["SGVsbG8gV29ybGQ=", "eydrZXknOiAndmFsdWUnfQ=="],
     ),
     text_encoding: str = Field("utf-8", description="Encoding of text_content"),
 ) -> str:
@@ -102,11 +102,12 @@ def fs__write_file(
 
     Args:
         path: Path where to write the file
-        text_content: Text Content to write to the file. If both text_content and bytes_content are provided,
+        text_content: Text Content to write to the file. If both text_content and base64_content are provided,
                      text_content takes precedence.
-        bytes_content: Binary Content to write to the file. This is used only when text_content is None.
+        base64_content: Base64 encoded binary content to write to the file. This is used only when text_content is None.
+                       The content will be decoded from base64 before writing.
         text_encoding: Encoding to use when writing text_content. This parameter only applies when using text_content
-                      and is ignored for bytes_content.
+                      and is ignored for base64_content.
 
     Returns:
         str: Success message indicating the file was written
@@ -125,9 +126,13 @@ def fs__write_file(
         if text_content is not None:
             with valid_path.open("wt", encoding=text_encoding) as f:
                 f.write(text_content)
-        elif bytes_content is not None:
-            with valid_path.open("wb") as f:
-                f.write(bytes_content)
+        elif base64_content is not None:
+            try:
+                binary_content = base64.b64decode(base64_content)
+                with valid_path.open("wb") as f:
+                    f.write(binary_content)
+            except Exception as e:
+                raise ValueError(f"Invalid base64 content: {str(e)}")
         else:
             raise ValueError("No content to write")
 
