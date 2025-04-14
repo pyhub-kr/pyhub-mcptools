@@ -17,19 +17,19 @@ def validate_path(requested_path: str) -> Path:
         Path: The normalized absolute path if valid
 
     Raises:
-        ValueError: If path is outside allowed directories or if relative path is provided without FILESYSTEM_LOCAL_HOME
+        ValueError: If path is outside allowed directories or if relative path is provided without FS_LOCAL_HOME
     """
 
     path = Path(requested_path).expanduser()
 
     # 상대 경로인 경우 처리
     if not path.is_absolute():
-        if settings.FILESYSTEM_LOCAL_HOME is None:
-            raise ValueError("Cannot resolve relative path: FILESYSTEM_LOCAL_HOME is not set")
-        path = Path(settings.FILESYSTEM_LOCAL_HOME) / path
+        if settings.FS_LOCAL_HOME is None:
+            raise ValueError("Cannot resolve relative path: FS_LOCAL_HOME is not set")
+        path = Path(settings.FS_LOCAL_HOME) / path
 
     # Expand ~ to user's home directory if present
-    allowed_local_directories = [Path(_path).resolve() for _path in settings.FILESYSTEM_LOCAL_ALLOWED_DIRECTORIES]
+    allowed_local_directories = [Path(_path).resolve() for _path in settings.FS_LOCAL_ALLOWED_DIRECTORIES]
 
     # Convert to absolute path and resolve any symlinks
     try:

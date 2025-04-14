@@ -13,6 +13,10 @@
 pyhub.mcptools update
 ```
 
+## v0.8.0
+
++ 파일시스템 도구 추가 : `FS_LOCAL_HOME` 환경변수가 지정되면 자동 활성화
+
 ## v0.7.10
 
 + `ONLY_EXPOSE_TOOLS` 환경변수를 통해 지정 패턴의 도구만 노출

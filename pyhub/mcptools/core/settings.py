@@ -151,11 +151,11 @@ ONLY_EXPOSE_TOOLS = env.list("ONLY_EXPOSE_TOOLS", default=None)
 #
 # filesystem
 #
-_path = env.str("FILESYSTEM_LOCAL_HOME", default=None)
-FILESYSTEM_LOCAL_HOME = None if _path is None else Path(_path).expanduser().resolve()
+_path = env.str("FS_LOCAL_HOME", default=None)
+FS_LOCAL_HOME = None if _path is None else Path(_path).expanduser().resolve()
 
-FILESYSTEM_LOCAL_ALLOWED_DIRECTORIES = [
-    Path(_path).expanduser().resolve() for _path in env.list("FILESYSTEM_LOCAL_ALLOWED_DIRECTORIES", default=[])
+FS_LOCAL_ALLOWED_DIRECTORIES = [
+    Path(_path).expanduser().resolve() for _path in env.list("FS_LOCAL_ALLOWED_DIRECTORIES", default=[])
 ]
-if FILESYSTEM_LOCAL_HOME is not None:
-    FILESYSTEM_LOCAL_ALLOWED_DIRECTORIES.append(FILESYSTEM_LOCAL_HOME)
+if FS_LOCAL_HOME is not None:
+    FS_LOCAL_ALLOWED_DIRECTORIES.append(FS_LOCAL_HOME)

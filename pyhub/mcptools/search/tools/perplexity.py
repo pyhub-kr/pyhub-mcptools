@@ -18,10 +18,11 @@ class RecencyChoices(TextChoices):
     MONTH = "month"
 
 
-@mcp.tool(
-    enabled=lambda: settings.PERPLEXITY_API_KEY is not None,
-)
-async def search_perplexity(
+ENABLED_PERPLEXITY_TOOLS = settings.PERPLEXITY_API_KEY is not None
+
+
+@mcp.tool(enabled=ENABLED_PERPLEXITY_TOOLS)
+async def search__perplexity(
     query: str = Field(
         description="""The search query to be processed by Perplexity AI.
 
@@ -110,15 +111,15 @@ async def search_perplexity(
             The response includes the AI-generated answer and source URLs.
 
     Examples:
-        >>> search_perplexity(
+        >>> search__perplexity(
         ...     "Compare Django's class-based views vs function-based views for REST API development"
         ... )
-        >>> search_perplexity(
+        >>> search__perplexity(
         ...     "Explain Django's database connection pooling strategies for high-traffic sites",
         ...     recency="week",
         ...     search_domain_allow_list=["docs.djangoproject.com", "django-developers.googlegroups.com"]
         ... )
-        >>> search_perplexity(
+        >>> search__perplexity(
         ...     "Analyze Django REST Framework's pagination performance for large datasets",
         ...     search_domain_disallow_list=["medium.com", "dev.to"]
         ... )

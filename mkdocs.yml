@@ -89,6 +89,7 @@ nav:
       - 검색도구:
           - mcptools/search/index.md
           - mcptools/search/perplexity.md
+      - mcptools/fs/index.md
 #     - mcptools/hometax/index.md
 #     - mcptools/shopping/index.md
   - release-notes.md
