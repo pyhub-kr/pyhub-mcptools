@@ -2,6 +2,10 @@
 
 `FS_LOCAL_HOME` 환경변수가 지정되면 파일시스템 도구가 자동으로 활성화됩니다.
 
+## 활용 스크린샷
+
+![](./assets/virtual-students-csv-data.png#noborder)
+
 ## 관련 환경변수
 
 1. `FS_LOCAL_HOME` : 디폴트 `None`
@@ -28,8 +32,3 @@
 8. `fs__find_files` : 지정 경로에서 파일 찾기
 9. `fs__get_file_info` : 1개 파일 세부 내역 조회
 10. `fs__list_allowed_directories` : 허용된 디렉토리 목록 조회
-
-
-## 활용 스크린샷
-
-![](./assets/virtual-students-csv-data.png#noborder)

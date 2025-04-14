@@ -2,35 +2,13 @@
 
 [퍼플렉시티 API](https://docs.perplexity.ai/home)를 활용한 검색 도구를 지원합니다.
 
-<figure markdown="span">
-    ![](./assets/perplexity.png#noborder)
-    <figcaption>반드시 `PERPLEXITY_API_KEY`를 환경변수로 등록하셔야만, 퍼플렉시티 도구가 활성화됩니다.</figcaption>
-</figure>
+`PERPLEXITY_API_KEY` 환경변수가 지정되면 퍼플렉시티 도구가 자동으로 활성화됩니다.
 
-## 환경변수
+## 활용 스크린샷
 
-환경변수를 통해 옵션을 변경하실 수 있습니다.
+![](./assets/perplexity.png#noborder)
 
-``` json hl_lines="9 10 11"
-{
-    "mcpServers": {
-        "pyhub.mcptools": {
-            "command": "c:\\mcptools\\pyhub.mcptools\\pythu.mcptools.exe",
-            "args": [
-                "run",
-                "stdio"
-            ],
-            "env": {
-                "PERPLEXITY_API_KEY": "pplx-여러분들의-Key를-지정해주세요-"
-            }
-        }
-    }
-}
-```
-
-!!! note
-
-    "env" 키를 추가할 때, 콤마(`,`) 추가 등의 JSON 문법에 유의하세요.
+## 관련 환경변수
 
 ### API KEY
 
@@ -84,3 +62,7 @@ Steps:
     요청 1000개당 가격이 다릅니다. `sonar` 모델 기준으로 $5, $8, $12 입니다.
 
     공식문서 : [https://docs.perplexity.ai/guides/pricing#non-reasoning-models](https://docs.perplexity.ai/guides/pricing#non-reasoning-models)
+
+## 지원 도구
+
+1. `search__perplexity` : 지정 검색어와 지정 `recency` (hour, day, week, month) 내에서 검색
