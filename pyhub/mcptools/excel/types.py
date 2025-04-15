@@ -1,7 +1,7 @@
 from django.db.models import IntegerChoices
 from django.db.models.enums import TextChoices
 from pydantic import BaseModel, Field
-from xlwings.constants import HAlign, VAlign
+from xlwings.constants import CellType, HAlign, VAlign
 
 
 class ExcelExpandMode(TextChoices):
@@ -110,3 +110,16 @@ class ExcelVerticalAlignment(IntegerChoices):
     BOTTOM = VAlign.xlVAlignBottom, "아래쪽 정렬"
     JUSTIFY = VAlign.xlVAlignJustify, "양쪽 정렬"
     DISTRIBUTED = VAlign.xlVAlignDistributed, "분산 정렬"
+
+
+class ExcelCellType(IntegerChoices):
+    ALL_FORMAT_CONDITIONS = CellType.xlCellTypeAllFormatConditions, "All Format Conditions"
+    ALL_VALIDATION = CellType.xlCellTypeAllValidation, "All Validations"
+    BLANKS = CellType.xlCellTypeBlanks, "Blank Cells"
+    COMMENTS = CellType.xlCellTypeComments, "Cells with Comments"
+    CONSTANTS = CellType.xlCellTypeConstants, "Constant Values"
+    FORMULAS = CellType.xlCellTypeFormulas, "Formula Cells"
+    LAST_CELL = CellType.xlCellTypeLastCell, "Last Used Cell"
+    SAME_FORMAT_CONDITIONS = CellType.xlCellTypeSameFormatConditions, "Same Format Conditions"
+    SAME_VALIDATION = CellType.xlCellTypeSameValidation, "Same Validation Rules"
+    VISIBLE = CellType.xlCellTypeVisible, "Visible Cells"

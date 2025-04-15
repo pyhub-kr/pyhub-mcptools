@@ -15,6 +15,7 @@ from pyhub.mcptools import mcp
 from pyhub.mcptools.core.choices import OS
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
 from pyhub.mcptools.excel.types import (
+    ExcelCellType,
     ExcelExpandMode,
     ExcelGetValuesResponse,
     ExcelHorizontalAlignment,
@@ -146,10 +147,77 @@ def excel_find_data_ranges(
                     for cc in range(left, right + 1):
                         visited.add((rr, cc))
 
-                # $ 기호를 제거한 범위 주소를 추가
-                data_ranges.append(block.address.replace("$", ""))
+                data_ranges.append(block.address)
 
     return json_dumps(data_ranges)
+
+
+@mcp.tool(enabled=OS.current_is_windows())
+@macos_excel_request_permission
+def excel_get_special_cells_address(
+    sheet_range: str = Field(
+        default=None,
+        description="""Excel range to get data. If not specified, uses the entire used range of the sheet.
+            Important: When using expand_mode, specify ONLY the starting cell (e.g., 'A1' not 'A1:B10')
+            as the range will be automatically expanded.""",
+        examples=["A1", "Sheet1!A1", "A1:C10"],
+    ),
+    book_name: Optional[str] = Field(
+        default=None,
+        description="Name of workbook to use. If not specified, uses the active workbook.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: Optional[str] = Field(
+        default=None,
+        description="Name of sheet to use. If not specified, uses the active sheet.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    expand_mode: Optional[ExcelExpandMode] = Field(
+        default=None,
+        description="""Mode for automatically expanding the selection range. When using expand_mode,
+            specify ONLY the starting cell in sheet_range (e.g., 'A1').
+
+            Supports:
+            - "table": Expands only to the right and down from the starting cell
+            - "right": Expands horizontally to include all contiguous data to the right
+            - "down": Expands vertically to include all contiguous data below
+
+            Note: All expand modes only work in the right/down direction from the starting cell.
+                  No expansion occurs to the left or upward direction.""",
+        examples=["table", "right", "down"],
+    ),
+    cell_type_filter: Optional[ExcelCellType] = Field(
+        None,
+        description=f"""Special Cells Filter : {dict(((v.value, v.label) for v in ExcelCellType))}""",
+    ),
+) -> str:
+    """Get the address of special cells in an Excel worksheet based on specified criteria.
+
+    Args:
+        sheet_range (str, optional): Target Excel range. Uses entire used range if not specified.
+        book_name (str, optional): Target workbook name. Uses active workbook if not specified.
+        sheet_name (str, optional): Target sheet name. Uses active sheet if not specified.
+        expand_mode (ExcelExpandMode, optional): Mode for expanding selection ('table', 'right', 'down').
+        cell_type_filter (ExcelCellType, optional): Filter for special cell types.
+
+    Returns:
+        str: Address of the special cells range.
+
+    Note:
+        Windows-only feature.
+    """
+
+    range_ = get_range(
+        sheet_range=sheet_range,
+        book_name=book_name,
+        sheet_name=sheet_name,
+        expand_mode=expand_mode,
+    )
+
+    if cell_type_filter:
+        return range_.api.SpecialCells(cell_type_filter.value).Address
+
+    return range_.get_address()
 
 
 @mcp.tool()
