@@ -11,7 +11,6 @@ set -u
 # DEFAULT_EXTRACT_BASE: 기본 설치 디렉토리 경로
 OWNER="pyhub-kr"
 REPO="pyhub-mcptools"
-KEYWORD="pyhub.mcptools-macOS"
 DEFAULT_EXTRACT_BASE="$HOME/mcptools"
 
 # 프로그레스바 표시 함수
@@ -24,13 +23,30 @@ show_progress() {
   printf "\r[%s%s] %d%%" "$(printf '#%.0s' $(seq 1 $completed))" "$(printf ' %.0s' $(seq 1 $remaining))" "$percent"
 }
 
-# OS 검사 함수
+# OS 및 CPU 아키텍처 검사 함수
 check_os() {
   if [[ "$(uname)" != "Darwin" ]]; then
     echo "Unsupported OS. This script only supports macOS."
     exit 1
   fi
   echo "✅ OS check passed: macOS detected"
+
+  # CPU 아키텍처 확인
+  CPU_ARCH=$(uname -m)
+  case "$CPU_ARCH" in
+    "x86_64")
+      echo "✅ CPU Architecture: Intel (x86_64)"
+      KEYWORD="macOS-x86_64"
+      ;;
+    "arm64")
+      echo "✅ CPU Architecture: Apple Silicon (ARM64)"
+      KEYWORD="macOS-arm64"
+      ;;
+    *)
+      echo "❌ Unsupported CPU architecture: $CPU_ARCH"
+      exit 1
+      ;;
+  esac
 }
 
 # 설치 경로 설정 함수
@@ -70,11 +86,11 @@ get_release_info() {
   RELEASE_JSON=$(curl -s "https://api.github.com/repos/$OWNER/$REPO/releases/latest")
   
   # 키워드에 맞는 zip 파일 링크 찾기
-  DOWNLOAD_URL=$(echo "$RELEASE_JSON" | grep "browser_download_url" | grep "$KEYWORD" | cut -d '"' -f 4 | grep "\.zip$" )
-  SHA256_URL=$(echo "$RELEASE_JSON" | grep "browser_download_url" | grep "$KEYWORD" | cut -d '"' -f 4 | grep "\.sha256$" )
+  DOWNLOAD_URL=$(echo "$RELEASE_JSON" | grep "browser_download_url" | grep "pyhub.mcptools-$KEYWORD" | cut -d '"' -f 4 | grep "\.zip$" )
+  SHA256_URL=$(echo "$RELEASE_JSON" | grep "browser_download_url" | grep "pyhub.mcptools-$KEYWORD" | cut -d '"' -f 4 | grep "\.sha256$" )
 
   if [ -z "$DOWNLOAD_URL" ]; then
-    echo "❌ No release asset found matching the keyword: $KEYWORD"
+    echo "❌ No release asset found matching the architecture: $KEYWORD"
     exit 1
   fi
   

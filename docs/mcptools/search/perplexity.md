@@ -2,7 +2,7 @@
 
 [퍼플렉시티 API](https://docs.perplexity.ai/home)를 활용한 검색 도구를 지원합니다.
 
-`PERPLEXITY_API_KEY` 환경변수가 지정되면 퍼플렉시티 도구가 자동으로 활성화됩니다.
+`PERPLEXITY_API_KEY` 환경변수가 지정되면 퍼플렉시티 도구가 활성화됩니다.
 
 ## 활용 스크린샷
 

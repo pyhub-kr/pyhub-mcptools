@@ -159,3 +159,14 @@ FS_LOCAL_ALLOWED_DIRECTORIES = [
 ]
 if FS_LOCAL_HOME is not None:
     FS_LOCAL_ALLOWED_DIRECTORIES.append(FS_LOCAL_HOME)
+
+
+#
+# maps
+#
+
+# https://api.ncloud-docs.com/docs/ai-naver-mapsdirections-driving
+# https://console.ncloud.com/naver-service/application
+
+NAVER_MAP_CLIENT_ID = env.str("NAVER_MAP_CLIENT_ID", default=None)
+NAVER_MAP_CLIENT_SECRET = env.str("NAVER_MAP_CLIENT_SECRET", default=None)

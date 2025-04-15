@@ -13,6 +13,10 @@
 pyhub.mcptools update
 ```
 
+## v0.8.3
+
++ [네이버 길찾기 도구](./mcptools/maps/index.md) 지원
+
 ## v0.8.2
 
 + `settings.FS_LOCAL_ALLOWED_DIRECTORIES` 오타 수정
