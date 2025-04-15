@@ -4,6 +4,7 @@ Excel automation
 
 import csv
 import json
+from pathlib import Path
 from typing import Optional, Union
 
 import xlwings as xw
@@ -22,6 +23,7 @@ from pyhub.mcptools.excel.utils import (
     json_loads,
     normalize_text,
 )
+from pyhub.mcptools.fs.utils import validate_path
 
 
 @mcp.tool()
@@ -229,11 +231,16 @@ def excel_set_values(
         description="Excel range where to write the data",
         examples=["A1", "B2:B10", "Sheet1!A1:C5"],
     ),
-    values: Union[str, list] = Field(
-        description="""Data to write, either as:
-        1. CSV string (recommended): "v1,v2,v3\\nv4,v5,v6"
-        2. JSON string: '["v1", "v2", "v3"]'
-        3. Python list: [["v1", "v2"], ["v3", "v4"]]""",
+    csv_abs_path: Optional[str] = Field(
+        default=None,
+        description="""Absolute path to the CSV file to read.
+            If specified, this will override any value provided in the 'values' parameter.
+            Either 'csv_abs_path' or 'values' must be provided, but not both.""",
+        examples=["/path/to/data.csv"],
+    ),
+    values: Optional[Union[str, list]] = Field(
+        default=None,
+        description="""CSV string : "v1,v2,v3\\nv4,v5,v6""",
         examples=["v1,v2,v3\nv4,v5,v6"],
     ),
     book_name: Optional[str] = Field(
@@ -256,13 +263,6 @@ def excel_set_values(
     When adding values to consecutive cells, you only need to specify the starting cell coordinate,
     and the data will be populated according to the dimensions of the input.
 
-    Input Format Priority (Recommended Order):
-        1. CSV String (Recommended):
-        2. JSON String/Python List:
-            - Flat list ["v1", "v2", "v3"] will always be written horizontally (row orientation)
-            - Nested list [["v1"], ["v2"], ["v3"]] will be written vertically (column orientation)
-            - For multiple rows/columns: [["v1", "v2"], ["v3", "v4"]] creates a 2x2 grid
-
     Range Format Rules:
         - For multiple columns (e.g., "A1:C1"), ensure data matches the range width
         - For multiple rows (e.g., "A1:A10"), ensure data matches the range height
@@ -274,37 +274,38 @@ def excel_set_values(
              This represents the actual range that was populated with data.
 
     Examples:
-        # CSV format (recommended)
+        # CSV format
         >>> excel_set_values("A1", "v1,v2,v3\\nv4,v5,v6")  # 2x3 grid using CSV
-        >>> excel_set_values("A1", "name,age\\nJohn,30\\nJane,25")  # Table with headers
-        >>> excel_set_values("A1", '"Smith, John",age\\n"Doe, Jane",25')  # Handles commas in values
-
-        # JSON/List format
-        >>> excel_set_values("A1", '["v1", "v2", "v3"]')  # Write horizontally
-        >>> excel_set_values("A1", '[["v1"], ["v2"], ["v3"]]')  # Write vertically
-        >>> excel_set_values("A1", '[["v1", "v2"], ["v3", "v4"]]')  # Write 2x2 grid
-        >>> excel_set_values("Sheet2!A1", '["v1", "v2"]', book_name="Sales.xlsx")  # Write to specific sheet
     """
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
 
-    # Try parsing as CSV first if the input is a string
-    if isinstance(values, str):
-        try:
-            # First try CSV parsing
-            data = csv_loads(values)
-            range_.value = fix_data(sheet_range, data)
-            if autofit:
-                range_.autofit()
-            return range_.expand("table").get_address()
-        except (csv.Error, ValueError):
-            # CSV 파싱 실패 시 JSON 파싱 시도
+    if csv_abs_path is not None:
+        csv_path: Path = validate_path(csv_abs_path)
+        with csv_path.open("rt", encoding="utf-8") as f:
+            # overwrite values
+            values = csv_loads(f.read())
+
+    if values is not None:
+        # Try parsing as CSV first if the input is a string
+        if isinstance(values, str):
             try:
-                data = json_loads(values)
-            except json.JSONDecodeError as je:
-                raise ValueError(f"Invalid input format. Expected CSV or JSON format. Error: {str(je)}") from je
+                # First try CSV parsing
+                data = csv_loads(values)
+                range_.value = fix_data(sheet_range, data)
+                if autofit:
+                    range_.autofit()
+                return range_.expand("table").get_address()
+            except (csv.Error, ValueError):
+                # CSV 파싱 실패 시 JSON 파싱 시도
+                try:
+                    data = json_loads(values)
+                except json.JSONDecodeError as je:
+                    raise ValueError(f"Invalid input format. Expected CSV or JSON format. Error: {str(je)}") from je
+        else:
+            # If input is already a list, use it directly
+            data = values
     else:
-        # If input is already a list, use it directly
-        data = values
+        raise ValueError("Either csv_abs_path or values must be provided.")
 
     range_.value = fix_data(sheet_range, data)
     if autofit:

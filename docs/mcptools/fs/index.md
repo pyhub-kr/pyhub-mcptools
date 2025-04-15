@@ -2,6 +2,10 @@
 
 `FS_LOCAL_HOME` 환경변수가 지정되면 파일시스템 도구가 활성화됩니다.
 
+!!! note
+
+    파일시스템 도구가 활성화되어야만 [엑셀 도구](../excel/index.md) 에서 유저가 전달한 CSV 파일을 읽을 수 있습니다.
+
 ## 활용 스크린샷
 
 ![](./assets/virtual-students-csv-data.png#noborder)

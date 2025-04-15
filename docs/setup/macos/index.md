@@ -107,7 +107,7 @@ Claude에서 알아서 필요한 MCP 도구를 호출할테지만, 지원하는 
 그리고, `excel_set_values` 도구를 통해 지정 범위의 값들을 변경하실 수도 있습니다.
 
 ```
-./pyhub.mcptools tools-call excel_set_values sheet_range="A34" json_values="[['val1', 'val2', 'val3'], ['val4', 'val5', 'val6']]"
+./pyhub.mcptools tools-call excel_set_values sheet_range="A34" values="[['val1', 'val2', 'val3'], ['val4', 'val5', 'val6']]"
 ```
 
 물론 다른 특정 시트를 지정해서 값을 읽어오거나 값을 변경하는 도구도 지원합니다.

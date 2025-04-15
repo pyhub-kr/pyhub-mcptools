@@ -136,7 +136,7 @@ def fs__write_file(
         else:
             raise ValueError("No content to write")
 
-        return f"Successfully wrote to {path}"
+        return f"Successfully wrote to {valid_path}"
     except IOError as e:
         raise ValueError(f"Error writing to file {path}: {str(e)}") from e
 

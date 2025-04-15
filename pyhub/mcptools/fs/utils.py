@@ -31,6 +31,9 @@ def validate_path(requested_path: str) -> Path:
     # Expand ~ to user's home directory if present
     allowed_local_directories = [Path(_path).resolve() for _path in settings.FS_LOCAL_ALLOWED_DIRECTORIES]
 
+    if len(allowed_local_directories) == 0:
+        raise ValueError("No allowed local directories are set")
+
     # Convert to absolute path and resolve any symlinks
     try:
         normalized_requested = path.resolve()
