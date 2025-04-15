@@ -1,5 +1,7 @@
+from django.db.models import IntegerChoices
 from django.db.models.enums import TextChoices
 from pydantic import BaseModel, Field
+from xlwings.constants import HAlign, VAlign
 
 
 class ExcelExpandMode(TextChoices):
@@ -89,3 +91,22 @@ class ExcelGetValuesResponse(BaseModel):
     """Excel 데이터 응답 모델"""
 
     data: str = Field(description="CSV 형식의 Excel 데이터", examples=["value1,value2\nvalue3,value4"])
+
+
+class ExcelHorizontalAlignment(IntegerChoices):
+    GENERAL = HAlign.xlHAlignGeneral, "일반"
+    LEFT = HAlign.xlHAlignLeft, "왼쪽 정렬"
+    CENTER = HAlign.xlHAlignCenter, "가운데 정렬"
+    RIGHT = HAlign.xlHAlignRight, "오른쪽 정렬"
+    FILL = HAlign.xlHAlignFill, "셀 채우기"
+    JUSTIFY = HAlign.xlHAlignJustify, "양쪽 정렬"
+    CENTER_ACROSS_SELECTION = HAlign.xlHAlignCenterAcrossSelection, "선택 범위 가운데 정렬"
+    DISTRIBUTED = HAlign.xlHAlignDistributed, "분산 정렬"
+
+
+class ExcelVerticalAlignment(IntegerChoices):
+    TOP = VAlign.xlVAlignTop, "위쪽 정렬"
+    CENTER = VAlign.xlVAlignCenter, "가운데 정렬"
+    BOTTOM = VAlign.xlVAlignBottom, "아래쪽 정렬"
+    JUSTIFY = VAlign.xlVAlignJustify, "양쪽 정렬"
+    DISTRIBUTED = VAlign.xlVAlignDistributed, "분산 정렬"

@@ -13,6 +13,18 @@
 pyhub.mcptools update
 ```
 
+
+## v0.8.6
+
++ `excel_set_styles` 도구 지원
+    - 셀 배경색, 글자색, 볼드, 이탤릭 스타일 변경 지원
+    - 윈도우 전용 : 취소선, 밑선, 좌우/상하 정렬 지원
+    - 스타일 리셋 지원
+
+## v0.8.5
+
++ `setup-add` 명령에서 Claude Desktop, Cursor, Windsurf 설정 지원
+
 ## v0.8.4
 
 + [엑셀 도구](./mcptools/excel/index.md)에서 유저가 전달한 CSV 파일 읽기 지원
