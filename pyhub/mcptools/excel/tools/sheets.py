@@ -9,7 +9,7 @@ from typing import Optional, Union
 
 import xlwings as xw
 from pydantic import Field
-from xlwings.constants import HAlign, VAlign, xlLTR
+from xlwings.constants import HAlign, VAlign
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.core.choices import OS
@@ -448,7 +448,7 @@ def excel_set_styles(
             range_.api.HorizontalAlignment = HAlign.left  # Reset horizontal alignment
             range_.api.VerticalAlignment = VAlign.bottom  # Reset vertical alignment
             range_.api.Orientation = 0  # Reset text rotation
-            range_.api.ReadingOrder = xlLTR  # Reset reading order to left-to-right
+            # range_.api.ReadingOrder = xlLTR  # Not found xlLTR
 
             # Reset conditional formatting
             range_.api.FormatConditions.Delete()
