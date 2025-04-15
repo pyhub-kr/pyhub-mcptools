@@ -142,13 +142,12 @@ def get_current_language_code(default: Literal["en-US", "ko-KR"] = "en-US") -> s
         # 기본 locale 사용
         lang_code, encoding = locale.getlocale()
 
-        if len(lang_code) == 5:
-            prefix = lang_code[:2].lower()
-            if prefix == "ko":
+        match lang_code[:2].lower():
+            case "ko":
                 lang_code = "ko-KR"
-            elif prefix == "en":
+            case "en":  # ex: "English_United States"
                 lang_code = "en-US"
-            else:
+            case _:
                 logger.warning(f"Unknown language code: {lang_code}")
                 lang_code = default
 
