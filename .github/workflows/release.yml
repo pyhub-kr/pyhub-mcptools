@@ -14,9 +14,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
-        python-version: ["3.13"]
-        architecture: [x64]
+        include:
+          - os: windows-latest
+            python-version: "3.13"
+            architecture: x64
+            platform: windows
+          - os: macos-13
+            python-version: "3.13"
+            architecture: x64
+            platform: macOS-x86_64
+          - os: macos-latest
+            python-version: "3.13"
+            architecture: arm64
+            platform: macOS-arm64
       # 일부 작업이 실패하더라도 다른 모든 matrix 작업이 완료될 때까지 계속 실행됩니다.
       fail-fast: false
 
@@ -28,6 +38,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        architecture: ${{ matrix.architecture }}
 
     - name: Install GNU Make (if needed)
       if: runner.os == 'Windows'
@@ -46,28 +57,28 @@ jobs:
       run: make build-onedir
 
     - name: Zip artifacts for Windows
-      if: runner.os == 'Windows'
+      if: matrix.platform == 'windows'
       run: |
         cd dist
         7z a -tzip pyhub.mcptools-windows-${{ github.ref_name }}.zip pyhub.mcptools/
 
     - name: Generate SHA256 for Windows artifacts
-      if: runner.os == 'Windows'
+      if: matrix.platform == 'windows'
       run: |
         cd dist
         certutil -hashfile pyhub.mcptools-windows-${{ github.ref_name }}.zip SHA256 | findstr /v "CertUtil" > pyhub.mcptools-windows-${{ github.ref_name }}.zip.sha256
 
-    - name: Zip artifacts for non-Windows platforms
-      if: runner.os != 'Windows'
+    - name: Zip artifacts for macOS
+      if: startsWith(matrix.platform, 'macOS')
       run: |
         cd dist
-        zip -r pyhub.mcptools-${{ runner.os }}-${{ github.ref_name }}.zip pyhub.mcptools/
+        zip -r pyhub.mcptools-${{ matrix.platform }}-${{ github.ref_name }}.zip pyhub.mcptools/
 
-    - name: Generate SHA256 for non-Windows artifacts
-      if: runner.os != 'Windows'
+    - name: Generate SHA256 for macOS artifacts
+      if: startsWith(matrix.platform, 'macOS')
       run: |
         cd dist
-        shasum -a 256 pyhub.mcptools-${{ runner.os }}-${{ github.ref_name }}.zip > pyhub.mcptools-${{ runner.os }}-${{ github.ref_name }}.zip.sha256
+        shasum -a 256 pyhub.mcptools-${{ matrix.platform }}-${{ github.ref_name }}.zip > pyhub.mcptools-${{ matrix.platform }}-${{ github.ref_name }}.zip.sha256
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
