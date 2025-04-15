@@ -1,4 +1,4 @@
-# Cursor
+# Cursor / Windsurf
 
 !!! note
 
@@ -16,7 +16,7 @@ Claude Desktop은 설치하지 않으셔도 됩니다.
 ## STDIO 방식으로 구동하기
 
 Claude Desktop 구동에서는 아래 설정으로 STDIO 방식으로 MCP 서버를 구동했었습니다.
-아래 설정파일 포맷은 **Cursor에서도 동일**합니다.
+아래 설정파일 포맷은 **Cursor와 Windsurf에서도 동일**합니다.
 
 === "윈도우"
 
@@ -50,23 +50,24 @@ Claude Desktop 구동에서는 아래 설정으로 STDIO 방식으로 MCP 서버
     }
     ```
 
-Claude Desktop 설정 파일을 Cursor 설정 파일로 직접 복사해서 적용하셔도 되구요.
+Claude Desktop 설정 파일을 Cursor, Windsurf 설정 파일로 직접 복사해서 적용하셔도 되구요.
 
-`setup-add` 명령을 활용하시면 편리합니다. `setup-add` 명령은 다음 2개 툴을 지원합니다.
+`setup-add` 명령을 활용하시면 편리합니다. `setup-add` 명령은 다음 3개 툴을 지원합니다.
 
-+ Claude Desktop
-+ Cursor
++ Claude Desktop : [https://modelcontextprotocol.io/quickstart/user](https://modelcontextprotocol.io/quickstart/user)
++ Cursor : [https://docs.cursor.com/context/model-context-protocol](https://docs.cursor.com/context/model-context-protocol)
++ Windsurf : [https://docs.windsurf.com/windsurf/mcp](https://docs.windsurf.com/windsurf/mcp)
 
-=== "Cursor에 STDIO 방식으로 도구 설정 추가"
+=== "Cursor"
 
     ```
     pyhub.mcptools setup-add cursor
     ```
 
-=== "Claude Desktop에 STDIO 방식으로 도구 설정 추가"
+=== "Windsurf"
 
     ```
-    pyhub.mcptools setup-add claude
+    pyhub.mcptools setup-add windsurf
     ```
 
 그럼 아래와 같이 Cursor MCP 설정 파일에 자동으로 추가되구요.

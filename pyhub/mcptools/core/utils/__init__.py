@@ -196,6 +196,10 @@ def get_config_path(
             config_path = Path.home() / ".cursor/mcp.json"
         case McpHostChoices.CURSOR, OS.MACOS:
             config_path = Path.home() / ".cursor/mcp.json"
+        case McpHostChoices.WINDSURF, OS.WINDOWS:
+            config_path = Path.home() / ".codeium/windsurf/mcp_config.json"
+        case McpHostChoices.WINDSURF, OS.MACOS:
+            config_path = Path.home() / ".codeium/windsurf/mcp_config.json"
         case _:
             error_msg = f"{current_os.value}의 {mcp_host.value} 프로그램은 지원하지 않습니다."
             if allow_exit is False:
@@ -216,7 +220,11 @@ def read_config_file(path: Path, is_verbose: bool = False) -> dict:
 
     try:
         with open(path, "r", encoding="utf-8") as f:
-            config_data: dict = json.load(f)
+            json_str = f.read().strip()
+            if not json_str:
+                config_data = {}
+            else:
+                config_data = json.loads(json_str)
             config_data.setdefault("mcpServers", {})
             return config_data
     except json.JSONDecodeError as e:
