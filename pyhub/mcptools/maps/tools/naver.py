@@ -1,4 +1,6 @@
+import json
 from typing import Optional
+from urllib.parse import quote
 
 import httpx
 from django.conf import settings
@@ -6,11 +8,11 @@ from pydantic import Field
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.maps.types import (
-    NaverMapRouteOptions,
     NaverMapCarTypes,
-    NaverMapResponseLanguages,
     NaverMapFuelTypes,
     NaverMapGeocodingResponseLanguages,
+    NaverMapResponseLanguages,
+    NaverMapRouteOptions,
 )
 
 ENABLED_MAPS_NAVER_TOOLS = settings.NAVER_MAP_CLIENT_ID and settings.NAVER_MAP_CLIENT_SECRET
@@ -59,7 +61,13 @@ async def maps__naver_geocode(
         language (NaverMapGeocodingResponseLanguages, optional): Response language. Defaults to kor
 
     Returns:
-        str: JSON response containing geocoding results including coordinates and address details
+        str: JSON response containing:
+            - response: Original geocoding results including coordinates and address details
+            - map_urls: Direct links to open the location in various map services:
+                - google: Google Maps link
+                - naver: Naver Maps link
+                - kakao: Kakao Maps link
+              These URLs can be used to instantly open the location in the respective map service's web interface.
 
     Note:
         - This API works best with Korean addresses.
@@ -68,6 +76,8 @@ async def maps__naver_geocode(
         - Place names, landmarks, or business names will not return results.
         - You can use either full addresses or partial addresses. When using partial addresses,
           the API will attempt to find the best match, but may return multiple results.
+        - The returned map_urls provide convenient direct links to view the location
+          in Google Maps, Naver Maps, or Kakao Maps without additional steps.
     """
     api_url = "https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode"
     params = {
@@ -80,7 +90,29 @@ async def maps__naver_geocode(
 
     async with httpx.AsyncClient() as client:
         res = await client.get(api_url, headers=NAVER_MAP_HEADERS, params=params)
-        return res.text
+        obj = res.json()
+
+        if len(obj["addresses"]) > 0:
+            address = obj["addresses"][0]
+            title = quote(query)
+            lat, lng = address["y"], address["x"]
+            map_urls = {
+                # https://developers.google.com/maps/architecture/maps-url?authuser=1&hl=ko
+                "google": f"https://www.google.com/maps/search/?api=1&query={lat},{lng}",
+                # https://www.ncloud-forums.com/topic/242/
+                "naver": f"https://map.naver.com/?lng={lng}&lat={lat}&title={title}",
+                "kakao": f"https://map.kakao.com/link/map/{title},{lat},{lng}",
+            }
+        else:
+            map_urls = {}
+
+        return json.dumps(
+            {
+                "response": obj,
+                "map_urls": map_urls,
+            },
+            ensure_ascii=False,
+        )
 
 
 @mcp.tool(enabled=ENABLED_MAPS_NAVER_TOOLS)
