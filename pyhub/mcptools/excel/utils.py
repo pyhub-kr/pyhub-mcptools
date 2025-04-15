@@ -218,6 +218,9 @@ def csv_loads(csv_str: str) -> list[list[str]]:
     if not csv_str.strip():
         return [[""]]
 
+    # 리터럴 \\n을 실제 개행 문자로 변환
+    csv_str = csv_str.replace("\\n", "\n")
+
     f = StringIO(csv_str)
     reader = csv.reader(f, dialect="excel")
     return [row for row in reader]
