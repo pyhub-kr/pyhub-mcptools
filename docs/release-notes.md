@@ -13,6 +13,10 @@
 pyhub.mcptools update
 ```
 
+## v0.8.8
+
++ (윈도우 전용) `excel_get_special_cells_address` 도구 지원
+    - 다양한 조건(빈 셀, 코멘트 셀, 상수 셀, 수식 셀, 최근 사용했던 셀 등)을 셀을 빠르게 찾아냅니다.
 
 ## v0.8.6
 
