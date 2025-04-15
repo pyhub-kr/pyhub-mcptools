@@ -1,7 +1,7 @@
 import pytest
 
 from pyhub.mcptools.excel.tools import fix_data
-from pyhub.mcptools.excel.utils import json_loads, csv_loads
+from pyhub.mcptools.excel.utils import csv_loads, json_loads
 
 
 @pytest.mark.parametrize(

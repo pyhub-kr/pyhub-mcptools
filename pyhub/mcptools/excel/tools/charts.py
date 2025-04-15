@@ -4,7 +4,7 @@ from pydantic import Field
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
-from pyhub.mcptools.excel.types import ExcelChartType, ExcelRange
+from pyhub.mcptools.excel.types import ExcelChartType
 from pyhub.mcptools.excel.utils import get_range, get_sheet, json_dumps
 
 
@@ -61,11 +61,11 @@ def excel_get_charts(
 @mcp.tool()
 @macos_excel_request_permission
 def excel_add_chart(
-    source_sheet_range: ExcelRange = Field(
+    source_sheet_range: str = Field(
         description="Excel range containing the source data for the chart",
         examples=["A1:B10", "Sheet1!A1:C5", "Data!A1:D20"],
     ),
-    dest_sheet_range: ExcelRange = Field(
+    dest_sheet_range: str = Field(
         description="Excel range where the chart should be placed",
         examples=["D1:E10", "Sheet1!G1:H10", "Chart!A1:C10"],
     ),
@@ -189,7 +189,7 @@ def excel_set_chart_props(
         description="New chart type to set. If None, chart type remains unchanged.",
         examples=["LINE", "BAR", "PIE", "COLUMN"],
     ),
-    source_sheet_range: Optional[ExcelRange] = Field(
+    source_sheet_range: Optional[str] = Field(
         default=None,
         description="New Excel range for chart data. If None, source data remains unchanged.",
         examples=["A1:B10", "Sheet1!A1:C5", "Data!A1:D20"],
@@ -204,7 +204,7 @@ def excel_set_chart_props(
         description="Name of sheet containing new source data. If None, uses active sheet.",
         examples=["Sheet1", "Data"],
     ),
-    dest_sheet_range: Optional[ExcelRange] = Field(
+    dest_sheet_range: Optional[str] = Field(
         default=None,
         description="New Excel range for chart position and size. If None, position remains unchanged.",
         examples=["D1:E10", "Sheet1!G1:H10", "Chart!A1:C10"],

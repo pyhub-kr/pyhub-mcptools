@@ -12,7 +12,7 @@ from pydantic import Field
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
-from pyhub.mcptools.excel.types import ExcelExpandMode, ExcelFormula, ExcelGetValuesResponse, ExcelRange
+from pyhub.mcptools.excel.types import ExcelExpandMode, ExcelGetValuesResponse
 from pyhub.mcptools.excel.utils import (
     convert_to_csv,
     csv_loads,
@@ -148,7 +148,7 @@ def excel_find_data_ranges(
 @mcp.tool()
 @macos_excel_request_permission
 def excel_get_values(
-    sheet_range: Optional[ExcelRange] = Field(
+    sheet_range: str = Field(
         default=None,
         description="""Excel range to get data. If not specified, uses the entire used range of the sheet.
             Important: When using expand_mode, specify ONLY the starting cell (e.g., 'A1' not 'A1:B10')
@@ -227,7 +227,7 @@ def excel_get_values(
 @mcp.tool()
 @macos_excel_request_permission
 def excel_set_values(
-    sheet_range: ExcelRange = Field(
+    sheet_range: str = Field(
         description="Excel range where to write the data",
         examples=["A1", "B2:B10", "Sheet1!A1:C5"],
     ),
@@ -317,7 +317,7 @@ def excel_set_values(
 @mcp.tool()
 @macos_excel_request_permission
 def excel_autofit(
-    sheet_range: ExcelRange = Field(
+    sheet_range: str = Field(
         description="Excel range to autofit",
         examples=["A1:D10", "A:E"],
     ),
@@ -374,11 +374,11 @@ def excel_autofit(
 @mcp.tool()
 @macos_excel_request_permission
 def excel_set_formula(
-    sheet_range: ExcelRange = Field(
+    sheet_range: str = Field(
         description="Excel range where to apply the formula",
         examples=["A1", "B2:B10", "Sheet1!C1:C10"],
     ),
-    formula: ExcelFormula = Field(
+    formula: str = Field(
         description="Excel formula to set. Must start with '=' and follow Excel formula syntax.",
         examples=["=SUM(B1:B10)", "=A1*B1", "=VLOOKUP(A1, Sheet2!A:B, 2, FALSE)"],
     ),

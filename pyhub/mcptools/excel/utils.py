@@ -11,8 +11,6 @@ from typing import Any, Optional, Union
 import xlwings as xw
 from django.template import Context, Template
 
-from pyhub.mcptools.excel.types import ExcelRange
-
 
 def get_sheet(
     book_name: Optional[str] = None,
@@ -32,7 +30,7 @@ def get_sheet(
 
 
 def get_range(
-    sheet_range: ExcelRange,
+    sheet_range: str,
     book_name: Optional[str] = None,
     sheet_name: Optional[str] = None,
 ) -> xw.Range:
@@ -46,7 +44,7 @@ def get_range(
     return range_
 
 
-def fix_data(sheet_range: ExcelRange, values: Union[str, list]) -> Union[str, list]:
+def fix_data(sheet_range: str, values: Union[str, list]) -> Union[str, list]:
     """
     sheet_range가 열 방향인데, 값이 리스트이지만 중첩 리스트가 아니라면 중첩 리스트로 변환합니다.
 
