@@ -10,6 +10,7 @@ copyright: Copyright &copy; 2025 파이썬사랑방 (<a href="mailto:me@pyhub.kr
 
 theme:
   name: material
+  custom_dir: overrides
   palette:
     primary: indigo
     accent: indigo
