@@ -1,4 +1,4 @@
-# macOS
+# macOS (Claude Desktop)
 
 ## 시작하기에 앞서
 

@@ -65,5 +65,7 @@ DRM이 걸린 엑셀 문서도 엑셀 프로그램을 통해 열려있는 상황
 
 ## 지원 플랫폼
 
-+ [윈도우 설치 방법](./setup/windows/index.md)
-+ [macOS 설치 방법](./setup/macos/index.md)
++ Claude desktop
+    - [윈도우 설치 방법](./setup/windows/index.md)
+    - [macOS 설치 방법](./setup/macos/index.md)
++ [Cursor 설치 방법 (공통)](./setup/cursor/index.md)

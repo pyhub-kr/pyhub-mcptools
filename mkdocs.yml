@@ -81,6 +81,7 @@ nav:
       - setup/index.md
       - setup/windows/index.md
       - setup/macos/index.md
+      - setup/cursor/index.md
       - setup/sse/index.md
       - setup/env/index.md
   - MCP 도구:
