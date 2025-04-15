@@ -9,10 +9,17 @@ from typing import Optional, Union
 
 import xlwings as xw
 from pydantic import Field
+from xlwings.constants import HAlign, VAlign, xlLTR
 
 from pyhub.mcptools import mcp
+from pyhub.mcptools.core.choices import OS
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
-from pyhub.mcptools.excel.types import ExcelExpandMode, ExcelGetValuesResponse
+from pyhub.mcptools.excel.types import (
+    ExcelExpandMode,
+    ExcelGetValuesResponse,
+    ExcelHorizontalAlignment,
+    ExcelVerticalAlignment,
+)
 from pyhub.mcptools.excel.utils import (
     convert_to_csv,
     csv_loads,
@@ -200,16 +207,12 @@ def excel_get_values(
         >>> excel_get_values("C1", expand_mode="down")  # Gets column data starting from C1
     """
 
-    # expand_mode가 지정되어있을 때, 시트 범위에서 시작 셀 좌표만 추출.
-    # Claude에서 expand_mode를 지정했을 때에도 sheet range를 너무 크게 잡을 때가 있음.
-    if expand_mode is not None:
-        sheet_range = sheet_range.split(":", 1)[0]
-
-    range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
-
-    if expand_mode is not None:
-        range_ = range_.expand(mode=expand_mode.value.lower())
-
+    range_ = get_range(
+        sheet_range=sheet_range,
+        book_name=book_name,
+        sheet_name=sheet_name,
+        expand_mode=expand_mode,
+    )
     data = range_.value
 
     if data is None:
@@ -316,6 +319,174 @@ def excel_set_values(
 
 @mcp.tool()
 @macos_excel_request_permission
+def excel_set_styles(
+    sheet_range: str = Field(
+        description=(
+            "Excel range to apply styles. Supports both continuous ranges (e.g., 'A1:C5') "
+            "and discontinuous ranges (e.g., 'A1,C3,D5')."
+        ),
+        examples=["A1", "B2:B10", "Sheet1!A1:C5", "A1,C3,D5", "A1:B2,D4:E6"],
+    ),
+    book_name: Optional[str] = Field(
+        default=None,
+        description="Name of workbook to use. If None, uses active workbook.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: Optional[str] = Field(
+        default=None,
+        description="Name of sheet to use. If None, uses active sheet.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    expand_mode: Optional[ExcelExpandMode] = Field(
+        default=None,
+        description="""Mode for automatically expanding the selection range. Options:
+            - "table": Expands right and down from starting cell
+            - "right": Expands horizontally to include contiguous data
+            - "down": Expands vertically to include contiguous data""",
+        examples=["table", "right", "down"],
+    ),
+    reset: bool = Field(
+        default=False,
+        description="If True, resets all styles to default values before applying new styles.",
+    ),
+    background_color: Optional[str] = Field(
+        default=None,
+        description="RGB color for cell background (e.g., '255,255,0' for yellow)",
+        examples=["255,255,0", "255,0,0"],
+    ),
+    font_color: Optional[str] = Field(
+        default=None,
+        description="RGB color for font (e.g., '255,0,0' for red)",
+        examples=["255,0,0", "0,0,255"],
+    ),
+    bold: Optional[bool] = Field(
+        default=False,
+        description="If True, makes the font bold.",
+    ),
+    italic: Optional[bool] = Field(
+        default=False,
+        description="If True, makes the font italic.",
+    ),
+    strikethrough: Optional[bool] = Field(
+        default=False,
+        description="If True, adds strikethrough to text. Windows only.",
+    ),
+    underline: Optional[bool] = Field(
+        default=False,
+        description="If True, adds underline to text. Windows only.",
+    ),
+    horizontal_alignment: Optional[ExcelHorizontalAlignment] = Field(
+        None,
+        description=f"""The horizontal alignment of the cells. Windows only.
+{dict(((v.value, v.label) for v in ExcelHorizontalAlignment))}""",
+    ),
+    vertical_alignment: Optional[ExcelVerticalAlignment] = Field(
+        None,
+        description=f"""The vertical alignment of the cells. Windows only.
+{dict(((v.value, v.label) for v in ExcelVerticalAlignment))}""",
+    ),
+) -> str:
+    """Apply styles to a specified range in an Excel workbook.
+
+    Applies various formatting options to cells in the specified range. Uses the active workbook
+    and sheet by default if no specific book_name or sheet_name is provided.
+
+    Style Options:
+        - Colors: Background and font colors using RGB format (e.g., '255,255,0' for yellow)
+        - Font styles: Bold and italic
+        - Windows-only features:
+            - Text decoration: Strikethrough and underline
+            - Alignment: Horizontal and vertical cell alignment
+        - Reset: Resets all styles to default values before applying new styles
+
+    Range Format Support:
+        - Single cell: 'A1'
+        - Continuous range: 'A1:C5'
+        - Sheet-specific range: 'Sheet1!A1:C5'
+        - Discontinuous ranges: 'A1,C3,D5' or 'A1:B2,D4:E6'
+
+    Returns:
+        str: The address of the range where styles were applied.
+
+    Examples:
+        >>> excel_set_styles("A1:B10", background_color="255,255,0")  # Yellow background
+        >>> excel_set_styles("C1", bold=True, italic=True)  # Bold and italic text
+        >>> excel_set_styles("Sheet1!D1:D10", font_color="255,0,0")  # Red text
+        >>> excel_set_styles("A1:C5", horizontal_alignment="center")  # Center align (Windows only)
+        >>> excel_set_styles("A1:B10", reset=True)  # Reset all styles to default
+    """
+    range_ = get_range(
+        sheet_range=sheet_range,
+        book_name=book_name,
+        sheet_name=sheet_name,
+        expand_mode=expand_mode,
+    )
+
+    def make_tuple(rgb_code: str) -> tuple[int, int, int]:
+        r, g, b = tuple(map(int, rgb_code.split(",")))
+        return r, g, b
+
+    if reset:
+        range_.color = None
+        range_.font.color = None
+        range_.font.bold = False
+        range_.font.italic = False
+
+        range_.number_format = "General"
+
+        if OS.current_is_windows():
+            # range_.font.name = None  # 값만 변경될 뿐, 리셋 X
+            # range_.font.size = None  # 값만 변경될 뿐, 리셋 X
+            range_.api.WrapText = False
+            # range_.api.Borders.LineStyle = -4142  # What ?
+            range_.api.IndentLevel = 0
+            range_.api.ShrinkToFit = False
+            # range_.api.MergeCells = False  # 병합된 셀에 걸쳐져있어도 셀 병합 해제
+
+            range_.api.Strikethrough = False  # Reset strikethrough
+            range_.api.Underline = False  # Reset underline
+            range_.api.HorizontalAlignment = HAlign.left  # Reset horizontal alignment
+            range_.api.VerticalAlignment = VAlign.bottom  # Reset vertical alignment
+            range_.api.Orientation = 0  # Reset text rotation
+            range_.api.ReadingOrder = xlLTR  # Reset reading order to left-to-right
+
+            # Reset conditional formatting
+            range_.api.FormatConditions.Delete()
+
+            # Reset validation
+            range_.api.Validation.Delete()
+
+    # Apply new styles if specified
+    if background_color is not None:
+        range_.color = make_tuple(background_color)
+
+    if font_color is not None:
+        range_.font.color = make_tuple(font_color)
+
+    if bold is not None:
+        range_.font.bold = bold
+
+    if italic is not None:
+        range_.font.italic = italic
+
+    if OS.current_is_windows():
+        if strikethrough is not None:
+            range_.api.Strikethrough = strikethrough
+
+        if underline is not None:
+            range_.api.Underline = underline
+
+        if horizontal_alignment is not None:
+            range_.api.HorizontalAlignment = horizontal_alignment
+
+        if vertical_alignment is not None:
+            range_.api.VerticalAlignment = vertical_alignment
+
+    return range_.expand("table").get_address()
+
+
+@mcp.tool()
+@macos_excel_request_permission
 def excel_autofit(
     sheet_range: str = Field(
         description="Excel range to autofit",
@@ -362,12 +533,12 @@ def excel_autofit(
         >>> excel_autofit("A1", expand_mode="table")  # Autofit table data
     """
 
-    if expand_mode is not None:
-        sheet_range = sheet_range.split(":", 1)[0]
-
-    range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
-    if expand_mode is not None:
-        range_ = range_.expand(mode=expand_mode.value.lower())
+    range_ = get_range(
+        sheet_range=sheet_range,
+        book_name=book_name,
+        sheet_name=sheet_name,
+        expand_mode=expand_mode,
+    )
     range_.autofit()
 
 

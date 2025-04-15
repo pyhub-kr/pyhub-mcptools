@@ -11,6 +11,8 @@ from typing import Any, Optional, Union
 import xlwings as xw
 from django.template import Context, Template
 
+from pyhub.mcptools.excel.types import ExcelExpandMode
+
 
 def get_sheet(
     book_name: Optional[str] = None,
@@ -33,13 +35,22 @@ def get_range(
     sheet_range: str,
     book_name: Optional[str] = None,
     sheet_name: Optional[str] = None,
+    expand_mode: Optional[ExcelExpandMode] = None,
 ) -> xw.Range:
+    # expand_mode가 지정되어있을 때, 시트 범위에서 시작 셀 좌표만 추출.
+    # Claude에서 expand_mode를 지정했을 때에도 sheet range를 너무 크게 잡을 때가 있음.
+    if expand_mode is not None:
+        sheet_range = sheet_range.split(":", 1)[0]
+
     sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
 
     if sheet_range is None:
         range_ = sheet.used_range
     else:
         range_ = sheet.range(sheet_range)
+
+    if expand_mode is not None:
+        range_ = range_.expand(mode=expand_mode.value.lower())
 
     return range_
 
