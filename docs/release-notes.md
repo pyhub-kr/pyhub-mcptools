@@ -13,6 +13,10 @@
 pyhub.mcptools update
 ```
 
+## v0.8.2
+
++ `settings.FS_LOCAL_ALLOWED_DIRECTORIES` 오타 수정
+
 ## v0.8.1
 
 + MCP 설정의 [환경변수 조회/추가/제거 명령 지원](./setup/env/index.md)

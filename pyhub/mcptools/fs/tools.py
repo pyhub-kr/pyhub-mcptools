@@ -486,4 +486,4 @@ def fs__list_allowed_directories() -> str:
         str: Formatted string listing all allowed directories
     """
 
-    return "Allowed directories:\n" + "\n".join(map(str, settings.FILESYSTEM_LOCAL_ALLOWED_DIRECTORIES))
+    return "Allowed directories:\n" + "\n".join(map(str, settings.FS_LOCAL_ALLOWED_DIRECTORIES))
