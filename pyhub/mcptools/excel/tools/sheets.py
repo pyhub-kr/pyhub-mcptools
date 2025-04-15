@@ -224,7 +224,6 @@ def excel_get_special_cells_address(
 @macos_excel_request_permission
 def excel_get_values(
     sheet_range: str = Field(
-        default=None,
         description="""Excel range to get data. If not specified, uses the entire used range of the sheet.
             Important: When using expand_mode, specify ONLY the starting cell (e.g., 'A1' not 'A1:B10')
             as the range will be automatically expanded.""",
@@ -302,17 +301,16 @@ def excel_set_values(
         description="Excel range where to write the data",
         examples=["A1", "B2:B10", "Sheet1!A1:C5"],
     ),
+    values: str = Field(
+        default="",  # Optional[str], default None으로 두니, Cursor 툴에서 Type Mismatch 오류 발생.
+        description="CSV string",
+    ),
     csv_abs_path: Optional[str] = Field(
         default=None,
         description="""Absolute path to the CSV file to read.
             If specified, this will override any value provided in the 'values' parameter.
             Either 'csv_abs_path' or 'values' must be provided, but not both.""",
         examples=["/path/to/data.csv"],
-    ),
-    values: Optional[Union[str, list]] = Field(
-        default=None,
-        description="""CSV string : "v1,v2,v3\\nv4,v5,v6""",
-        examples=["v1,v2,v3\nv4,v5,v6"],
     ),
     book_name: Optional[str] = Field(
         default=None,
