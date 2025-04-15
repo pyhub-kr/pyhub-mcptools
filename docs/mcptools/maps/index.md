@@ -2,19 +2,18 @@
 
 `NAVER_MAP_CLIENT_ID` 환경변수와 `NAVER_MAP_CLIENT_SECRET` 환경변수가 지정되면 네이버 길찾기 도구가 활성화됩니다.
 
+[공식문서](https://www.ncloud.com/product/applicationService/maps?region=KR#pricing)에 따르면
+무료 범위가 꽤 크기에 개인이 쓰실 때에는 과금없이 편리하게 사용하실 수 있습니다.
+
++ 지오코딩 API : 300만 요청까지 무료 (초과 건당 0.5원)
++ Directions 5 API : 6만건 요청까지 무료 (초과 건당 5원) 
+
 ## API 키 얻기
 
 [https://console.ncloud.com/naver-service/application](https://console.ncloud.com/naver-service/application) 페이지에서
 회원가입 후에 "AI NAVER API" 페이지에서 Application 생성 후에 API 키를 발급받으실 수 있습니다.
 
 ![](./assets/ncp-page.png)
-
-### 네이버 API 요금
-
-+ 지오코딩 API : 300만 요청까지 무료 (초과 건당 0.5원)
-+ Directions 5 API : 6만건 요청가지 무료 (초과 건당 5원) 
-
-참고: [공식문서](https://www.ncloud.com/product/applicationService/maps?region=KR#pricing)
 
 ## 네이버 지오코딩 도구
 
