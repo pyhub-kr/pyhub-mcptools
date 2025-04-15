@@ -13,6 +13,7 @@
 
 ### 시트 데이터 읽고 쓰기
 
++ [x] `excel_find_data_ranges` : 현재 시트에서 데이터가 있는 Range 목록 조회
 + [x] `excel_get_values` : 데이터 조회
 + [x] `excel_set_values` : 데이터 기록
 + [x] `excel_set_formula` : 수식 적용

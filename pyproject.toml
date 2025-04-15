@@ -1,6 +1,6 @@
 [project]
 name = "pyhub-mcptools"
-version = "0.8.3"
+version = "0.8.4"
 description = "파이썬사랑방 MCP 도구"
 readme = "README.md"
 requires-python = ">=3.10"

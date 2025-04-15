@@ -13,6 +13,11 @@
 pyhub.mcptools update
 ```
 
+## v0.8.4
+
++ [엑셀 도구](./mcptools/excel/index.md)에서 유저가 전달한 CSV 파일 읽기 지원
+    - 먼저 [파일시스템 도구](./mcptools/fs/index.md)를 활성화시켜주셔야 합니다.
+
 ## v0.8.3
 
 + [네이버 길찾기 도구](./mcptools/maps/index.md) 지원
