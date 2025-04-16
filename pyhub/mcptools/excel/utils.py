@@ -11,22 +11,20 @@ from typing import Any, Optional, Union
 import xlwings as xw
 from django.template import Context, Template
 
-from pyhub.mcptools.excel.types import ExcelExpandMode
-
 
 def get_sheet(
     book_name: Optional[str] = None,
     sheet_name: Optional[str] = None,
 ) -> xw.Sheet:
-    if book_name is None:
-        book = xw.books.active
-    else:
+    if book_name:
         book = xw.books[book_name]
-
-    if sheet_name is None:
-        sheet = book.sheets.active
     else:
+        book = xw.books.active
+
+    if sheet_name:
         sheet = book.sheets[sheet_name]
+    else:
+        sheet = book.sheets.active
 
     return sheet
 
@@ -35,7 +33,7 @@ def get_range(
     sheet_range: str,
     book_name: Optional[str] = None,
     sheet_name: Optional[str] = None,
-    expand_mode: Optional[ExcelExpandMode] = None,
+    expand_mode: Optional[str] = None,
 ) -> xw.Range:
     # sheet_range가 "Sheet1!A1" 형태일 경우 분리
     if sheet_range and "!" in sheet_range:
@@ -44,18 +42,18 @@ def get_range(
 
     # expand_mode가 지정되어있을 때, 시트 범위에서 시작 셀 좌표만 추출.
     # Claude에서 expand_mode를 지정했을 때에도 sheet range를 너무 크게 잡을 때가 있음.
-    if expand_mode is not None:
+    if expand_mode:
         sheet_range = sheet_range.split(":", 1)[0]
 
     sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
 
-    if sheet_range is None:
-        range_ = sheet.used_range
-    else:
+    if sheet_range:
         range_ = sheet.range(sheet_range)
+    else:
+        range_ = sheet.used_range
 
-    if expand_mode is not None:
-        range_ = range_.expand(mode=expand_mode.value.lower())
+    if expand_mode:
+        range_ = range_.expand(mode=expand_mode)
 
     return range_
 

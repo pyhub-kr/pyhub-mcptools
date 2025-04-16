@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import Field
 
 from pyhub.mcptools import mcp
@@ -11,39 +9,36 @@ from pyhub.mcptools.excel.utils import get_range, get_sheet, json_dumps
 @mcp.tool()
 @macos_excel_request_permission
 def excel_get_charts(
-    # book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook to use. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet to use. If None, uses active sheet.",
-    #     examples=["Sheet1", "Sales2023"],
-    # ),
+    book_name: str = Field(
+        default="",
+        description="Name of workbook to use. If not specified, uses active workbook.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: str = Field(
+        default="",
+        description="Name of sheet to use. If not specified, uses active sheet.",
+        examples=["Sheet1", "Sales2023"],
+    ),
 ) -> str:
     """Get a list of all charts in the specified Excel sheet.
 
-    Retrieves information about all charts in a specified Excel sheet. By default uses the active workbook
-    and sheet if no specific book_name or sheet_name is provided.
+    Retrieves chart information from specified sheet. Uses active workbook/sheet if not specified.
 
     Returns:
-        str: A JSON string containing a list of dictionaries with chart information.
-             Each dictionary has the following keys:
-             - name: The name of the chart
-             - left: The left position of the chart
-             - top: The top position of the chart
-             - width: The width of the chart
-             - height: The height of the chart
-             - index: Zero-based index of the chart
+        str: JSON string containing chart information list:
+            - name: Chart name
+            - left: Left position
+            - top: Top position
+            - width: Width
+            - height: Height
+            - index: Zero-based index
 
     Examples:
-        >>> excel_get_charts()  # Get charts from active sheet
-        >>> excel_get_charts("Sales.xlsx")  # Get charts from specific workbook
-        >>> excel_get_charts("Report.xlsx", "Sheet2")  # Get charts from specific sheet
+        >>> excel_get_charts()  # Active sheet
+        >>> excel_get_charts("Sales.xlsx")  # Specific workbook
+        >>> excel_get_charts("Report.xlsx", "Sheet2")  # Specific sheet
     """
 
-    book_name, sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
     sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
     return json_dumps(
         [
@@ -71,80 +66,77 @@ def excel_add_chart(
         description="Excel range where the chart should be placed",
         examples=["D1:E10", "Sheet1!G1:H10", "Chart!A1:C10"],
     ),
-    # source_book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook containing source data. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # source_sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet containing source data. If None, uses active sheet.",
-    #     examples=["Sheet1", "Sales2023"],
-    # ),
-    # dest_book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook where chart will be created. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # dest_sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet where chart will be created. If None, uses active sheet.",
-    #     examples=["Sheet1", "Sales2023"],
-    # ),
-    # TextChoices로 생성한 타입에 대해서 Optional을 지정하지 않으면, Claude Desktop이 죽습니다.
-    # 로그도 남겨지지 않아 이유를 알 수 없습니다.
-    type: Optional[ExcelChartType] = Field(
-        default=ExcelChartType.LINE,
-        description="Type of chart to create.",
+    source_book_name: str = Field(
+        default="",
+        description="Name of workbook containing source data. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
     ),
-    name: Optional[str] = Field(
-        default=None,
-        description="Name to assign to the chart. If None, Excel assigns a default name.",
+    source_sheet_name: str = Field(
+        default="",
+        description="Name of sheet containing source data. Optional.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    dest_book_name: str = Field(
+        default="",
+        description="Name of workbook where chart will be created. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    dest_sheet_name: str = Field(
+        default="",
+        description="Name of sheet where chart will be created. Optional.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    # FIXME: (확인 요망) TextChoices로 생성한 타입에 대해서 Optional을 지정하지 않으면, Claude Desktop이 죽습니다.
+    # 로그도 남겨지지 않아 이유를 알 수 없습니다.
+    chart_type: str = Field(
+        default=ExcelChartType.LINE.value,
+        description=ExcelChartType.get_description("Type of chart to create"),
+    ),
+    name: str = Field(
+        default="",
+        description="Name to assign to the chart. Optional.",
         examples=["SalesChart", "RevenueGraph", "TrendAnalysis"],
     ),
 ) -> str:
     """Add a new chart to an Excel sheet using data from a specified range.
 
-    Creates a new chart in the destination range using data from the source range. The chart can be
-    customized with different chart types and can be named for easier reference.
+    Creates a chart in the destination range using data from the source range.
+    Supports different chart types and custom naming.
 
-    Best Practices for Chart Placement:
+    Best Practices:
         1. Range Selection:
-           - If no specific destination range is provided, use excel_find_data_ranges() to:
-             * Identify existing data and chart areas
-             * Find suitable empty areas for chart placement
-           - Choose a range that doesn't overlap with existing content
+           - Use excel_find_data_ranges() to identify suitable empty areas
+           - Avoid overlapping with existing content
 
         2. Data Protection:
-           - ALWAYS check if the destination range contains existing content
-           - If existing content is found, confirm with the user before overwriting
-           - Consider using adjacent empty areas for better worksheet organization
+           - Check for existing content in destination range
+           - Confirm before overwriting existing content
 
     Chart Behavior:
-        - The destination range determines the size and position of the chart
-        - Chart types are defined in the ExcelChartType enum
-        - Source data should be properly formatted for the chosen chart type
-        - If source and destination are in different workbooks/sheets, both must be open
+        - Destination range determines chart size and position
+        - Chart types are defined in ExcelChartType enum
+        - Source data must match chosen chart type format
+        - Cross-workbook operations require both workbooks to be open
 
     Returns:
-        str: The name of the created chart.
+        str: Name of the created chart
 
     Examples:
-        # First check for existing data
-        >>> ranges = excel_find_data_ranges()  # Check existing data blocks
-        >>> # Choose appropriate empty range based on ranges result
-
         >>> excel_add_chart("A1:B10", "D1:E10")  # Basic line chart
-        >>> excel_add_chart("Sheet1!A1:C5", "D1:F10", type=ExcelChartType.BAR)  # Bar chart
+        >>> excel_add_chart("Sheet1!A1:C5", "D1:F10", chart_type="bar")  # Bar chart
         >>> excel_add_chart("Data!A1:B10", "Chart!C1:D10", name="SalesChart")  # Named chart
-        >>> excel_add_chart("A1:D5", "E1:H10", source_sheet_name="Data", dest_sheet_name="Charts")  # Different sheets
     """
 
-    source_book_name, source_sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
-    dest_book_name, dest_sheet_name = None, None
-
-    source_range_ = get_range(sheet_range=source_sheet_range, book_name=source_book_name, sheet_name=source_sheet_name)
-    dest_range_ = get_range(sheet_range=dest_sheet_range, book_name=dest_book_name, sheet_name=dest_sheet_name)
+    source_range_ = get_range(
+        sheet_range=source_sheet_range,
+        book_name=source_book_name,
+        sheet_name=source_sheet_name,
+    )
+    dest_range_ = get_range(
+        sheet_range=dest_sheet_range,
+        book_name=dest_book_name,
+        sheet_name=dest_sheet_name,
+    )
 
     dest_sheet = dest_range_.sheet
 
@@ -154,7 +146,7 @@ def excel_add_chart(
         width=dest_range_.width,
         height=dest_range_.height,
     )
-    chart.chart_type = type.value
+    chart.chart_type = chart_type
     chart.set_source_data(source_range_)
     if name is not None:
         chart.name = name
@@ -165,132 +157,103 @@ def excel_add_chart(
 @mcp.tool()
 @macos_excel_request_permission
 def excel_set_chart_props(
-    name: Optional[str] = Field(
-        default=None,
+    name: str = Field(
         description="The name of the chart to modify.",
         examples=["SalesChart", "RevenueGraph"],
     ),
-    index: Optional[int] = Field(
-        default=None,
-        description="The zero-based index of the chart to modify.",
-        examples=[0, 1, 2],
+    chart_book_name: str = Field(
+        default="",
+        description="Name of workbook containing the chart. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
     ),
-    # chart_book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook containing the chart. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # chart_sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet containing the chart. If None, uses active sheet.",
-    #     examples=["Sheet1", "Charts"],
-    # ),
-    new_name: Optional[str] = Field(
-        default=None,
-        description="New name to assign to the chart. If None, name remains unchanged.",
+    chart_sheet_name: str = Field(
+        default="",
+        description="Name of sheet containing the chart. Optional.",
+        examples=["Sheet1", "Charts"],
+    ),
+    new_name: str = Field(
+        default="",
+        description="New name to assign to the chart. Optional.",
         examples=["UpdatedSalesChart", "Q2Revenue"],
     ),
-    new_chart_type: Optional[ExcelChartType] = Field(
-        default=None,
-        description="New chart type to set. If None, chart type remains unchanged.",
-        examples=["LINE", "BAR", "PIE", "COLUMN"],
+    new_chart_type: str = Field(
+        default=ExcelChartType.get_none_value(),
+        description=ExcelChartType.get_description(),
     ),
-    source_sheet_range: Optional[str] = Field(
-        default=None,
-        description="New Excel range for chart data. If None, source data remains unchanged.",
+    source_sheet_range: str = Field(
+        default="",
+        description="New Excel range for chart data. Optional.",
         examples=["A1:B10", "Sheet1!A1:C5", "Data!A1:D20"],
     ),
-    # source_book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook containing new source data. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # source_sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet containing new source data. If None, uses active sheet.",
-    #     examples=["Sheet1", "Data"],
-    # ),
-    dest_sheet_range: Optional[str] = Field(
-        default=None,
-        description="New Excel range for chart position and size. If None, position remains unchanged.",
+    source_book_name: str = Field(
+        default="",
+        description="Name of workbook containing new source data. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    source_sheet_name: str = Field(
+        default="",
+        description="Name of sheet containing new source data. Optional.",
+        examples=["Sheet1", "Data"],
+    ),
+    dest_sheet_range: str = Field(
+        default="",
+        description="New Excel range for chart position and size. Optional.",
         examples=["D1:E10", "Sheet1!G1:H10", "Chart!A1:C10"],
     ),
-    # dest_book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook for destination. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # dest_sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet for destination. If None, uses active sheet.",
-    #     examples=["Sheet1", "Charts"],
-    # ),
+    dest_book_name: str = Field(
+        default="",
+        description="Name of workbook for destination. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    dest_sheet_name: str = Field(
+        default="",
+        description="Name of sheet for destination. Optional.",
+        examples=["Sheet1", "Charts"],
+    ),
 ) -> str:
     """Update properties of an existing chart in an Excel sheet.
 
-    Modifies properties of a specified chart, such as its name, source data range, or position.
-    The chart can be identified by its name or index, and the function allows updating the chart name,
-    source data range, and/or the chart's position and size.
+    Modifies chart properties including name, source data range, chart type, and position/size.
 
-    Best Practices for Chart Updates:
+    Best Practices:
         1. Range Changes:
-           - When updating chart position (dest_sheet_range), use excel_find_data_ranges() to:
-             * Identify existing data and chart areas
-             * Find suitable empty areas for the new chart position
-           - Choose a range that doesn't overlap with existing content
+           - Use excel_find_data_ranges() to identify suitable empty areas
+           - Avoid overlapping with existing content
 
         2. Data Protection:
-           - ALWAYS check if the new destination range contains existing content
-           - If existing content is found, confirm with the user before moving the chart
-           - Consider using adjacent empty areas for better worksheet organization
+           - Check for existing content in destination range
+           - Confirm before overwriting existing content
 
         3. Source Data Changes:
-           - When updating source data range, verify the data format is compatible
-           - Ensure the new data range contains appropriate data for the chart type
+           - Verify data format compatibility
+           - Ensure data is appropriate for chart type
 
-    Chart Update Rules:
-        - At least one of new_name, source_sheet_range, dest_sheet_range,
-          or new_chart_type must be provided to make any changes
-        - The chart must exist in the specified workbook/sheet
-        - If changing source data from a different workbook/sheet, both must be open
-        - Source data should be properly formatted for the chart type
-        - The dest_sheet_range determines the new position and size of the chart if provided
+    Rules:
+        - Requires at least one change parameter (new_name, source_sheet_range, etc.)
+        - Chart must exist in specified workbook/sheet
+        - Both source and destination workbooks must be open for cross-workbook changes
+        - dest_sheet_range controls chart position and size
 
     Returns:
-        str: The name of the chart after modifications (either original name or new name if changed).
+        str: Chart name after modifications
 
     Examples:
-        # When moving chart to new position, first check for existing data
-        >>> ranges = excel_find_data_ranges()  # Check existing data blocks
-        >>> # Choose appropriate empty range based on ranges result
-
-        >>> excel_set_chart_props(name="SalesChart", new_name="Q2Sales")  # Rename chart
-        >>> excel_set_chart_props(index=0, new_chart_type="bar")  # Change type
-        >>> excel_set_chart_props("RevenueChart", source_sheet_range="A1:B20")  # Update data
+        >>> excel_set_chart_props(name="SalesChart", new_name="Q2Sales")  # Rename
+        >>> excel_set_chart_props(name="RevenueChart", new_chart_type="bar")  # Change type
+        >>> excel_set_chart_props("TrendChart", source_sheet_range="A1:B20")  # Update data
         >>> excel_set_chart_props("TrendChart", dest_sheet_range="E1:F10")  # Move chart
     """
-    if name is None and index is None:
-        raise ValueError("Either name or index must be provided")
-    if name is not None and index is not None:
-        raise ValueError("Only one of name or index should be provided")
-
-    chart_book_name, chart_sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
-    source_book_name, source_sheet_name = None, None
-    dest_book_name, dest_sheet_name = None, None
 
     chart_sheet = get_sheet(book_name=chart_book_name, sheet_name=chart_sheet_name)
-    if name is not None:
-        chart = chart_sheet.charts[name]
-    else:
-        chart = chart_sheet.charts[index]
+    chart = chart_sheet.charts[name]
 
-    if new_name is not None:
+    if new_name:
         chart.name = new_name
 
-    if new_chart_type is not None:
-        chart.chart_type = new_chart_type.value
+    if new_chart_type:
+        chart.chart_type = new_chart_type
 
-    if source_sheet_range is not None:
+    if source_sheet_range:
         source_range_ = get_range(
             sheet_range=source_sheet_range,
             book_name=source_book_name,
@@ -298,7 +261,7 @@ def excel_set_chart_props(
         )
         chart.set_source_data(source_range_)
 
-    if dest_sheet_range is not None:
+    if dest_sheet_range:
         dest_range_ = get_range(sheet_range=dest_sheet_range, book_name=dest_book_name, sheet_name=dest_sheet_name)
         chart.left = dest_range_.left
         chart.top = dest_range_.top

@@ -1,16 +1,16 @@
-from django.db.models import IntegerChoices
-from django.db.models.enums import TextChoices
 from pydantic import BaseModel, Field
 from xlwings.constants import CellType, HAlign, VAlign
 
+from pyhub.mcptools.core.types import PyHubIntegerChoices, PyHubTextChoices
 
-class ExcelExpandMode(TextChoices):
+
+class ExcelExpandMode(PyHubTextChoices):
     TABLE = "table"
     RIGHT = "right"
     DOWN = "down"
 
 
-class ExcelChartType(TextChoices):
+class ExcelChartType(PyHubTextChoices):
     THREE_D_AREA = "3d_area", "3D Area"
     THREE_D_AREA_STACKED = "3d_area_stacked", "3D Area Stacked"
     THREE_D_AREA_STACKED_100 = "3d_area_stacked_100", "3D Area Stacked 100"
@@ -93,7 +93,7 @@ class ExcelGetValuesResponse(BaseModel):
     data: str = Field(description="CSV 형식의 Excel 데이터", examples=["value1,value2\nvalue3,value4"])
 
 
-class ExcelHorizontalAlignment(IntegerChoices):
+class ExcelHorizontalAlignment(PyHubIntegerChoices):
     GENERAL = HAlign.xlHAlignGeneral, "일반"
     LEFT = HAlign.xlHAlignLeft, "왼쪽 정렬"
     CENTER = HAlign.xlHAlignCenter, "가운데 정렬"
@@ -104,7 +104,7 @@ class ExcelHorizontalAlignment(IntegerChoices):
     DISTRIBUTED = HAlign.xlHAlignDistributed, "분산 정렬"
 
 
-class ExcelVerticalAlignment(IntegerChoices):
+class ExcelVerticalAlignment(PyHubIntegerChoices):
     TOP = VAlign.xlVAlignTop, "위쪽 정렬"
     CENTER = VAlign.xlVAlignCenter, "가운데 정렬"
     BOTTOM = VAlign.xlVAlignBottom, "아래쪽 정렬"
@@ -112,7 +112,7 @@ class ExcelVerticalAlignment(IntegerChoices):
     DISTRIBUTED = VAlign.xlVAlignDistributed, "분산 정렬"
 
 
-class ExcelCellType(IntegerChoices):
+class ExcelCellType(PyHubIntegerChoices):
     ALL_FORMAT_CONDITIONS = CellType.xlCellTypeAllFormatConditions, "All Format Conditions"
     ALL_VALIDATION = CellType.xlCellTypeAllValidation, "All Validations"
     BLANKS = CellType.xlCellTypeBlanks, "Blank Cells"

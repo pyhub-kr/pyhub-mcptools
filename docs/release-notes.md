@@ -13,6 +13,10 @@
 pyhub.mcptools update
 ```
 
+## v0.9.0
+
++ Cursor MCP 호환성 테스트 완료
+
 ## v0.8.8
 
 + (윈도우 전용) `excel_get_special_cells_address` 도구 지원

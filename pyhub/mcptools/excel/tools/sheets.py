@@ -3,7 +3,6 @@ Excel automation
 """
 
 from pathlib import Path
-from typing import Optional, Union
 
 import xlwings as xw
 from pydantic import Field
@@ -11,6 +10,7 @@ from xlwings.constants import HAlign, VAlign
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.core.choices import OS
+from pyhub.mcptools.core.types import StringBool
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
 from pyhub.mcptools.excel.types import (
     ExcelCellType,
@@ -65,43 +65,37 @@ def excel_get_opened_workbooks() -> str:
 @mcp.tool()
 @macos_excel_request_permission
 def excel_find_data_ranges(
-    # book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook to use. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet to use. If None, uses active sheet.",
-    #     examples=["Sheet1", "Sales2023"],
-    # ),
+    book_name: str = Field(
+        default="",
+        description="Name of workbook to use. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: str = Field(
+        default="",
+        description="Name of sheet to use. Optional.",
+        examples=["Sheet1", "Sales2023"],
+    ),
 ) -> str:
     """Detects and returns all distinct data block ranges in an Excel worksheet.
 
-    Scans the used range of the worksheet to identify contiguous blocks of non-empty cells,
-    interpreted as distinct tables. By default, it uses the active workbook and sheet unless
-    `book_name` or `sheet_name` is specified.
+    Scans worksheet to find contiguous blocks of non-empty cells.
+    Uses active workbook/sheet if not specified.
 
     Detection Rules:
-        - Identifies contiguous blocks of non-empty cells
-        - Uses Excel's native "table" expansion (`expand("table")`)
-        - Empty or whitespace-only cells serve as block boundaries
-        - Overlapping or adjacent blocks are merged to avoid duplication
+        - Finds contiguous non-empty cell blocks
+        - Uses Excel's table expansion
+        - Empty cells act as block boundaries
+        - Merges overlapping/adjacent blocks
 
     Returns:
-        str: A JSON-encoded list of data range addresses (absolute reference format, e.g., ["A1:I11", "K1:P11"])
+        str: JSON list of range addresses (e.g., ["A1:I11", "K1:P11"])
 
     Examples:
-        >>> excel_find_data_ranges()
-        >>> excel_find_data_ranges(book_name="Sales.xlsx")
-        >>> excel_find_data_ranges(book_name="Report.xlsx", sheet_name="Q1")
-
-    Note:
-        This function is particularly useful when automating Excel report generation,
-        layout validation, or intelligent placement of new content within structured worksheets.
+        >>> excel_find_data_ranges()  # Active sheet
+        >>> excel_find_data_ranges("Sales.xlsx")  # Specific workbook
+        >>> excel_find_data_ranges("Report.xlsx", "Q1")  # Specific sheet
     """
 
-    book_name, sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
     sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
 
     data_ranges = []
@@ -155,49 +149,32 @@ def excel_find_data_ranges(
 @macos_excel_request_permission
 def excel_get_special_cells_address(
     sheet_range: str = Field(
-        default=None,
+        default="",
         description="""Excel range to get data. If not specified, uses the entire used range of the sheet.
             Important: When using expand_mode, specify ONLY the starting cell (e.g., 'A1' not 'A1:B10')
             as the range will be automatically expanded.""",
         examples=["A1", "Sheet1!A1", "A1:C10"],
     ),
-    # book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook to use. If not specified, uses the active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet to use. If not specified, uses the active sheet.",
-    #     examples=["Sheet1", "Sales2023"],
-    # ),
-    expand_mode: Optional[ExcelExpandMode] = Field(
-        default=None,
-        description="""Mode for automatically expanding the selection range. When using expand_mode,
-            specify ONLY the starting cell in sheet_range (e.g., 'A1').
-
-            Supports:
-            - "table": Expands only to the right and down from the starting cell
-            - "right": Expands horizontally to include all contiguous data to the right
-            - "down": Expands vertically to include all contiguous data below
-
-            Note: All expand modes only work in the right/down direction from the starting cell.
-                  No expansion occurs to the left or upward direction.""",
-        examples=["table", "right", "down"],
+    book_name: str = Field(
+        default="",
+        description="Name of workbook to use. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
     ),
-    cell_type_filter: Optional[ExcelCellType] = Field(
-        None,
-        description=f"""Special Cells Filter : {dict(((v.value, v.label) for v in ExcelCellType))}""",
+    sheet_name: str = Field(
+        default="",
+        description="Name of sheet to use. Optional.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    expand_mode: str = Field(
+        default=ExcelExpandMode.get_none_value(),
+        description=ExcelExpandMode.get_description("Mode for automatically expanding the selection range"),
+    ),
+    cell_type_filter: int = Field(
+        default=ExcelCellType.get_none_value(),
+        description=ExcelCellType.get_description(),
     ),
 ) -> str:
     """Get the address of special cells in an Excel worksheet based on specified criteria.
-
-    Args:
-        sheet_range (str, optional): Target Excel range. Uses entire used range if not specified.
-        book_name (str, optional): Target workbook name. Uses active workbook if not specified.
-        sheet_name (str, optional): Target sheet name. Uses active sheet if not specified.
-        expand_mode (ExcelExpandMode, optional): Mode for expanding selection ('table', 'right', 'down').
-        cell_type_filter (ExcelCellType, optional): Filter for special cell types.
 
     Returns:
         str: Address of the special cells range.
@@ -206,7 +183,6 @@ def excel_get_special_cells_address(
         Windows-only feature.
     """
 
-    book_name, sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
     range_ = get_range(
         sheet_range=sheet_range,
         book_name=book_name,
@@ -215,7 +191,7 @@ def excel_get_special_cells_address(
     )
 
     if cell_type_filter:
-        return range_.api.SpecialCells(cell_type_filter.value).Address
+        return range_.api.SpecialCells(cell_type_filter).Address
 
     return range_.get_address()
 
@@ -227,31 +203,21 @@ def excel_get_values(
         description="""Excel range to get data. If not specified, uses the entire used range of the sheet.
             Important: When using expand_mode, specify ONLY the starting cell (e.g., 'A1' not 'A1:B10')
             as the range will be automatically expanded.""",
-        examples=["A1", "Sheet1!A1", "A1:C10"],  # expand_mode 사용 시에는 A1 형식만 사용
+        examples=["A1", "Sheet1!A1", "A1:C10"],
     ),
-    # book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook to use. If not specified, uses the active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet to use. If not specified, uses the active sheet.",
-    #     examples=["Sheet1", "Sales2023"],
-    # ),
-    expand_mode: Optional[ExcelExpandMode] = Field(
-        default=None,
-        description="""Mode for automatically expanding the selection range. When using expand_mode,
-            specify ONLY the starting cell in sheet_range (e.g., 'A1').
-
-            Supports:
-            - "table": Expands only to the right and down from the starting cell
-            - "right": Expands horizontally to include all contiguous data to the right
-            - "down": Expands vertically to include all contiguous data below
-
-            Note: All expand modes only work in the right/down direction from the starting cell.
-                  No expansion occurs to the left or upward direction.""",
-        examples=["table", "right", "down"],
+    book_name: str = Field(
+        default="",
+        description="Name of workbook to use. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: str = Field(
+        default="",
+        description="Name of sheet to use. Optional.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    expand_mode: str = Field(
+        default=ExcelExpandMode.get_none_value(),
+        description=ExcelExpandMode.get_description("Mode for automatically expanding the selection range"),
     ),
 ) -> ExcelGetValuesResponse:
     """Get data from Excel workbook.
@@ -274,7 +240,6 @@ def excel_get_values(
         >>> excel_get_values("C1", expand_mode="down")  # Gets column data starting from C1
     """
 
-    book_name, sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
     range_ = get_range(
         sheet_range=sheet_range,
         book_name=book_name,
@@ -303,23 +268,23 @@ def excel_set_values(
         examples=["A1", "B2:B10", "Sheet1!A1:C5"],
     ),
     values: str = Field(description="CSV string"),
-    # csv_abs_path: Optional[str] = Field(
-    #     default=None,
-    #     description="""Absolute path to the CSV file to read.
-    #         If specified, this will override any value provided in the 'values' parameter.
-    #         Either 'csv_abs_path' or 'values' must be provided, but not both.""",
-    #     examples=["/path/to/data.csv"],
-    # ),
-    # book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook to use. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet to use. If None, uses active sheet.",
-    #     examples=["Sheet1", "Sales2023"],
-    # ),
+    csv_abs_path: str = Field(
+        default="",
+        description="""Absolute path to the CSV file to read.
+            If specified, this will override any value provided in the 'values' parameter.
+            Either 'csv_abs_path' or 'values' must be provided, but not both.""",
+        examples=["/path/to/data.csv"],
+    ),
+    book_name: str = Field(
+        default="",
+        description="Name of workbook to use. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: str = Field(
+        default="",
+        description="Name of sheet to use. Optional.",
+        examples=["Sheet1", "Sales2023"],
+    ),
 ) -> str:
     """Write data to a specified range in an Excel workbook.
 
@@ -340,21 +305,21 @@ def excel_set_values(
         # CSV format
         >>> excel_set_values("A1", "v1,v2,v3\\nv4,v5,v6")  # 2x3 grid using CSV
     """
-    book_name, sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
+
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
 
-    # if csv_abs_path is not None:
-    #     csv_path: Path = validate_path(csv_abs_path)
-    #     with csv_path.open("rt", encoding="utf-8") as f:
-    #         values = csv_loads(f.read())
+    if csv_abs_path:
+        csv_path: Path = validate_path(csv_abs_path)
+        with csv_path.open("rt", encoding="utf-8") as f:
+            values = csv_loads(f.read())
 
-    # if values is not None:
-    if values.strip().startswith(("[", "{")):
-        data = json_loads(values)
+    if values is not None:
+        if values.strip().startswith(("[", "{")):
+            data = json_loads(values)
+        else:
+            data = csv_loads(values)
     else:
-        data = csv_loads(values)
-    # else:
-    #     raise ValueError("Either csv_abs_path or values must be provided.")
+        raise ValueError("Either csv_abs_path or values must be provided.")
 
     range_.value = fix_data(sheet_range, data)
 
@@ -371,63 +336,47 @@ def excel_set_styles(
         ),
         examples=["A1", "B2:B10", "Sheet1!A1:C5", "A1,C3,D5", "A1:B2,D4:E6"],
     ),
-    # book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook to use. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet to use. If None, uses active sheet.",
-    #     examples=["Sheet1", "Sales2023"],
-    # ),
-    expand_mode: Optional[ExcelExpandMode] = Field(
-        default=None,
-        description="""Mode for automatically expanding the selection range. Options:
-            - "table": Expands right and down from starting cell
-            - "right": Expands horizontally to include contiguous data
-            - "down": Expands vertically to include contiguous data""",
-        examples=["table", "right", "down"],
+    book_name: str = Field(
+        default="",
+        description="Name of workbook to use. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: str = Field(
+        default="",
+        description="Name of sheet to use. Optional.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    expand_mode: str = Field(
+        default=ExcelExpandMode.get_none_value(),
+        description=ExcelExpandMode.get_description("Mode for automatically expanding the selection range"),
     ),
     reset: bool = Field(
         default=False,
         description="If True, resets all styles to default values before applying new styles.",
     ),
-    background_color: Optional[str] = Field(
-        default=None,
-        description="RGB color for cell background (e.g., '255,255,0' for yellow)",
+    background_color: str = Field(
+        default="",
+        description="RGB color for cell background. Optional.",
         examples=["255,255,0", "255,0,0"],
     ),
-    font_color: Optional[str] = Field(
-        default=None,
-        description="RGB color for font (e.g., '255,0,0' for red)",
+    font_color: str = Field(
+        default="",
+        description="RGB color for font. Optional.",
         examples=["255,0,0", "0,0,255"],
     ),
-    bold: Optional[bool] = Field(
-        default=False,
-        description="If True, makes the font bold.",
+    bold: StringBool = Field(),
+    italic: StringBool = Field(),
+    # TODO: Tool 인자 응답에서 특정 조건에서는 인자들을 제외시키기
+    strikethrough: StringBool = Field(description="Windows only."),
+    underline: StringBool = Field(description="Windows only."),
+    horizontal_alignment: int = Field(
+        ExcelHorizontalAlignment.get_none_value(),
+        description=ExcelHorizontalAlignment.get_description("Windows only"),
+        # {dict(((v.value, v.label) for v in ExcelHorizontalAlignment))}""",
     ),
-    italic: Optional[bool] = Field(
-        default=False,
-        description="If True, makes the font italic.",
-    ),
-    strikethrough: Optional[bool] = Field(
-        default=False,
-        description="If True, adds strikethrough to text. Windows only.",
-    ),
-    underline: Optional[bool] = Field(
-        default=False,
-        description="If True, adds underline to text. Windows only.",
-    ),
-    horizontal_alignment: Optional[ExcelHorizontalAlignment] = Field(
-        None,
-        description=f"""The horizontal alignment of the cells. Windows only.
-{dict(((v.value, v.label) for v in ExcelHorizontalAlignment))}""",
-    ),
-    vertical_alignment: Optional[ExcelVerticalAlignment] = Field(
-        None,
-        description=f"""The vertical alignment of the cells. Windows only.
-{dict(((v.value, v.label) for v in ExcelVerticalAlignment))}""",
+    vertical_alignment: int = Field(
+        ExcelVerticalAlignment.get_none_value(),
+        description=ExcelVerticalAlignment.get_description("Windows only"),
     ),
 ) -> str:
     """Apply styles to a specified range in an Excel workbook.
@@ -454,13 +403,12 @@ def excel_set_styles(
 
     Examples:
         >>> excel_set_styles("A1:B10", background_color="255,255,0")  # Yellow background
-        >>> excel_set_styles("C1", bold=True, italic=True)  # Bold and italic text
+        >>> excel_set_styles("C1", bold=true, italic=true)
         >>> excel_set_styles("Sheet1!D1:D10", font_color="255,0,0")  # Red text
         >>> excel_set_styles("A1:C5", horizontal_alignment="center")  # Center align (Windows only)
-        >>> excel_set_styles("A1:B10", reset=True)  # Reset all styles to default
+        >>> excel_set_styles("A1:B10", reset=true)  # Reset all styles to default
     """
 
-    book_name, sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
     range_ = get_range(
         sheet_range=sheet_range,
         book_name=book_name,
@@ -503,29 +451,29 @@ def excel_set_styles(
             range_.api.Validation.Delete()
 
     # Apply new styles if specified
-    if background_color is not None:
+    if background_color:
         range_.color = make_tuple(background_color)
 
-    if font_color is not None:
+    if font_color:
         range_.font.color = make_tuple(font_color)
 
-    if bold is not None:
-        range_.font.bold = bold
+    if bold.is_specified():
+        range_.font.bold = bool(bold)
 
-    if italic is not None:
-        range_.font.italic = italic
+    if italic.is_specified():
+        range_.font.italic = bool(italic)
 
     if OS.current_is_windows():
-        if strikethrough is not None:
-            range_.api.Strikethrough = strikethrough
+        if strikethrough.is_specified():
+            range_.api.Strikethrough = bool(strikethrough)
 
-        if underline is not None:
-            range_.api.Underline = underline
+        if underline.is_specified():
+            range_.api.Underline = bool(underline)
 
-        if horizontal_alignment is not None:
+        if horizontal_alignment:
             range_.api.HorizontalAlignment = horizontal_alignment
 
-        if vertical_alignment is not None:
+        if vertical_alignment:
             range_.api.VerticalAlignment = vertical_alignment
 
     return range_.expand("table").get_address()
@@ -538,23 +486,19 @@ def excel_autofit(
         description="Excel range to autofit",
         examples=["A1:D10", "A:E"],
     ),
-    # book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook to use. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet to use. If None, uses active sheet.",
-    #     examples=["Sheet1", "Sales2023"],
-    # ),
-    expand_mode: Optional[ExcelExpandMode] = Field(
-        default=None,
-        description="""Mode for automatically expanding the selection range. Options:
-            - "table": Expands right and down from starting cell
-            - "right": Expands horizontally to include contiguous data
-            - "down": Expands vertically to include contiguous data""",
-        examples=["table", "right", "down"],
+    book_name: str = Field(
+        default="",
+        description="Name of workbook to use. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: str = Field(
+        default="",
+        description="Name of sheet to use. Optional.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    expand_mode: str = Field(
+        default=ExcelExpandMode.get_none_value(),
+        description=ExcelExpandMode.get_description("Mode for automatically expanding the selection range"),
     ),
 ) -> None:
     """Automatically adjusts column widths to fit the content in the specified Excel range.
@@ -579,7 +523,6 @@ def excel_autofit(
         >>> excel_autofit("A1", expand_mode="table")  # Autofit table data
     """
 
-    book_name, sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
     range_ = get_range(
         sheet_range=sheet_range,
         book_name=book_name,
@@ -600,16 +543,16 @@ def excel_set_formula(
         description="Excel formula to set. Must start with '=' and follow Excel formula syntax.",
         examples=["=SUM(B1:B10)", "=A1*B1", "=VLOOKUP(A1, Sheet2!A:B, 2, FALSE)"],
     ),
-    # book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook to use. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
-    # sheet_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of sheet to use. If None, uses active sheet.",
-    #     examples=["Sheet1", "Sales2023"],
-    # ),
+    book_name: str = Field(
+        default="",
+        description="Name of workbook to use. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: str = Field(
+        default="",
+        description="Name of sheet to use. Optional.",
+        examples=["Sheet1", "Sales2023"],
+    ),
 ) -> None:
     """Set a formula in a specified range of an Excel workbook.
 
@@ -633,7 +576,6 @@ def excel_set_formula(
         >>> excel_set_formula("Sheet1!E1", "=AVERAGE(A1:D1)", book_name="Sales.xlsx")  # Average
     """
 
-    book_name, sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
     range_.formula2 = formula
 
@@ -641,16 +583,16 @@ def excel_set_formula(
 @mcp.tool()
 @macos_excel_request_permission
 def excel_add_sheet(
-    name: Optional[str] = Field(
-        default=None,
-        description="Name of the new sheet. If None, Excel assigns a default name.",
+    name: str = Field(
+        default="",
+        description="Name of the new sheet. Optional.",
         examples=["Sales2024", "Summary", "Data"],
     ),
-    # book_name: Optional[str] = Field(
-    #     default=None,
-    #     description="Name of workbook to add sheet to. If None, uses active workbook.",
-    #     examples=["Sales.xlsx", "Report2023.xlsx"],
-    # ),
+    book_name: str = Field(
+        default="",
+        description="Name of workbook to add sheet to. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
     at_start: bool = Field(
         default=False,
         description="If True, adds the sheet at the beginning of the workbook.",
@@ -659,14 +601,14 @@ def excel_add_sheet(
         default=False,
         description="If True, adds the sheet at the end of the workbook.",
     ),
-    before_sheet_name: Optional[str] = Field(
-        default=None,
-        description="Name of the sheet before which to insert the new sheet.",
+    before_sheet_name: str = Field(
+        default="",
+        description="Name of the sheet before which to insert the new sheet. Optional.",
         examples=["Sheet1", "Summary"],
     ),
-    after_sheet_name: Optional[str] = Field(
-        default=None,
-        description="Name of the sheet after which to insert the new sheet.",
+    after_sheet_name: str = Field(
+        default="",
+        description="Name of the sheet after which to insert the new sheet. Optional.",
         examples=["Sheet1", "Summary"],
     ),
 ) -> str:
@@ -693,22 +635,24 @@ def excel_add_sheet(
     before_sheet = None
     after_sheet = None
 
-    book_name = None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
-
-    if book_name is None:
-        book = xw.books.active
-    else:
+    if book_name:
         book = xw.books[book_name]
+    else:
+        book = xw.books.active
 
     if at_start:
         before_sheet = book.sheets[0]
     elif at_end:
         after_sheet = book.sheets[-1]
-    elif before_sheet_name is not None:
+    elif before_sheet_name:
         before_sheet = book.sheets[before_sheet_name]
-    elif after_sheet_name is not None:
+    elif after_sheet_name:
         after_sheet = book.sheets[after_sheet_name]
 
-    book.sheets.add(name=name, before=before_sheet, after=after_sheet)
+    book.sheets.add(
+        name=name or None,  # 빈 문자열일 경우 None으로 지정하여 디폴트 값으로 동작
+        before=before_sheet,
+        after=after_sheet,
+    )
 
     return f"Successfully added a new sheet{' named ' + name if name else ''}."
