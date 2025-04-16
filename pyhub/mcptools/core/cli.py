@@ -24,7 +24,7 @@ from pydantic import BaseModel, ValidationError
 from rich.console import Console
 from rich.table import Table
 from typer.core import TyperCommand
-from typer.models import CommandFunctionType, OptionInfo
+from typer.models import ArgumentInfo, CommandFunctionType, OptionInfo
 
 from pyhub.mcptools.core.choices import OS, FormatChoices, McpHostChoices, TransportChoices
 from pyhub.mcptools.core.init import mcp
@@ -165,31 +165,56 @@ def list_():
 
 @app.command()
 def tools_list(
+    tool_names: Optional[list[str]] = typer.Argument(None),
     verbosity: int = typer.Option(
         2,
         "--verbosity",
         "-v",
         help="출력 상세 수준",
         min=1,
-        max=3,
+        max=4,
     ),
+    only_input_schema: bool = typer.Option(
+        False,
+        "--input-schema",
+        "-s",
+        help="Only print inputSchema",
+    ),
+    indent: Optional[int] = typer.Option(None, "--indent", "-i"),
 ):
     """도구 목록 출력"""
 
-    # list_ 함수에서 tools_list 함수 직접 호출 시에 디폴트 인자가 적용되면, OptionInfo 객체가 적용됩니다.
+    # list_ 함수에서 tools_list 함수 직접 호출 시에 디폴트 인자가 적용되면, ArgumentInfo/OptionInfo 객체가 적용됩니다.
+    if isinstance(tool_names, ArgumentInfo):
+        tool_names = tool_names.default
+
     if isinstance(verbosity, OptionInfo):
         verbosity = verbosity.default
 
+    if isinstance(only_input_schema, OptionInfo):
+        only_input_schema = only_input_schema.default
+
+    if isinstance(indent, OptionInfo):
+        indent = indent.default
+
     tools = async_to_sync(mcp.list_tools)()
 
-    # verbosity 수준에 따라 표시할 컬럼 결정
-    columns = ["name"]
-    if verbosity >= 2:
-        columns.append("description")
-    if verbosity >= 3:
-        columns.append("inputSchema")
+    if only_input_schema:
+        for tool in tools:
+            if tool_names is not None:
+                if tool.name not in tool_names:
+                    continue
+            print(json.dumps(tool.inputSchema, ensure_ascii=False, indent=indent))
 
-    print_as_table("tools", tools, columns=columns)
+    else:
+        # verbosity 수준에 따라 표시할 컬럼 결정
+        columns = ["name"]
+        if verbosity >= 2:
+            columns.append("description")
+        if verbosity >= 3:
+            columns.append("inputSchema")
+
+        print_as_table("tools", tools, columns=columns, tool_names=tool_names)
 
 
 @app.command()
@@ -951,7 +976,12 @@ def log_tail(
         raise typer.Exit(1) from e
 
 
-def print_as_table(title: str, rows: list[BaseModel], columns: Optional[list[str]] = None) -> None:
+def print_as_table(
+    title: str,
+    rows: list[BaseModel],
+    columns: Optional[list[str]] = None,
+    tool_names: Optional[list[str]] = None,
+) -> None:
     if len(rows) > 0:
         table = Table(title=f"[bold]{title}[/bold]", title_justify="left")
 
@@ -968,10 +998,12 @@ def print_as_table(title: str, rows: list[BaseModel], columns: Optional[list[str
             columns = []
             for name in column_names:
                 value = getattr(row, name, None)
-                if value is None:
-                    columns.append(f"{value}")
-                else:
-                    columns.append(f"[blue bold]{value}[/blue bold]")
+                columns.append(f"{value}")
+
+            if tool_names is not None:
+                if columns[0] not in tool_names:
+                    continue
+
             table.add_row(*columns)
 
         console.print(table)
