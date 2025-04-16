@@ -204,16 +204,19 @@ def applescript_run_sync(
 
 def csv_loads(csv_str: str) -> list[list[str]]:
     """Convert a CSV string to a list of lists.
+    각 행의 열 개수가 다른 경우, 부족한 열은 빈 문자열로 채워서 반환합니다.
 
     Args:
         csv_str: CSV formatted string with newlines and commas
 
     Returns:
-        List of lists containing the CSV data
+        List of lists containing the CSV data, with rows padded to equal length
 
     Examples:
         >>> csv_loads("a,b,c\\n1,2,3")
         [['a', 'b', 'c'], ['1', '2', '3']]
+        >>> csv_loads("a,b,c\\n1,2\\nx")
+        [['a', 'b', 'c'], ['1', '2', ''], ['x', '', '']]
     """
     if not csv_str.strip():
         return [[""]]
@@ -223,4 +226,42 @@ def csv_loads(csv_str: str) -> list[list[str]]:
 
     f = StringIO(csv_str)
     reader = csv.reader(f, dialect="excel")
-    return [row for row in reader]
+    data = [row for row in reader]
+
+    # 각 행의 열 개수를 동일하게 맞춥니다
+    return normalize_2d_data(data)
+
+
+def normalize_2d_data(data: list[list[Any]]) -> list[list[Any]]:
+    """2차원 데이터의 각 행의 열 개수를 동일하게 맞춥니다.
+    부족한 열은 빈 문자열로 채웁니다.
+    입력값이 2차원 리스트가 아닌 경우 그대로 반환합니다.
+
+    Args:
+        data: 2차원 리스트 데이터
+
+    Returns:
+        정규화된 2차원 리스트 또는 원본 데이터
+
+    Examples:
+        >>> data = [['a', 'b', 'c'], ['1', '2'], ['x']]
+        >>> normalize_2d_data(data)
+        [['a', 'b', 'c'], ['1', '2', ''], ['x', '', '']]
+        >>> normalize_2d_data(['a', 'b', 'c'])
+        ['a', 'b', 'c']
+        >>> normalize_2d_data("hello")
+        "hello"
+    """
+    # 입력값이 리스트가 아니거나, 빈 리스트이면 그대로 반환
+    if not isinstance(data, list) or not data:
+        return data
+
+    # 입력값이 2차원 리스트가 아니면 그대로 반환
+    if not all(isinstance(row, list) for row in data):
+        return data
+
+    # 가장 긴 행의 길이를 찾습니다
+    max_length = max(len(row) for row in data)
+
+    # 각 행을 순회하면서 부족한 열을 빈 문자열로 채웁니다
+    return [row + [""] * (max_length - len(row)) for row in data]
