@@ -37,6 +37,11 @@ def get_range(
     sheet_name: Optional[str] = None,
     expand_mode: Optional[ExcelExpandMode] = None,
 ) -> xw.Range:
+    # sheet_range가 "Sheet1!A1" 형태일 경우 분리
+    if sheet_range and "!" in sheet_range:
+        parsed_sheet_name, sheet_range = sheet_range.split("!", 1)
+        sheet_name = sheet_name or parsed_sheet_name
+
     # expand_mode가 지정되어있을 때, 시트 범위에서 시작 셀 좌표만 추출.
     # Claude에서 expand_mode를 지정했을 때에도 sheet range를 너무 크게 잡을 때가 있음.
     if expand_mode is not None:
