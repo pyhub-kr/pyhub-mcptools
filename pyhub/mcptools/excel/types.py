@@ -1,13 +1,21 @@
-from pydantic import BaseModel, Field
 from xlwings.constants import CellType, HAlign, VAlign
 
-from pyhub.mcptools.core.types import PyHubIntegerChoices, PyHubTextChoices
+from pyhub.mcptools.core.types import NOT_SPECIFIED, PyHubIntegerChoices, PyHubTextChoices
 
 
 class ExcelExpandMode(PyHubTextChoices):
-    TABLE = "table"
-    RIGHT = "right"
-    DOWN = "down"
+    TABLE = "table", "Expand both right and down"
+    RIGHT = "right", "Expand to the right"
+    DOWN = "down", "Expand downward"
+
+
+class ExcelGetValueType(PyHubTextChoices):
+    VALUES = "values"
+    FORMULA2 = "formula2"
+
+    @classmethod
+    def get_none_value(cls):
+        return NOT_SPECIFIED
 
 
 class ExcelChartType(PyHubTextChoices):
@@ -87,29 +95,23 @@ class ExcelChartType(PyHubTextChoices):
     XY_SCATTER_SMOOTH_NO_MARKERS = "xy_scatter_smooth_no_markers", "XY Scatter Smooth No Markers"
 
 
-class ExcelGetValuesResponse(BaseModel):
-    """Excel 데이터 응답 모델"""
-
-    data: str = Field(description="CSV 형식의 Excel 데이터", examples=["value1,value2\nvalue3,value4"])
-
-
 class ExcelHorizontalAlignment(PyHubIntegerChoices):
-    GENERAL = HAlign.xlHAlignGeneral, "일반"
-    LEFT = HAlign.xlHAlignLeft, "왼쪽 정렬"
-    CENTER = HAlign.xlHAlignCenter, "가운데 정렬"
-    RIGHT = HAlign.xlHAlignRight, "오른쪽 정렬"
-    FILL = HAlign.xlHAlignFill, "셀 채우기"
-    JUSTIFY = HAlign.xlHAlignJustify, "양쪽 정렬"
-    CENTER_ACROSS_SELECTION = HAlign.xlHAlignCenterAcrossSelection, "선택 범위 가운데 정렬"
-    DISTRIBUTED = HAlign.xlHAlignDistributed, "분산 정렬"
+    GENERAL = HAlign.xlHAlignGeneral, "General"
+    LEFT = HAlign.xlHAlignLeft, "Left"
+    CENTER = HAlign.xlHAlignCenter, "Center"
+    RIGHT = HAlign.xlHAlignRight, "Right"
+    FILL = HAlign.xlHAlignFill, "Fill"
+    JUSTIFY = HAlign.xlHAlignJustify, "Justify"
+    CENTER_ACROSS_SELECTION = HAlign.xlHAlignCenterAcrossSelection, "Center Across Selection"
+    DISTRIBUTED = HAlign.xlHAlignDistributed, "Distributed"
 
 
 class ExcelVerticalAlignment(PyHubIntegerChoices):
-    TOP = VAlign.xlVAlignTop, "위쪽 정렬"
-    CENTER = VAlign.xlVAlignCenter, "가운데 정렬"
-    BOTTOM = VAlign.xlVAlignBottom, "아래쪽 정렬"
-    JUSTIFY = VAlign.xlVAlignJustify, "양쪽 정렬"
-    DISTRIBUTED = VAlign.xlVAlignDistributed, "분산 정렬"
+    TOP = VAlign.xlVAlignTop, "Top"
+    CENTER = VAlign.xlVAlignCenter, "Center"
+    BOTTOM = VAlign.xlVAlignBottom, "Bottom"
+    JUSTIFY = VAlign.xlVAlignJustify, "Justify"
+    DISTRIBUTED = VAlign.xlVAlignDistributed, "Distributed"
 
 
 class ExcelCellType(PyHubIntegerChoices):

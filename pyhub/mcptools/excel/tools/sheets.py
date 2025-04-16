@@ -6,7 +6,6 @@ from pathlib import Path
 
 import xlwings as xw
 from pydantic import Field
-from xlwings.constants import HAlign, VAlign
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.core.choices import OS
@@ -15,9 +14,7 @@ from pyhub.mcptools.excel.decorators import macos_excel_request_permission
 from pyhub.mcptools.excel.types import (
     ExcelCellType,
     ExcelExpandMode,
-    ExcelGetValuesResponse,
-    ExcelHorizontalAlignment,
-    ExcelVerticalAlignment,
+    ExcelGetValueType,
 )
 from pyhub.mcptools.excel.utils import (
     convert_to_csv,
@@ -35,7 +32,22 @@ from pyhub.mcptools.fs.utils import validate_path
 @mcp.tool()
 @macos_excel_request_permission
 def excel_get_opened_workbooks() -> str:
-    """Get a list of all open workbooks and their sheets in Excel"""
+    """Get a list of all open workbooks and their sheets in Excel
+
+    Returns:
+        str: JSON string containing:
+            - books: List of open workbooks
+                - name: Workbook name
+                - fullname: Full path of workbook
+                - sheets: List of sheets in workbook
+                    - name: Sheet name
+                    - index: Sheet index
+                    - range: Used range address (e.g. "$A$1:$E$665")
+                    - count: Total number of cells in used range
+                    - shape: Tuple of (rows, columns) in used range
+                    - active: Whether this is the active sheet
+                - active: Whether this is the active workbook
+    """
 
     return json_dumps(
         {
@@ -219,7 +231,11 @@ def excel_get_values(
         default=ExcelExpandMode.get_none_value(),
         description=ExcelExpandMode.get_description("Mode for automatically expanding the selection range"),
     ),
-) -> ExcelGetValuesResponse:
+    value_type: str = Field(
+        default=ExcelGetValueType.get_none_value(),
+        description=ExcelGetValueType.get_description(),
+    ),
+) -> str:
     """Get data from Excel workbook.
 
     Retrieves data from a specified Excel range. By default uses the active workbook and sheet
@@ -230,14 +246,12 @@ def excel_get_values(
         The range will be automatically expanded based on the specified expand_mode.
 
     Returns:
-        ExcelGetValuesResponse: A response model containing the data in CSV format.
+        str: csv format
 
     Examples:
         >>> excel_get_values("A1")  # Gets single cell value
         >>> excel_get_values("A1:B10")  # Gets fixed range in CSV format
         >>> excel_get_values("A1", expand_mode="table")  # Gets table data starting from A1
-        >>> excel_get_values("B2", expand_mode="right")  # Gets row data starting from B2
-        >>> excel_get_values("C1", expand_mode="down")  # Gets column data starting from C1
     """
 
     range_ = get_range(
@@ -246,10 +260,14 @@ def excel_get_values(
         sheet_name=sheet_name,
         expand_mode=expand_mode,
     )
-    data = range_.value
+
+    if value_type == ExcelGetValueType.FORMULA2:
+        data = range_.formula2
+    else:
+        data = range_.value
 
     if data is None:
-        return ExcelGetValuesResponse(data="")
+        return ""
 
     # Convert single value to 2D list format
     if not isinstance(data, list):
@@ -257,7 +275,7 @@ def excel_get_values(
     elif data and not isinstance(data[0], list):
         data = [data]
 
-    return ExcelGetValuesResponse(data=convert_to_csv(data))
+    return convert_to_csv(data)
 
 
 @mcp.tool()
@@ -265,7 +283,7 @@ def excel_get_values(
 def excel_set_values(
     sheet_range: str = Field(
         description="Excel range where to write the data",
-        examples=["A1", "B2:B10", "Sheet1!A1:C5"],
+        examples=["A1", "B2:B10"],
     ),
     values: str = Field(description="CSV string"),
     csv_abs_path: str = Field(
@@ -288,22 +306,11 @@ def excel_set_values(
 ) -> str:
     """Write data to a specified range in an Excel workbook.
 
-    When adding values to consecutive cells, you only need to specify the starting cell coordinate,
-    and the data will be populated according to the dimensions of the input.
-
-    Range Format Rules:
-        - For multiple columns (e.g., "A1:C1"), ensure data matches the range width
-        - For multiple rows (e.g., "A1:A10"), ensure data matches the range height
-        - Each row must have the same number of columns
-        - Each column must have the same number of rows
-
     Returns:
-        str: The address of the range where data was written (e.g., "A1:C3").
-             This represents the actual range that was populated with data.
+        None
 
     Examples:
-        # CSV format
-        >>> excel_set_values("A1", "v1,v2,v3\\nv4,v5,v6")  # 2x3 grid using CSV
+        >>> excel_set_values(sheet_range="A1", values="v1,v2,v3\\nv4,v5,v6")  # grid using CSV
     """
 
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
@@ -323,7 +330,7 @@ def excel_set_values(
 
     range_.value = fix_data(sheet_range, data)
 
-    return range_.expand("table").get_address()
+    return "Successfully set values."
 
 
 @mcp.tool()
@@ -350,10 +357,6 @@ def excel_set_styles(
         default=ExcelExpandMode.get_none_value(),
         description=ExcelExpandMode.get_description("Mode for automatically expanding the selection range"),
     ),
-    reset: bool = Field(
-        default=False,
-        description="If True, resets all styles to default values before applying new styles.",
-    ),
     background_color: str = Field(
         default="",
         description="RGB color for cell background. Optional.",
@@ -366,47 +369,11 @@ def excel_set_styles(
     ),
     bold: StringBool = Field(),
     italic: StringBool = Field(),
-    # TODO: Tool 인자 응답에서 특정 조건에서는 인자들을 제외시키기
-    strikethrough: StringBool = Field(description="Windows only."),
-    underline: StringBool = Field(description="Windows only."),
-    horizontal_alignment: int = Field(
-        ExcelHorizontalAlignment.get_none_value(),
-        description=ExcelHorizontalAlignment.get_description("Windows only"),
-        # {dict(((v.value, v.label) for v in ExcelHorizontalAlignment))}""",
-    ),
-    vertical_alignment: int = Field(
-        ExcelVerticalAlignment.get_none_value(),
-        description=ExcelVerticalAlignment.get_description("Windows only"),
-    ),
 ) -> str:
     """Apply styles to a specified range in an Excel workbook.
 
-    Applies various formatting options to cells in the specified range. Uses the active workbook
-    and sheet by default if no specific book_name or sheet_name is provided.
-
-    Style Options:
-        - Colors: Background and font colors using RGB format (e.g., '255,255,0' for yellow)
-        - Font styles: Bold and italic
-        - Windows-only features:
-            - Text decoration: Strikethrough and underline
-            - Alignment: Horizontal and vertical cell alignment
-        - Reset: Resets all styles to default values before applying new styles
-
-    Range Format Support:
-        - Single cell: 'A1'
-        - Continuous range: 'A1:C5'
-        - Sheet-specific range: 'Sheet1!A1:C5'
-        - Discontinuous ranges: 'A1,C3,D5' or 'A1:B2,D4:E6'
-
     Returns:
         str: The address of the range where styles were applied.
-
-    Examples:
-        >>> excel_set_styles("A1:B10", background_color="255,255,0")  # Yellow background
-        >>> excel_set_styles("C1", bold=true, italic=true)
-        >>> excel_set_styles("Sheet1!D1:D10", font_color="255,0,0")  # Red text
-        >>> excel_set_styles("A1:C5", horizontal_alignment="center")  # Center align (Windows only)
-        >>> excel_set_styles("A1:B10", reset=true)  # Reset all styles to default
     """
 
     range_ = get_range(
@@ -420,37 +387,6 @@ def excel_set_styles(
         r, g, b = tuple(map(int, rgb_code.split(",")))
         return r, g, b
 
-    if reset:
-        range_.color = None
-        range_.font.color = None
-        range_.font.bold = False
-        range_.font.italic = False
-
-        range_.number_format = "General"
-
-        if OS.current_is_windows():
-            # range_.font.name = None  # 값만 변경될 뿐, 리셋 X
-            # range_.font.size = None  # 값만 변경될 뿐, 리셋 X
-            range_.api.WrapText = False
-            # range_.api.Borders.LineStyle = -4142  # What ?
-            range_.api.IndentLevel = 0
-            range_.api.ShrinkToFit = False
-            # range_.api.MergeCells = False  # 병합된 셀에 걸쳐져있어도 셀 병합 해제
-
-            range_.api.Strikethrough = False  # Reset strikethrough
-            range_.api.Underline = False  # Reset underline
-            range_.api.HorizontalAlignment = HAlign.left  # Reset horizontal alignment
-            range_.api.VerticalAlignment = VAlign.bottom  # Reset vertical alignment
-            range_.api.Orientation = 0  # Reset text rotation
-            # range_.api.ReadingOrder = xlLTR  # Not found xlLTR
-
-            # Reset conditional formatting
-            range_.api.FormatConditions.Delete()
-
-            # Reset validation
-            range_.api.Validation.Delete()
-
-    # Apply new styles if specified
     if background_color:
         range_.color = make_tuple(background_color)
 
@@ -463,20 +399,7 @@ def excel_set_styles(
     if italic.is_specified():
         range_.font.italic = bool(italic)
 
-    if OS.current_is_windows():
-        if strikethrough.is_specified():
-            range_.api.Strikethrough = bool(strikethrough)
-
-        if underline.is_specified():
-            range_.api.Underline = bool(underline)
-
-        if horizontal_alignment:
-            range_.api.HorizontalAlignment = horizontal_alignment
-
-        if vertical_alignment:
-            range_.api.VerticalAlignment = vertical_alignment
-
-    return range_.expand("table").get_address()
+    return range_.get_address()
 
 
 @mcp.tool()
@@ -498,20 +421,13 @@ def excel_autofit(
     ),
     expand_mode: str = Field(
         default=ExcelExpandMode.get_none_value(),
-        description=ExcelExpandMode.get_description("Mode for automatically expanding the selection range"),
+        description=ExcelExpandMode.get_description(
+            "Mode for automatically expanding the selection range. "
+            "All expand modes only work in the right/down direction"
+        ),
     ),
-) -> None:
+) -> str:
     """Automatically adjusts column widths to fit the content in the specified Excel range.
-
-    Makes all data visible without truncation by adjusting column widths. Uses the active workbook
-    and sheet by default if no specific book_name or sheet_name is provided.
-
-    Expand Mode Behavior:
-        - All expand modes only work in the right/down direction
-        - No expansion occurs to the left or upward direction
-        - "table": Expands both right and down to include all contiguous data
-        - "right": Expands only horizontally to include contiguous data
-        - "down": Expands only vertically to include contiguous data
 
     Returns:
         None
@@ -530,6 +446,8 @@ def excel_autofit(
         expand_mode=expand_mode,
     )
     range_.autofit()
+
+    return "Successfully autofit."
 
 
 @mcp.tool()
@@ -553,7 +471,7 @@ def excel_set_formula(
         description="Name of sheet to use. Optional.",
         examples=["Sheet1", "Sales2023"],
     ),
-) -> None:
+) -> str:
     """Set a formula in a specified range of an Excel workbook.
 
     Applies an Excel formula to the specified range using Excel's formula2 property,
@@ -578,6 +496,8 @@ def excel_set_formula(
 
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
     range_.formula2 = formula
+
+    return "Successfully set formula."
 
 
 @mcp.tool()

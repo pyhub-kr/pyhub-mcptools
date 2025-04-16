@@ -13,6 +13,10 @@
 pyhub.mcptools update
 ```
 
+## v0.9.1
+
++ Cursor MCP 안정성 개선
+
 ## v0.9.0
 
 + Cursor MCP 호환성 테스트 완료

@@ -1,7 +1,6 @@
 import base64
 from datetime import UTC, datetime
 from fnmatch import fnmatch
-from typing import Optional
 
 from django.conf import settings
 from pydantic import Field
@@ -85,28 +84,25 @@ def fs__write_file(
         description="Path where to write the file",
         examples=["output.txt", "~/documents/notes.md"],
     ),
-    text_content: Optional[str] = Field(
-        None,
-        description="Content to write to the file",
+    text_content: str = Field(
+        "",
+        description=(
+            "Text Content to write to the file. If both text_content and base64_content are provided, "
+            "text_content takes precedence."
+        ),
         examples=["Hello World", "{'key': 'value'}"],
     ),
-    base64_content: Optional[str] = Field(
-        None,
-        description="Base64 encoded binary content to write to the file",
+    base64_content: str = Field(
+        "",
+        description=(
+            "Base64 encoded binary content to write to the file. "
+            "This is used only when text_content is empty. The content will be decoded from base64 before writing."
+        ),
         examples=["SGVsbG8gV29ybGQ=", "eydrZXknOiAndmFsdWUnfQ=="],
     ),
     text_encoding: str = Field("utf-8", description="Encoding of text_content"),
 ) -> str:
     """Create a new file or completely overwrite an existing file with new content.
-
-    Args:
-        path: Path where to write the file
-        text_content: Text Content to write to the file. If both text_content and base64_content are provided,
-                     text_content takes precedence.
-        base64_content: Base64 encoded binary content to write to the file. This is used only when text_content is None.
-                       The content will be decoded from base64 before writing.
-        text_encoding: Encoding to use when writing text_content. This parameter only applies when using text_content
-                      and is ignored for base64_content.
 
     Returns:
         str: Success message indicating the file was written
@@ -122,10 +118,10 @@ def fs__write_file(
         parent_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        if text_content is not None:
+        if text_content:
             with valid_path.open("wt", encoding=text_encoding) as f:
                 f.write(text_content)
-        elif base64_content is not None:
+        elif base64_content:
             try:
                 binary_content = base64.b64decode(base64_content)
                 with valid_path.open("wb") as f:
@@ -225,9 +221,9 @@ async def fs__list_directory(
         default=False,
         description="Whether to recursively list subdirectories",
     ),
-    max_depth: Optional[int] = Field(
-        default=None,
-        description="Maximum depth for recursive listing (None for unlimited)",
+    max_depth: int = Field(
+        default=0,
+        description="Maximum depth for recursive listing (0 for unlimited)",
     ),
 ) -> str:
     """Get a detailed listing of files and directories in a specified path.
@@ -260,7 +256,7 @@ async def fs__list_directory(
         for entry in valid_path.rglob("*"):
             try:
                 # max_depth 체크
-                if max_depth is not None:
+                if max_depth > 0:
                     relative_path = entry.relative_to(valid_path)
                     if len(relative_path.parts) > max_depth:
                         continue
@@ -339,29 +335,23 @@ def fs__find_files(
         description="Base directory path to start search from",
         examples=[".", "~/documents", "project/src"],
     ),
-    name_pattern: Optional[str] = Field(
-        default=None,
+    name_pattern: str = Field(
+        default="",
         description="Pattern to match filenames (supports wildcards like *.py)",
         examples=["*.py", "test*", "*.{jpg,png}"],
     ),
-    exclude_patterns: Optional[list[str]] = Field(
-        default=None,
+    exclude_patterns: str = Field(
+        default="",
         description="Patterns to exclude from search (e.g., ['*.pyc', '.git/**'])",
         examples=[["*.pyc", ".git/**"], ["node_modules/**", "*.tmp"]],
     ),
-    max_depth: Optional[int] = Field(
-        default=None,
-        description="Maximum depth to traverse (None for unlimited)",
+    max_depth: int = Field(
+        default=0,
+        description="Maximum depth to traverse (0 for unlimited)",
         examples=[1, 2, 3],
     ),
 ) -> str:
     """Recursively search for files using Linux find-like syntax.
-
-    Args:
-        path: Base directory path to start search from
-        name_pattern: Pattern to match filenames (supports wildcards)
-        exclude_patterns: Patterns to exclude from search
-        max_depth: Maximum directory depth to traverse
 
     Returns:
         str: Newline-separated list of matching paths, or "No matches found" if none
@@ -371,7 +361,7 @@ def fs__find_files(
     """
 
     valid_path = validate_path(path)
-    exclude_patterns = exclude_patterns or []
+    exclude_patterns: list[str] = list(map(lambda s: s.strip(), exclude_patterns.split(",")))
     results = []
 
     try:
@@ -386,7 +376,7 @@ def fs__find_files(
                 relative_path = item.relative_to(valid_path)
 
                 # Check depth
-                if max_depth is not None:
+                if max_depth > 0:
                     current_depth = len(relative_path.parts)
                     if current_depth > max_depth:
                         continue

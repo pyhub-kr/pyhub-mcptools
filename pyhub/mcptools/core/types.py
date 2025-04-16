@@ -1,13 +1,12 @@
-from typing import Any, TypeVar, Generic, Type
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from typing import Any, Generic, TypeVar
 
-from django.db.models import TextChoices, IntegerChoices
-from pydantic import GetJsonSchemaHandler, GetCoreSchemaHandler
+from django.db.models import IntegerChoices, TextChoices
+from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
 
-
-T = TypeVar('T', str, int)
+T = TypeVar("T", str, int)
 
 NOT_SPECIFIED = object()
 
@@ -19,12 +18,12 @@ class ChoicesMixin(Generic[T]):
 
     @classmethod
     @abstractmethod
-    def get_none_value(cls) -> T | Type[NOT_SPECIFIED]:
+    def get_none_value(cls):
         return NOT_SPECIFIED
 
     @classmethod
     def get_description(cls, prefix: str = "") -> str:
-        choices = {el.value: el.name for el in cls}
+        choices = {el.value: (el.label or el.name) for el in cls}
         none_value = cls.get_none_value()
 
         if none_value is not NOT_SPECIFIED:

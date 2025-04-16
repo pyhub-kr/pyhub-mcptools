@@ -1,7 +1,7 @@
-from django.db.models import TextChoices, IntegerChoices
+from pyhub.mcptools.core.types import PyHubIntegerChoices, PyHubTextChoices
 
 
-class NaverMapRouteOptions(TextChoices):
+class NaverMapRouteOptions(PyHubTextChoices):
     FASTEST = "trafast", "실시간 빠른 길"
     COMFORTABLE = "tracomfort", "실시간 편한 길"
     OPTIMAL = "traoptimal", "실시간 최적"
@@ -10,7 +10,7 @@ class NaverMapRouteOptions(TextChoices):
 
 
 # 차량 타입 (톨게이트 요금 계산용)
-class NaverMapCarTypes(IntegerChoices):
+class NaverMapCarTypes(PyHubIntegerChoices):
     GENERIC_CAR = 1, "1종 소형차"
     MEDIUM_CAR = 2, "2종 2축 차량"
     LARGE_CAR = 3, "3종 대형차"
@@ -20,20 +20,20 @@ class NaverMapCarTypes(IntegerChoices):
 
 
 # 연료 타입 (유류비 계산용)
-class NaverMapFuelTypes(TextChoices):
+class NaverMapFuelTypes(PyHubTextChoices):
     GASOLINE = "gasoline", "휘발유"
     HIGH_GRADE_GASOLINE = "highgradegasoline", "고급 휘발유"
     DIESEL = "diesel", "경유"
     LPG = "lpg", "LPG"
 
 
-class NaverMapResponseLanguages(TextChoices):
+class NaverMapResponseLanguages(PyHubTextChoices):
     KOREAN = "ko", "한국어"
     ENGLISH = "en", "영어"
     JAPANESE = "ja", "일본어"
     CHINESE = "zh", "중국어 간체"
 
 
-class NaverMapGeocodingResponseLanguages(TextChoices):
+class NaverMapGeocodingResponseLanguages(PyHubTextChoices):
     KOREAN = "kor", "한국어"
     ENGLISH = "eng", "영어"
