@@ -11,16 +11,16 @@ from pyhub.mcptools.excel.utils import get_range, get_sheet, json_dumps
 @mcp.tool()
 @macos_excel_request_permission
 def excel_get_charts(
-    book_name: Optional[str] = Field(
-        default=None,
-        description="Name of workbook to use. If None, uses active workbook.",
-        examples=["Sales.xlsx", "Report2023.xlsx"],
-    ),
-    sheet_name: Optional[str] = Field(
-        default=None,
-        description="Name of sheet to use. If None, uses active sheet.",
-        examples=["Sheet1", "Sales2023"],
-    ),
+    # book_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of workbook to use. If None, uses active workbook.",
+    #     examples=["Sales.xlsx", "Report2023.xlsx"],
+    # ),
+    # sheet_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of sheet to use. If None, uses active sheet.",
+    #     examples=["Sheet1", "Sales2023"],
+    # ),
 ) -> str:
     """Get a list of all charts in the specified Excel sheet.
 
@@ -42,6 +42,8 @@ def excel_get_charts(
         >>> excel_get_charts("Sales.xlsx")  # Get charts from specific workbook
         >>> excel_get_charts("Report.xlsx", "Sheet2")  # Get charts from specific sheet
     """
+
+    book_name, sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
     sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
     return json_dumps(
         [
@@ -69,26 +71,26 @@ def excel_add_chart(
         description="Excel range where the chart should be placed",
         examples=["D1:E10", "Sheet1!G1:H10", "Chart!A1:C10"],
     ),
-    source_book_name: Optional[str] = Field(
-        default=None,
-        description="Name of workbook containing source data. If None, uses active workbook.",
-        examples=["Sales.xlsx", "Report2023.xlsx"],
-    ),
-    source_sheet_name: Optional[str] = Field(
-        default=None,
-        description="Name of sheet containing source data. If None, uses active sheet.",
-        examples=["Sheet1", "Sales2023"],
-    ),
-    dest_book_name: Optional[str] = Field(
-        default=None,
-        description="Name of workbook where chart will be created. If None, uses active workbook.",
-        examples=["Sales.xlsx", "Report2023.xlsx"],
-    ),
-    dest_sheet_name: Optional[str] = Field(
-        default=None,
-        description="Name of sheet where chart will be created. If None, uses active sheet.",
-        examples=["Sheet1", "Sales2023"],
-    ),
+    # source_book_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of workbook containing source data. If None, uses active workbook.",
+    #     examples=["Sales.xlsx", "Report2023.xlsx"],
+    # ),
+    # source_sheet_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of sheet containing source data. If None, uses active sheet.",
+    #     examples=["Sheet1", "Sales2023"],
+    # ),
+    # dest_book_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of workbook where chart will be created. If None, uses active workbook.",
+    #     examples=["Sales.xlsx", "Report2023.xlsx"],
+    # ),
+    # dest_sheet_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of sheet where chart will be created. If None, uses active sheet.",
+    #     examples=["Sheet1", "Sales2023"],
+    # ),
     # TextChoices로 생성한 타입에 대해서 Optional을 지정하지 않으면, Claude Desktop이 죽습니다.
     # 로그도 남겨지지 않아 이유를 알 수 없습니다.
     type: Optional[ExcelChartType] = Field(
@@ -137,6 +139,10 @@ def excel_add_chart(
         >>> excel_add_chart("Data!A1:B10", "Chart!C1:D10", name="SalesChart")  # Named chart
         >>> excel_add_chart("A1:D5", "E1:H10", source_sheet_name="Data", dest_sheet_name="Charts")  # Different sheets
     """
+
+    source_book_name, source_sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
+    dest_book_name, dest_sheet_name = None, None
+
     source_range_ = get_range(sheet_range=source_sheet_range, book_name=source_book_name, sheet_name=source_sheet_name)
     dest_range_ = get_range(sheet_range=dest_sheet_range, book_name=dest_book_name, sheet_name=dest_sheet_name)
 
@@ -169,16 +175,16 @@ def excel_set_chart_props(
         description="The zero-based index of the chart to modify.",
         examples=[0, 1, 2],
     ),
-    chart_book_name: Optional[str] = Field(
-        default=None,
-        description="Name of workbook containing the chart. If None, uses active workbook.",
-        examples=["Sales.xlsx", "Report2023.xlsx"],
-    ),
-    chart_sheet_name: Optional[str] = Field(
-        default=None,
-        description="Name of sheet containing the chart. If None, uses active sheet.",
-        examples=["Sheet1", "Charts"],
-    ),
+    # chart_book_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of workbook containing the chart. If None, uses active workbook.",
+    #     examples=["Sales.xlsx", "Report2023.xlsx"],
+    # ),
+    # chart_sheet_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of sheet containing the chart. If None, uses active sheet.",
+    #     examples=["Sheet1", "Charts"],
+    # ),
     new_name: Optional[str] = Field(
         default=None,
         description="New name to assign to the chart. If None, name remains unchanged.",
@@ -194,31 +200,31 @@ def excel_set_chart_props(
         description="New Excel range for chart data. If None, source data remains unchanged.",
         examples=["A1:B10", "Sheet1!A1:C5", "Data!A1:D20"],
     ),
-    source_book_name: Optional[str] = Field(
-        default=None,
-        description="Name of workbook containing new source data. If None, uses active workbook.",
-        examples=["Sales.xlsx", "Report2023.xlsx"],
-    ),
-    source_sheet_name: Optional[str] = Field(
-        default=None,
-        description="Name of sheet containing new source data. If None, uses active sheet.",
-        examples=["Sheet1", "Data"],
-    ),
+    # source_book_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of workbook containing new source data. If None, uses active workbook.",
+    #     examples=["Sales.xlsx", "Report2023.xlsx"],
+    # ),
+    # source_sheet_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of sheet containing new source data. If None, uses active sheet.",
+    #     examples=["Sheet1", "Data"],
+    # ),
     dest_sheet_range: Optional[str] = Field(
         default=None,
         description="New Excel range for chart position and size. If None, position remains unchanged.",
         examples=["D1:E10", "Sheet1!G1:H10", "Chart!A1:C10"],
     ),
-    dest_book_name: Optional[str] = Field(
-        default=None,
-        description="Name of workbook for destination. If None, uses active workbook.",
-        examples=["Sales.xlsx", "Report2023.xlsx"],
-    ),
-    dest_sheet_name: Optional[str] = Field(
-        default=None,
-        description="Name of sheet for destination. If None, uses active sheet.",
-        examples=["Sheet1", "Charts"],
-    ),
+    # dest_book_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of workbook for destination. If None, uses active workbook.",
+    #     examples=["Sales.xlsx", "Report2023.xlsx"],
+    # ),
+    # dest_sheet_name: Optional[str] = Field(
+    #     default=None,
+    #     description="Name of sheet for destination. If None, uses active sheet.",
+    #     examples=["Sheet1", "Charts"],
+    # ),
 ) -> str:
     """Update properties of an existing chart in an Excel sheet.
 
@@ -267,6 +273,10 @@ def excel_set_chart_props(
         raise ValueError("Either name or index must be provided")
     if name is not None and index is not None:
         raise ValueError("Only one of name or index should be provided")
+
+    chart_book_name, chart_sheet_name = None, None  # TODO: Cursor 타입 이슈로 인자를 임시 제거
+    source_book_name, source_sheet_name = None, None
+    dest_book_name, dest_sheet_name = None, None
 
     chart_sheet = get_sheet(book_name=chart_book_name, sheet_name=chart_sheet_name)
     if name is not None:
