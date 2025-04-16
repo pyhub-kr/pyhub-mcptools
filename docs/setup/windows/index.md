@@ -168,8 +168,8 @@ Claude 에서 AI가 알아서 MCP 도구를 호출할 테지만, 지원하는 �
 
 `excel_set_values` 도구를 통해 지정 범위의 값을 변경하실 수도 있습니다.
 
-```
-.\pyhub.mcptools.exe tools-call excel_set_values sheet_range="A34" values="[['val1', 'val2', 'val3'], ['val4', 'val5', 'val6']]"
+``` title="위 영상에서는 JSON 포맷으로 입력했지만, 최신 버전에서는 CSV 포맷만 지원"
+.\pyhub.mcptools.exe tools-call excel_set_values sheet_range="A34" values='val1,val2,val3\nval4,val5,val6'
 ```
 
 ![](./assets/10-tools-call-set-values.png)
