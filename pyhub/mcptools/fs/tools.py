@@ -9,7 +9,6 @@ from pydantic import Field
 from pyhub.mcptools import mcp
 from pyhub.mcptools.fs.utils import EditOperation, apply_file_edits, validate_path
 
-
 ENABLED_FS_TOOLS = settings.FS_LOCAL_HOME is not None
 
 
@@ -132,7 +131,7 @@ def fs__write_file(
                 with valid_path.open("wb") as f:
                     f.write(binary_content)
             except Exception as e:
-                raise ValueError(f"Invalid base64 content: {str(e)}")
+                raise ValueError(f"Invalid base64 content: {str(e)}") from e
         else:
             raise ValueError("No content to write")
 
