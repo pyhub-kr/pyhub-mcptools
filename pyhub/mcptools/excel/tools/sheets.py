@@ -63,6 +63,7 @@ def excel_get_opened_workbooks() -> str:
                             "count": sheet.used_range.count,  # 3325 (total number of cells)
                             "shape": sheet.used_range.shape,  # (655, 5)
                             "active": sheet == xw.sheets.active,
+                            "table_names": [table.name for table in sheet.tables],
                         }
                         for sheet in book.sheets
                     ],
