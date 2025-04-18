@@ -8,13 +8,24 @@
 ## Videos
 
 추가 툴 설치나 인증 과정도 없습니다. Microsoft 365 구독도 없어도 됩니다.
-엑셀 정품 인증도 요구하지 않습니다.
+엑셀 정품 인증도 요구하지 않습니다. 편집이 가능한 엑셀 + Claude Desktop + "파이썬 사랑방 MCP 도구"면 끝.
 
-편집이 가능한 엑셀 + Claude Desktop + "파이썬 사랑방 MCP 도구" 끝.
+### 윈도우에 설치법
 
-<div class="video-container">
+<div class="video-container" style="margin-bottom: 1em;">
     <iframe src="https://www.youtube.com/embed/MfPBhVPGz_4?si=zXk_m7HhIKCHeYmX" allowfullscreen></iframe>
 </div>
+
+### BMI 자동 수식 계산
+
+<div class="video-container">
+    <iframe src="https://www.youtube.com/embed/MFBKm2c5iV8?si=0rdeXP3pXpjx43Js" allowfullscreen></iframe>
+</div>
+
+### 말만 하면 분석하고 피벗 테이블 생성까지 !!!
+
++ [(유튜브) 바이브 엑셀. 말만 하면 분석하고 피벗 테이블 생성까지 !!!](https://youtu.be/DVNed8V05rk)
+
 
 ## 지원 도구
 
