@@ -1,4 +1,4 @@
-from xlwings.constants import CellType, HAlign, VAlign
+from xlwings.constants import CellType, ConsolidationFunction, HAlign, VAlign
 
 from pyhub.mcptools.core.types import NOT_SPECIFIED, PyHubIntegerChoices, PyHubTextChoices
 
@@ -125,3 +125,18 @@ class ExcelCellType(PyHubIntegerChoices):
     SAME_FORMAT_CONDITIONS = CellType.xlCellTypeSameFormatConditions, "Same Format Conditions"
     SAME_VALIDATION = CellType.xlCellTypeSameValidation, "Same Validation Rules"
     VISIBLE = CellType.xlCellTypeVisible, "Visible Cells"
+
+
+class ExcelAggregationType(PyHubIntegerChoices):
+    SUM = ConsolidationFunction.xlSum, "Sum"
+    COUNT = ConsolidationFunction.xlCount, "Count"
+    COUNT_NUMS = ConsolidationFunction.xlCountNums, "Count Numbers"
+    AVERAGE = ConsolidationFunction.xlAverage, "Average"
+    MAX = ConsolidationFunction.xlMax, "Max"
+    MIN = ConsolidationFunction.xlMin, "Min"
+    PRODUCT = ConsolidationFunction.xlProduct, "Product"
+    STDEV = ConsolidationFunction.xlStDev, "Standard Deviation"
+    STDEVP = ConsolidationFunction.xlStDevP, "Standard Deviation Population"
+    VAR = ConsolidationFunction.xlVar, "Variance"
+    VARP = ConsolidationFunction.xlVarP, "Variance Population"
+    UNKNOWN = ConsolidationFunction.xlUnknown, "Unknown"

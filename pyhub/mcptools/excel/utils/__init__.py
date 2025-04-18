@@ -268,3 +268,7 @@ def normalize_2d_data(data: list[list[Any]]) -> list[list[Any]]:
 
     # 각 행을 순회하면서 부족한 열을 빈 문자열로 채웁니다
     return [row + [""] * (max_length - len(row)) for row in data]
+
+
+def str_to_list(s: str, delimiter: str = ",") -> list[str]:
+    return [ele.strip() for ele in s.split(delimiter) if ele.strip()]
