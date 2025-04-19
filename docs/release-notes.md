@@ -13,6 +13,10 @@
 pyhub.mcptools update
 ```
 
+## v0.9.3
+
++ 간략하게 `pyhub.mcptools` 외에 `mcptools` 동일한 명령 추가
+
 ## v0.9.2
 
 + 피벗 테이블 생성/조회/삭제 도구 추가 지원
