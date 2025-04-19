@@ -24,8 +24,9 @@
 
 ### 말만 하면 분석하고 피벗 테이블 생성까지 !!!
 
-+ [(유튜브) 바이브 엑셀. 말만 하면 분석하고 피벗 테이블 생성까지 !!!](https://youtu.be/DVNed8V05rk)
-
+<div class="video-container">
+    <iframe src="https://www.youtube.com/embed/DVNed8V05rk?si=KvQ5VyqEoOQGdFKc" allowfullscreen></iframe>
+</div>
 
 ## 지원 도구
 
