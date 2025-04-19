@@ -1,10 +1,9 @@
-from django.core.exceptions import ValidationError
 from pydantic import Field
-from xlwings.constants import PivotFieldOrientation, PivotTableSourceType
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.core.choices import OS
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
+from pyhub.mcptools.excel.forms import PivotTableCreateForm
 from pyhub.mcptools.excel.types import (
     ExcelAggregationType,
     ExcelExpandMode,
@@ -52,9 +51,6 @@ def excel_convert_to_table(
     Convert Excel range to table. Windows only.
     """
 
-    if OS.current_is_windows() is False:
-        return "Error: This feature is only supported on Windows."
-
     has_headers = has_headers.lower().strip()
     if has_headers == "guess":
         has_headers = "guess"
@@ -86,7 +82,7 @@ def excel_convert_to_table(
     return f"Table(name='{table.name}') created successfully."
 
 
-@mcp.tool()
+@mcp.tool(enabled=OS.current_is_windows())
 @macos_excel_request_permission
 def excel_add_pivot_table(
     source_sheet_range: str = Field(
@@ -122,7 +118,6 @@ def excel_add_pivot_table(
         description=ExcelExpandMode.get_description("Mode for automatically expanding the selection range"),
     ),
     row_field_names: str = Field(
-        default="",
         description="Comma-separated field names to use as row fields. Must be column names from the source data.",
         examples=["Product", "Region", "Category,Subcategory"],
     ),
@@ -139,7 +134,6 @@ def excel_add_pivot_table(
         examples=["Country", "Department", "Region,Country"],
     ),
     value_fields: str = Field(
-        default="",
         description=(
             "Value fields in 'field_name:agg_func' format separated by '|'. \n"
             f"Supported agg func: {', '.join(ExcelAggregationType.names)}"
@@ -189,116 +183,40 @@ def excel_add_pivot_table(
         str: Success message or error message
     """
 
-    # macOS 엑셀에서는 지원하지 않습니다.
-    if OS.current_is_windows() is False:
-        return "Error: This feature is only supported on Windows."
-
-    source_range_ = get_range(
+    source_range = get_range(
         sheet_range=source_sheet_range,
         book_name=source_book_name,
         sheet_name=source_sheet_name,
         expand_mode=expand_mode,
     )
-    dest_range_ = get_range(
+    dest_range = get_range(
         sheet_range=dest_sheet_range,
         book_name=dest_book_name,
         sheet_name=dest_sheet_name,
     )
 
-    sheet = source_range_.sheet
-
-    #
-    # 인자 전처리 및 검증
-    #
-
-    # 소스 데이터의 컬럼명 집합 추출
-    column_names_set = set(source_range_[0].expand("right").value)
-
-    # 인자로 지정된 데이터의 컬럼명 추출
-
-    row_field_names_list = str_to_list(row_field_names, ",")
-    column_field_names_list = str_to_list(column_field_names, ",")
-    page_field_names_list = str_to_list(page_field_names, ",")
-
-    # 필드명 유효성 검사
-    for field_list, field_type in [
-        (row_field_names_list, "Row fields"),
-        (column_field_names_list, "Column fields"),
-        (page_field_names_list, "Page fields"),
-    ]:
-        invalid_fields = set(field_list) - column_names_set
-        if invalid_fields and field_list != {""}:  # 빈 문자열이 아닌 경우에만 검사
-            raise ValidationError(f"{field_type} contain invalid field names: {', '.join(invalid_fields)}")
-
-    value_fields_set = str_to_list(value_fields, "|")
-    data_item_list = []
-    # 값 필드 설정 (문자열 파싱)
-    if value_fields_set:
-        for item in value_fields_set:
-            parts = item.split(":")
-
-            field_name = parts[0]
-            if field_name not in column_names_set:
-                raise ValidationError(f"value_fields contain invalid field name: {field_name}")
-
-            agg_func_name = parts[1] if len(parts) > 1 else "SUM"
-            agg_func = getattr(ExcelAggregationType, agg_func_name.upper())
-
-            data_item_list.append(
-                {
-                    "field_name": field_name,
-                    "agg_func": agg_func,
-                }
-            )
+    form = PivotTableCreateForm(
+        source_range=source_range,
+        dest_range=dest_range,
+        data={
+            "row_field_names": row_field_names,
+            "column_field_names": column_field_names,
+            "page_field_names": page_field_names,
+            "value_fields": value_fields,
+            "pivot_table_name": pivot_table_name,
+        },
+    )
+    form.is_valid(raise_exception=True)
+    form.save()
 
     #
     # 피봇 테이블 생성
     #
 
-    # 캐시 생성 (xlDatabase: 워크시트 범위 기반)
-    pivot_cache = sheet.api.Parent.PivotCaches().Create(
-        SourceType=PivotTableSourceType.xlDatabase,  # 워크시트 기반 캐시
-        SourceData=source_range_.api,
-    )
-
-    pivot_table = pivot_cache.CreatePivotTable(
-        TableDestination=dest_range_.api,
-        TableName=pivot_table_name or None,
-    )
-
-    # TODO: 노출이 불필요한 필드는 숨길 수 있어요. PivotFieldOrientation.xlHidden
-
-    if row_field_names_list:
-        for name in row_field_names_list:
-            pivot_field = pivot_table.PivotFields(name)
-            pivot_field.Orientation = PivotFieldOrientation.xlRowField
-
-    if column_field_names_list:
-        for position, name in enumerate(column_field_names_list, 1):
-            pivot_field = pivot_table.PivotFields(name)
-            pivot_field.Orientation = PivotFieldOrientation.xlColumnField
-            pivot_field.Position = position
-
-    if page_field_names_list:
-        for name in page_field_names_list:
-            pivot_field = pivot_table.PivotFields(name)
-            pivot_field.Orientation = PivotFieldOrientation.xlPageField
-
-    # 값 필드 설정 (문자열 파싱)
-    if data_item_list:
-        for item in data_item_list:
-            data_field = pivot_table.AddDataField(
-                pivot_table.PivotFields(item["field_name"]),
-            )
-            data_field.Function = item["agg_func"]
-            # data_field.NumberFormat = "#,##0"  # 천 단위 구분 기호
-
-    pivot_table.RefreshTable()
-
     return "Pivot table created successfully."
 
 
-@mcp.tool()
+@mcp.tool(enabled=OS.current_is_windows())
 @macos_excel_request_permission
 def excel_get_pivot_tables(
     book_name: str = Field(default=""),
@@ -313,14 +231,12 @@ def excel_get_pivot_tables(
     - This feature is only supported on Windows
     - If no book or sheet is specified, the active workbook and sheet will be used
     """
-    if OS.current_is_windows() is False:
-        return "Error: This feature is only supported on Windows."
 
     sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
     return json_dumps(get_pivot_tables(sheet))
 
 
-@mcp.tool()
+@mcp.tool(enabled=OS.current_is_windows())
 @macos_excel_request_permission
 def excel_remove_pivot_tables(
     remove_all: bool = Field(default=False, description="Remove all pivot tables."),
@@ -339,9 +255,6 @@ def excel_remove_pivot_tables(
     - Modifying existing pivot table designs is not supported
     - To change a pivot table's configuration, remove it and create a new one
     """
-    # macOS 엑셀에서는 지원하지 않습니다.
-    if OS.current_is_windows() is False:
-        return "Error: This feature is only supported on Windows."
 
     sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
 
