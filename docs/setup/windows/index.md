@@ -149,6 +149,11 @@ Claude 에서 AI가 알아서 MCP 도구를 호출할 테지만, 지원하는 �
 .\pyhub.mcptools.exe tools-call excel_get_opened_workbooks
 ```
 
+!!! warning
+
+    Norton과 같은 보안 프로그램에서 엑셀 프로그램 호출을 차단하여, 열려진 엑셀 시트 조회가 안 될 수 있습니다.
+    Norton 프로그램을 종료 후에 다시 시도해보세요. :-)
+
 그리고, 아래 명령으로 현재 활성화된 (앞에 띄워진) 시트의 모든 데이터를 조회할 수 있습니다.
 
 ```
