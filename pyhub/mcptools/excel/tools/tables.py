@@ -82,7 +82,7 @@ def excel_convert_to_table(
     return f"Table(name='{table.name}') created successfully."
 
 
-@mcp.tool(enabled=OS.current_is_windows())
+@mcp.tool()
 @macos_excel_request_permission
 def excel_add_pivot_table(
     source_sheet_range: str = Field(

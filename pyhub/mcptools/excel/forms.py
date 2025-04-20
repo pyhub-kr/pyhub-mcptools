@@ -38,8 +38,8 @@ class PivotTableCreateForm(forms.Form):
                 agg_func_name = parts[1] if len(parts) > 1 else "SUM"
                 try:
                     agg_func = getattr(ExcelAggregationType, agg_func_name.upper())
-                except AttributeError:
-                    raise forms.ValidationError(f"Invalid aggregation function: {agg_func_name}")
+                except AttributeError as e:
+                    raise forms.ValidationError(f"Invalid aggregation function: {agg_func_name}") from e
 
                 data_item_list.append(
                     {
