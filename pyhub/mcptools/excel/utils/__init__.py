@@ -10,6 +10,7 @@ from typing import Any, Optional, Union
 
 import xlwings as xw
 from django.template import Context, Template
+from django.template.loader import render_to_string
 
 
 def get_sheet(
@@ -152,17 +153,31 @@ def normalize_text(text: str) -> str:
     return unicodedata.normalize("NFC", text)
 
 
-async def applescript_run(
-    script: Union[str, Template],
+def _render_applescript(
+    script: Union[str, Template, None] = None,
     context: Optional[dict] = None,
+    template_path: Optional[str] = None,
 ) -> str:
+    """AppleScript 렌더링 로직을 공통화한 내부 함수"""
     if context is None:
         context = {}
 
-    if isinstance(script, Template):
-        rendered_script = script.render(Context(context))
+    if template_path:
+        return render_to_string(template_path, context)
+    elif script is None:
+        raise ValueError("Either script or template_path is required.")
+    elif isinstance(script, Template):
+        return script.render(Context(context))
     else:
-        rendered_script = script.format(**context)
+        return script.format(**context)
+
+
+async def applescript_run(
+    script: Union[str, Template, None] = None,
+    context: Optional[dict] = None,
+    template_path: Optional[str] = None,
+) -> str:
+    rendered_script = _render_applescript(script, context, template_path)
 
     process = await asyncio.create_subprocess_exec(
         "osascript",
@@ -182,16 +197,11 @@ async def applescript_run(
 
 
 def applescript_run_sync(
-    script: Union[str, Template],
+    script: Union[str, Template, None] = None,
     context: Optional[dict] = None,
+    template_path: Optional[str] = None,
 ) -> str:
-    if context is None:
-        context = {}
-
-    if isinstance(script, Template):
-        rendered_script = script.render(Context(context))
-    else:
-        rendered_script = script.format(**context)
+    rendered_script = _render_applescript(script, context, template_path)
 
     process = subprocess.run(
         ["osascript", "-e", rendered_script],
