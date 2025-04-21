@@ -336,74 +336,127 @@ def excel_set_values(
     return "Successfully set values."
 
 
-@mcp.tool(run_in_process=True, timeout=5)
+@mcp.tool(run_in_process=True, timeout=30)
 @macos_excel_request_permission
 def excel_set_styles(
-    sheet_range: str = Field(
-        description=(
-            "Excel range to apply styles. Supports both continuous ranges (e.g., 'A1:C5') "
-            "and discontinuous ranges (e.g., 'A1,C3,D5')."
-        ),
-        examples=["A1", "B2:B10", "Sheet1!A1:C5", "A1,C3,D5", "A1:B2,D4:E6"],
+    styles: str = Field(
+        description="""Styles to apply. Supports two formats:
+            1. Single style format: "sheet_range;[options]"
+               e.g. "A1:B2;background_color=255,255,0;bold=true"
+
+            2. Batch style format (pipe-separated CSV with header):
+               book_name|sheet_name|sheet_range|expand_mode|background_color|font_color|bold|italic
+        """,
+        examples=[
+            # 단일 스타일 포맷
+            "A1:B2;background_color=255,255,0;bold=true",
+            "Sheet1!A1:C5;font_color=255,0,0;italic=true",
+            "Sales.xlsx!Sheet1!A1;background_color=0,255,0",
+            # 배치 스타일 포맷 (CSV)
+            """book_name|sheet_name|sheet_range|expand_mode|background_color|font_color|bold|italic
+Sales.xlsx|Sheet1|A1:B2||255,255,0|255,0,0|true|
+Report.xlsx|Data|C3:D4|table|0,255,0||false|true""",
+        ],
     ),
-    book_name: str = Field(
-        default="",
-        description="Name of workbook to use. Optional.",
-        examples=["Sales.xlsx", "Report2023.xlsx"],
-    ),
-    sheet_name: str = Field(
-        default="",
-        description="Name of sheet to use. Optional.",
-        examples=["Sheet1", "Sales2023"],
-    ),
-    expand_mode: str = Field(
-        default=ExcelExpandMode.get_none_value(),
-        description=ExcelExpandMode.get_description("Mode for automatically expanding the selection range"),
-    ),
-    background_color: str = Field(
-        default="",
-        description="RGB color for cell background. Optional.",
-        examples=["255,255,0", "255,0,0"],
-    ),
-    font_color: str = Field(
-        default="",
-        description="RGB color for font. Optional.",
-        examples=["255,0,0", "0,0,255"],
-    ),
-    bold: StringBool = Field(),
-    italic: StringBool = Field(),
 ) -> str:
-    """Apply styles to a specified range in an Excel workbook.
+    """Apply styles to specified ranges in an Excel workbook.
+
+    Supports two formats:
+    1. Single style format: "sheet_range;[options]"
+       - sheet_range: Required. Can include book and sheet names (e.g. "Book.xlsx!Sheet1!A1:B2")
+       - options: Optional key=value pairs separated by semicolons
+
+    2. Batch style format: Pipe-separated CSV with header
+       - Header must include required columns
+       - Multiple styles can be applied in one call
+
+    Available style options:
+        - background_color: RGB color (e.g. "255,255,0")
+        - font_color: RGB color (e.g. "255,0,0")
+        - bold: true/false
+        - italic: true/false
+        - expand_mode: table/row/column
 
     Returns:
-        str: The address of the range where styles were applied.
+        str: The address of the ranges where styles were applied.
     """
 
+    def make_tuple(rgb_code: str) -> tuple[int, int, int] | None:
+        if not rgb_code:
+            return None
+        r, g, b = tuple(map(int, rgb_code.split(",")))
+        return r, g, b
+
+    def apply_styles(range_obj: xw.Range, style_dict: dict) -> None:
+        if style_dict.get("background_color"):
+            range_obj.color = make_tuple(style_dict["background_color"])
+        if style_dict.get("font_color"):
+            range_obj.font.color = make_tuple(style_dict["font_color"])
+        if "bold" in style_dict:
+            range_obj.font.bold = str(style_dict["bold"]).lower() == "true"
+        if "italic" in style_dict:
+            range_obj.font.italic = str(style_dict["italic"]).lower() == "true"
+
+    def parse_single_style(style_str: str) -> tuple[str, str, str, dict]:
+        """Parse single style format: sheet_range;[options]"""
+        parts = style_str.split(";")
+        _range_spec = parts[0]
+
+        # Parse options
+        _options = {}
+        for part in parts[1:]:
+            if "=" in part:
+                key, value = part.split("=", 1)
+                _options[key.strip()] = value.strip()
+
+        # Parse range spec (supports: range, sheet!range, book!sheet!range)
+        range_parts = _range_spec.split("!")
+        if len(range_parts) == 1:
+            return "", "", range_parts[0], _options
+        elif len(range_parts) == 2:
+            return "", range_parts[0], range_parts[1], _options
+        else:
+            return range_parts[0], range_parts[1], range_parts[2], _options
+
     selected_ranges: list[xw.Range] = []
-    for range_address in sheet_range.split(","):
+
+    # Check if input is CSV format (contains header row with pipe separator)
+    if "|" in styles and "sheet_range|" in styles.lower():
+        # Parse CSV data
+        lines = [line.strip() for line in styles.strip().split("\n")]
+        header = [col.lower().strip() for col in lines[0].split("|")]
+
+        # Process each row
+        for line in lines[1:]:
+            if not line.strip():
+                continue
+
+            # Create dict from CSV row
+            values = line.split("|")
+            row_data = dict(zip(header, values))
+
+            # Get range for this row
+            excel_range = get_range(
+                sheet_range=row_data["sheet_range"],
+                book_name=row_data.get("book_name", ""),
+                sheet_name=row_data.get("sheet_name", ""),
+                expand_mode=row_data.get("expand_mode", ""),
+            )
+
+            # Apply styles from CSV
+            apply_styles(excel_range, row_data)
+            selected_ranges.append(excel_range)
+
+    # Single style format
+    else:
+        book_name, sheet_name, range_spec, options = parse_single_style(styles)
         excel_range = get_range(
-            sheet_range=range_address,
+            sheet_range=range_spec,
             book_name=book_name,
             sheet_name=sheet_name,
-            expand_mode=expand_mode,
+            expand_mode=options.get("expand_mode", ""),
         )
-
-        def make_tuple(rgb_code: str) -> tuple[int, int, int]:
-            r, g, b = tuple(map(int, rgb_code.split(",")))
-            return r, g, b
-
-        if background_color:
-            excel_range.color = make_tuple(background_color)
-
-        if font_color:
-            excel_range.font.color = make_tuple(font_color)
-
-        if bold.is_specified():
-            excel_range.font.bold = bool(bold)
-
-        if italic.is_specified():
-            excel_range.font.italic = bool(italic)
-
+        apply_styles(excel_range, options)
         selected_ranges.append(excel_range)
 
     addresses = ",".join(range_.get_address() for range_ in selected_ranges)

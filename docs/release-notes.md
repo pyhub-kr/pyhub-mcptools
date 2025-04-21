@@ -15,7 +15,7 @@ pyhub.mcptools update
 
 ## v0.9.3
 
-+ `excel_set_styles` 도구 : 여러 셀을 동시 스타일 변경 지원
++ `excel_set_styles` 도구 : 여러 셀을 동시 스타일 변경 지원 (batch 지원)
 + macOS에 피봇 테이블 생성 지원 추가
 + 엑셀 도구
     - timeout 지원을 추가하여, 도구 호출 안정성 개선
