@@ -12,7 +12,8 @@ from pyhub.mcptools.excel.utils import get_range, get_sheet, json_dumps, str_to_
 from pyhub.mcptools.excel.utils.tables import PivotTable
 
 
-@mcp.tool(enabled=OS.current_is_windows())  # TODO: macOS에서 xlwings 활용 테이블 생성 시에 오류 발생
+# TODO: macOS에서 xlwings 활용 테이블 생성 시에 오류 발생
+@mcp.tool(enabled=OS.current_is_windows(), run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_convert_to_table(
     sheet_range: str = Field(
@@ -86,7 +87,7 @@ def excel_convert_to_table(
 # TODO: table 목록/내역 반환
 
 
-@mcp.tool()
+@mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_add_pivot_table(
     source_sheet_range: str = Field(
@@ -224,7 +225,7 @@ def excel_add_pivot_table(
     return f"Pivot table(name={created_pivot_table_name}) created successfully."
 
 
-@mcp.tool()
+@mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_get_pivot_tables(
     book_name: str = Field(default=""),
@@ -243,7 +244,7 @@ def excel_get_pivot_tables(
     return json_dumps(PivotTable.list(sheet))
 
 
-@mcp.tool()
+@mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_remove_pivot_tables(
     remove_all: bool = Field(default=False, description="Remove all pivot tables."),

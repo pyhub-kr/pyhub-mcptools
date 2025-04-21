@@ -29,7 +29,7 @@ from pyhub.mcptools.excel.utils import (
 from pyhub.mcptools.fs.utils import validate_path
 
 
-@mcp.tool()
+@mcp.tool(run_in_process=True)
 @macos_excel_request_permission
 def excel_get_opened_workbooks() -> str:
     """Get a list of all open workbooks and their sheets in Excel
@@ -75,7 +75,7 @@ def excel_get_opened_workbooks() -> str:
     )
 
 
-@mcp.tool()
+@mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_find_data_ranges(
     book_name: str = Field(
@@ -158,7 +158,7 @@ def excel_find_data_ranges(
     return json_dumps(data_ranges)
 
 
-@mcp.tool(enabled=OS.current_is_windows())
+@mcp.tool(enabled=OS.current_is_windows(), run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_get_special_cells_address(
     sheet_range: str = Field(
@@ -209,7 +209,7 @@ def excel_get_special_cells_address(
     return range_.get_address()
 
 
-@mcp.tool()
+@mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_get_values(
     sheet_range: str = Field(
@@ -279,7 +279,7 @@ def excel_get_values(
     return convert_to_csv(data)
 
 
-@mcp.tool()
+@mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_set_values(
     sheet_range: str = Field(
@@ -334,7 +334,7 @@ def excel_set_values(
     return "Successfully set values."
 
 
-@mcp.tool()
+@mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_set_styles(
     sheet_range: str = Field(
@@ -403,7 +403,7 @@ def excel_set_styles(
     return range_.get_address()
 
 
-@mcp.tool()
+@mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_autofit(
     sheet_range: str = Field(
@@ -451,7 +451,7 @@ def excel_autofit(
     return "Successfully autofit."
 
 
-@mcp.tool()
+@mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_set_formula(
     sheet_range: str = Field(
@@ -501,7 +501,7 @@ def excel_set_formula(
     return "Successfully set formula."
 
 
-@mcp.tool()
+@mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
 def excel_add_sheet(
     name: str = Field(
