@@ -73,12 +73,18 @@ jobs:
       run: |
         cd dist
         zip -r pyhub.mcptools-${{ matrix.platform }}-${{ github.ref_name }}.zip pyhub.mcptools/
+        if [[ "${{ matrix.platform }}" == "macOS-arm64" ]]; then
+          cp pyhub.mcptools-macOS-arm64-${{ github.ref_name }}.zip pyhub.mcptools-macOS-${{ github.ref_name }}.zip
+        fi
 
     - name: Generate SHA256 for macOS artifacts
       if: startsWith(matrix.platform, 'macOS')
       run: |
         cd dist
         shasum -a 256 pyhub.mcptools-${{ matrix.platform }}-${{ github.ref_name }}.zip > pyhub.mcptools-${{ matrix.platform }}-${{ github.ref_name }}.zip.sha256
+        if [[ "${{ matrix.platform }}" == "macOS-arm64" ]]; then
+          shasum -a 256 pyhub.mcptools-macOS-${{ github.ref_name }}.zip > pyhub.mcptools-macOS-${{ github.ref_name }}.zip.sha256
+        fi
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
