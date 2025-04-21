@@ -105,6 +105,8 @@ class FastMCP(OrigFastMCP):
         if callable(name):
             raise TypeError("The @tool decorator was used incorrectly. Use @tool() instead of @tool")
 
+        run_in_process = False  # TODO: 강제로 멀티 프로세싱 기능 OFF
+
         # timeout 값 검증 및 조정
         effective_timeout = None
         if run_in_process:
