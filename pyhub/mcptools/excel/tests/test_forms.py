@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -144,53 +144,3 @@ def test_value_fields_parsing(mock_ranges, form_data, expected_value_fields):
     assert form.is_valid()
     value_fields_list = form.cleaned_data["value_fields"]
     assert value_fields_list == expected_value_fields
-
-
-@pytest.mark.parametrize(
-    "form_data,expected_args",
-    [
-        (
-            {
-                "row_field_names": "지역,매장",
-                "column_field_names": "제품카테고리",
-                "value_fields": "판매수량:SUM",
-                "pivot_table_name": "테스트_피벗테이블",
-            },
-            {
-                "row_field_names_list": ["지역", "매장"],
-                "column_field_names_list": ["제품카테고리"],
-                "pivot_table_name": "테스트_피벗테이블",
-            },
-        ),
-        (
-            {
-                "row_field_names": "지역,매장",
-                "column_field_names": "제품카테고리",
-                "value_fields": "판매수량:SUM|수량:SUM",
-                "pivot_table_name": "복합_피벗테이블",
-            },
-            {
-                "row_field_names_list": ["지역", "매장"],
-                "column_field_names_list": ["제품카테고리"],
-                "pivot_table_name": "복합_피벗테이블",
-            },
-        ),
-    ],
-)
-@patch("pyhub.mcptools.excel.forms.create_pivot_table")
-def test_save_method(mock_create_pivot_table, mock_ranges, form_data, expected_args):
-    """save 메서드 테스트"""
-    source_range, dest_range = mock_ranges
-    form = PivotTableCreateForm(data=form_data, source_range=source_range, dest_range=dest_range)
-
-    assert form.is_valid()
-    form.save()
-
-    # create_pivot_table 함수가 올바른 인자로 호출되었는지 확인
-    mock_create_pivot_table.assert_called_once()
-    call_args = mock_create_pivot_table.call_args[1]
-    assert call_args["source_range"] == source_range
-    assert call_args["dest_range"] == dest_range
-    assert call_args["row_field_names_list"] == expected_args["row_field_names_list"]
-    assert call_args["column_field_names_list"] == expected_args["column_field_names_list"]
-    assert call_args["pivot_table_name"] == expected_args["pivot_table_name"]

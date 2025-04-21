@@ -1,18 +1,16 @@
 {% load applescript_tags %}
 
 on ends_with(theText, theSuffix)
-	set suffixLength to length of theSuffix
-	if length of theText is less than suffixLength then return false
-	if text -suffixLength thru -1 of theText is equal to theSuffix then
-		return true
-	else
-		return false
-	end if
+    set suffixLength to length of theSuffix
+    if length of theText is less than suffixLength then return false
+        if text -suffixLength thru -1 of theText is equal to theSuffix then
+            return true
+        else
+            return false
+    end if
 end ends_with
 
 tell application "Microsoft Excel"
-    activate
-
     tell workbook "{{ workbook_name }}"
         tell sheet "{{ sheet_name }}"
             -- 1. 원본 데이터 범위와 대상 셀 지정
@@ -24,7 +22,8 @@ tell application "Microsoft Excel"
             { ¬
                 source data:sourceRange ¬
                 , table range1:destRange ¬
-                {% if pivot_table_name %}, name:"{{ pivot_table_name }}"}{% endif %}
+                {% if pivot_table_name %}, name:"{{ pivot_table_name }}"{% endif %} ¬
+            }
 
             -- 행·열 필드 추가
             add fields to pivot table pvtTable ¬
@@ -50,8 +49,11 @@ tell application "Microsoft Excel"
                 end repeat
             {% endif %}
 
-            -- style 적용
+            -- TODO: style 적용
             set table style2 of pvtTable to "PivotStyleMedium2"
+
+            set pvt_name to name of pvtTable
+			do shell script "echo " & quoted form of pvt_name
 
         end tell
     end tell

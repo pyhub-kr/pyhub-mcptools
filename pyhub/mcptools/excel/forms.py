@@ -3,7 +3,7 @@ from django import forms
 
 from pyhub.mcptools.core.fields import CommaSeperatedField
 from pyhub.mcptools.excel.types import ExcelAggregationType
-from pyhub.mcptools.excel.utils.tables import create_pivot_table
+from pyhub.mcptools.excel.utils.tables import PivotTable
 
 
 class PivotTableCreateForm(forms.Form):
@@ -75,10 +75,10 @@ class PivotTableCreateForm(forms.Form):
 
         return cleaned_data
 
-    def save(self):
+    def save(self) -> str:
         pivot_table_name = self.cleaned_data["pivot_table_name"]
 
-        create_pivot_table(
+        created_pivot_table_name = PivotTable.create(
             source_range=self.source_range,
             dest_range=self.dest_range,
             row_field_names_list=self.cleaned_data["row_field_names"],
@@ -87,3 +87,4 @@ class PivotTableCreateForm(forms.Form):
             value_fields=self.cleaned_data["value_fields"],
             pivot_table_name=pivot_table_name,
         )
+        return created_pivot_table_name

@@ -9,10 +9,10 @@ from pyhub.mcptools.excel.types import (
     ExcelExpandMode,
 )
 from pyhub.mcptools.excel.utils import get_range, get_sheet, json_dumps, str_to_list
-from pyhub.mcptools.excel.utils.tables import get_pivot_tables
+from pyhub.mcptools.excel.utils.tables import PivotTable
 
 
-@mcp.tool()
+@mcp.tool(enabled=OS.current_is_windows())  # TODO: macOS에서 xlwings 활용 테이블 생성 시에 오류 발생
 @macos_excel_request_permission
 def excel_convert_to_table(
     sheet_range: str = Field(
@@ -48,7 +48,7 @@ def excel_convert_to_table(
     ),
 ) -> str:
     """
-    Convert Excel range to table. Windows only.
+    Convert Excel range to table.
     """
 
     has_headers = has_headers.lower().strip()
@@ -68,6 +68,7 @@ def excel_convert_to_table(
 
     sheet = source_range_.sheet
 
+    # TODO: 윈도우에서는 동작하지만, macOS에서는 오류 발생.
     # https://docs.xlwings.org/en/stable/api/tables.html
     table = sheet.tables.add(
         source=source_range_.expand("table"),
@@ -76,10 +77,13 @@ def excel_convert_to_table(
         table_style_name=table_style_name,
     )
 
-    # TODO: 이미 테이블일 때, 다시 테이블 변환은 안 됩니다. 아래 코드로 테이블을 해제시킬 수 있음.
-    # current_sheet.api.ListObjects(table_name).UnList()
+    # TODO: 이미 테이블일 때, 다시 테이블 변환은 안 됩니다. 아래 코드로 테이블을 해제시킬 수 있을 듯 한데, 멈춰있습니다.
+    # current_sheet.api.ListObjects(table_name).UnList()  # Or, table.api.UnList()
 
     return f"Table(name='{table.name}') created successfully."
+
+
+# TODO: table 목록/내역 반환
 
 
 @mcp.tool()
@@ -144,7 +148,11 @@ def excel_add_pivot_table(
             f"Price:{ExcelAggregationType.AVERAGE.name}|Profit:{ExcelAggregationType.MAX.name}",
         ],
     ),
-    pivot_table_name: str = Field(default=""),
+    pivot_table_name: str = Field(
+        default="",
+        description="Name for the pivot table. Must be specified and unique within the sheet.",
+        examples=["SalesPivot", "RegionalAnalysis", "ProductSummary"],
+    ),
 ) -> str:
     """
     Create a pivot table from Excel range data.
@@ -164,7 +172,7 @@ def excel_add_pivot_table(
     4. Proceed with pivot table creation only after user approval
 
     Note:
-    - Windows only feature
+    - Pivot table name must be specified and unique within the sheet
     - Source data must have column headers
     - Value fields support multiple aggregation types (sum, count, average, max, min)
     - You only need to specify the data range, not necessarily a table - any valid Excel range with headers can be used
@@ -180,7 +188,7 @@ def excel_add_pivot_table(
     3. "Would you like to proceed with these selections or adjust them?"
 
     Returns:
-        str: Success message or error message
+        str: Success or error message
     """
 
     source_range = get_range(
@@ -207,16 +215,16 @@ def excel_add_pivot_table(
         },
     )
     form.is_valid(raise_exception=True)
-    form.save()
+    created_pivot_table_name = form.save()
 
     #
     # 피봇 테이블 생성
     #
 
-    return "Pivot table created successfully."
+    return f"Pivot table(name={created_pivot_table_name}) created successfully."
 
 
-@mcp.tool(enabled=OS.current_is_windows())
+@mcp.tool()
 @macos_excel_request_permission
 def excel_get_pivot_tables(
     book_name: str = Field(default=""),
@@ -228,15 +236,14 @@ def excel_get_pivot_tables(
     Returns a JSON string containing details of all pivot tables in the specified worksheet.
 
     Note:
-    - This feature is only supported on Windows
     - If no book or sheet is specified, the active workbook and sheet will be used
     """
 
     sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
-    return json_dumps(get_pivot_tables(sheet))
+    return json_dumps(PivotTable.list(sheet))
 
 
-@mcp.tool(enabled=OS.current_is_windows())
+@mcp.tool()
 @macos_excel_request_permission
 def excel_remove_pivot_tables(
     remove_all: bool = Field(default=False, description="Remove all pivot tables."),
@@ -251,35 +258,14 @@ def excel_remove_pivot_tables(
     or provide pivot_table_names to remove individual pivot tables.
 
     Note:
-    - This feature is only supported on Windows
     - Modifying existing pivot table designs is not supported
     - To change a pivot table's configuration, remove it and create a new one
     """
 
     sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
 
-    names = []
     if remove_all:
-        pivot_table_api = sheet.api.PivotTables()
-        for i in range(1, pivot_table_api.Count + 1):
-            pivot_table = pivot_table_api.Item(i)
-            names.append(pivot_table.Name)
-            pivot_table.TableRange2.Delete()
-            try:
-                pivot_table.PivotCache().Delete()
-            except:  # noqa
-                pass
-    else:
-        for name in str_to_list(pivot_table_names):
-            pivot_table = sheet.api.PivotTables(name)
-            names.append(pivot_table.Name)
-            pivot_table.TableRange2.Delete()
-            try:
-                pivot_table.PivotCache().Delete()
-            except:  # noqa
-                pass
+        return PivotTable.remove_all(sheet)
 
-    if names:
-        return f"Removed pivot tables : {', '.join(names)}"
     else:
-        return "No pivot tables were removed."
+        return PivotTable.remove(sheet, str_to_list(pivot_table_names))
