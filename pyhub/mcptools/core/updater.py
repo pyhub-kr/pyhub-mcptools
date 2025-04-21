@@ -1,4 +1,5 @@
 import os
+import platform
 import subprocess
 import sys
 import tempfile
@@ -12,6 +13,20 @@ from rich.progress import BarColumn, DownloadColumn, Progress, TextColumn, TimeR
 from pyhub.mcptools.core.choices import OS
 
 
+def get_download_filename(version: str) -> str:
+    os_type = OS.get_current()
+    if os_type == OS.WINDOWS:
+        return f"pyhub.mcptools-windows-v{version}.zip"
+    elif os_type == OS.MACOS:
+        machine = platform.machine()  # 'arm64' 또는 'x86_64'
+        if machine == "arm64":
+            return f"pyhub.mcptools-macOS-arm64-v{version}.zip"
+        else:
+            return f"pyhub.mcptools-macOS-x86_64-v{version}.zip"
+    else:
+        raise ValueError(f"Unsupported OS : {os_type}")
+
+
 def download_update(version: str, target_dir: str = ".", verbose: bool = False) -> None:
     """새 버전을 다운로드하고 지정 경로에 압축을 풉니다."""
 
@@ -19,7 +34,7 @@ def download_update(version: str, target_dir: str = ".", verbose: bool = False) 
 
     url = (
         f"https://github.com/pyhub-kr/pyhub-mcptools/releases/download/v{version}/"
-        f"pyhub.mcptools-{OS.get_current_os_type()}-v{version}.zip"
+        f"{get_download_filename(version)}"
     )
     if verbose:
         print("Download", url)
