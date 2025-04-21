@@ -379,30 +379,35 @@ def excel_set_styles(
         str: The address of the range where styles were applied.
     """
 
-    range_ = get_range(
-        sheet_range=sheet_range,
-        book_name=book_name,
-        sheet_name=sheet_name,
-        expand_mode=expand_mode,
-    )
+    selected_ranges: list[xw.Range] = []
+    for range_address in sheet_range.split(","):
+        excel_range = get_range(
+            sheet_range=range_address,
+            book_name=book_name,
+            sheet_name=sheet_name,
+            expand_mode=expand_mode,
+        )
 
-    def make_tuple(rgb_code: str) -> tuple[int, int, int]:
-        r, g, b = tuple(map(int, rgb_code.split(",")))
-        return r, g, b
+        def make_tuple(rgb_code: str) -> tuple[int, int, int]:
+            r, g, b = tuple(map(int, rgb_code.split(",")))
+            return r, g, b
 
-    if background_color:
-        range_.color = make_tuple(background_color)
+        if background_color:
+            excel_range.color = make_tuple(background_color)
 
-    if font_color:
-        range_.font.color = make_tuple(font_color)
+        if font_color:
+            excel_range.font.color = make_tuple(font_color)
 
-    if bold.is_specified():
-        range_.font.bold = bool(bold)
+        if bold.is_specified():
+            excel_range.font.bold = bool(bold)
 
-    if italic.is_specified():
-        range_.font.italic = bool(italic)
+        if italic.is_specified():
+            excel_range.font.italic = bool(italic)
 
-    return range_.get_address()
+        selected_ranges.append(excel_range)
+
+    addresses = ",".join(range_.get_address() for range_ in selected_ranges)
+    return f"Successfully set styles to {addresses}."
 
 
 @mcp.tool(run_in_process=True, timeout=5)
