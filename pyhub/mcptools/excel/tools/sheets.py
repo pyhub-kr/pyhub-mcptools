@@ -286,7 +286,9 @@ def excel_set_values(
         description="Excel range where to write the data",
         examples=["A1", "B2:B10"],
     ),
-    values: str = Field(description="CSV string"),
+    values: str = Field(
+        description="CSV string. Values containing commas must be enclosed in double quotes (e.g. 'a,\"b,c\",d')",
+    ),
     csv_abs_path: str = Field(
         default="",
         description="""Absolute path to the CSV file to read.

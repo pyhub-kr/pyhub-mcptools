@@ -16,7 +16,9 @@ pyhub.mcptools update
 ## v0.9.3
 
 + macOS에 피봇 테이블 생성 지원 추가
-+ 엑셀 도구에 timeout 지원을 추가하여, 도구 호출 안정성 개선
++ 엑셀 도구
+    - timeout 지원을 추가하여, 도구 호출 안정성 개선
+    - 값 설정 도구에서 CSV 값에 쌍따옴표없이 콤마(,) 값이 입력될 경우에 대한 보완 로직 추가
 + 간략하게 `pyhub.mcptools` 외에 `mcptools` 동일한 명령 추가
 
 ## v0.9.2

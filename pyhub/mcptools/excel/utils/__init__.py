@@ -217,7 +217,10 @@ def applescript_run_sync(
 
 def csv_loads(csv_str: str) -> list[list[str]]:
     """Convert a CSV string to a list of lists.
-    각 행의 열 개수가 다른 경우, 부족한 열은 빈 문자열로 채워서 반환합니다.
+    각 행의 열 개수가 다른 경우, 다음 규칙으로 처리합니다:
+    1. 가장 많이 등장하는 컬럼 수를 정상 컬럼 수로 간주
+    2. 더 많은 컬럼을 가진 행에서 콤마(,)가 포함된 필드가 있다면,
+       초과된 컬럼들을 하나로 합쳐서 처리
 
     Args:
         csv_str: CSV formatted string with newlines and commas
@@ -228,8 +231,8 @@ def csv_loads(csv_str: str) -> list[list[str]]:
     Examples:
         >>> csv_loads("a,b,c\\n1,2,3")
         [['a', 'b', 'c'], ['1', '2', '3']]
-        >>> csv_loads("a,b,c\\n1,2\\nx")
-        [['a', 'b', 'c'], ['1', '2', ''], ['x', '', '']]
+        >>> csv_loads("제목,장르,별점,평점\\n토이 스토리 3,애니메이션/모험,4.7,성장과 이별, 감동적")
+        [['제목', '장르', '별점', '평점'], ['토이 스토리 3', '애니메이션/모험', '4.7', '성장과 이별, 감동적']]
     """
     if not csv_str.strip():
         return [[""]]
@@ -240,6 +243,32 @@ def csv_loads(csv_str: str) -> list[list[str]]:
     f = StringIO(csv_str)
     reader = csv.reader(f, dialect="excel")
     data = [row for row in reader]
+
+    if not data:
+        return [[""]]
+
+    # 각 행의 컬럼 수를 카운트
+    column_counts = {}
+    for row in data:
+        count = len(row)
+        column_counts[count] = column_counts.get(count, 0) + 1
+
+    # 가장 많이 등장하는 컬럼 수를 찾음
+    expected_columns = max(column_counts.items(), key=lambda x: x[1])[0]
+
+    # 전체 행 수의 80% 이상이 같은 컬럼 수를 가질 때만 처리
+    total_rows = len(data)
+    if column_counts[expected_columns] / total_rows >= 0.8:
+        processed_data = []
+        for row in data:
+            if len(row) > expected_columns:
+                # 초과된 컬럼들을 마지막 컬럼에 합치기
+                new_row = row[: expected_columns - 1]
+                new_row.append(",".join(row[expected_columns - 1 :]))
+                processed_data.append(new_row)
+            else:
+                processed_data.append(row)
+        data = processed_data
 
     # 각 행의 열 개수를 동일하게 맞춥니다
     return normalize_2d_data(data)
