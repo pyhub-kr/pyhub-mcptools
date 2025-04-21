@@ -309,11 +309,20 @@ def excel_set_values(
 ) -> str:
     """Write data to a specified range in an Excel workbook.
 
+    Performance Tips:
+        - When setting values to multiple consecutive cells, it's more efficient to use a single call 
+          with a range (e.g. "A1:B10") rather than making multiple calls for individual cells.
+        - For large datasets, using CSV format with range notation is significantly faster than 
+          making separate calls for each cell.
+
     Returns:
-        None
+        str: Success message indicating values were set.
 
     Examples:
         >>> excel_set_values(sheet_range="A1", values="v1,v2,v3\\nv4,v5,v6")  # grid using CSV
+        >>> excel_set_values(sheet_range="A1:B3", values="1,2\\n3,4\\n5,6")  # faster than 6 separate calls
+        >>> excel_set_values(sheet_range="Sheet1!A1:C2", values="[[1,2,3],[4,5,6]]")  # using JSON array
+        >>> excel_set_values(csv_abs_path="/path/to/data.csv", sheet_range="A1")  # import from CSV file
     """
 
     range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
@@ -333,7 +342,7 @@ def excel_set_values(
 
     range_.value = fix_data(sheet_range, data)
 
-    return "Successfully set values."
+    return f"Successfully set values to {range_.address}."
 
 
 @mcp.tool(run_in_process=True, timeout=30)

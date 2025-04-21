@@ -15,8 +15,9 @@ pyhub.mcptools update
 
 ## v0.9.3
 
++ `excel_add_pivot_table` 도구 : macOS 지원 추가
++ `excel_set_values` 도구 : 성능 최적화 프롬프트 추가
 + `excel_set_styles` 도구 : 여러 셀을 동시 스타일 변경 지원 (batch 지원)
-+ macOS에 피봇 테이블 생성 지원 추가
 + 엑셀 도구
     - timeout 지원을 추가하여, 도구 호출 안정성 개선
     - 값 설정 도구에서 CSV 값에 쌍따옴표없이 콤마(,) 값이 입력될 경우에 대한 보완 로직 추가
