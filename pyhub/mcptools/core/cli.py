@@ -16,6 +16,7 @@ import typer
 from asgiref.sync import async_to_sync
 from click import Choice, ClickException
 from django.conf import settings
+from django.core.management import call_command
 from django.template.defaultfilters import filesizeformat
 from django.utils import timezone
 from mcp.types import EmbeddedResource, ImageContent, TextContent
@@ -84,7 +85,6 @@ def run(
     transport: TransportChoices = typer.Argument(default=TransportChoices.STDIO),
     host: str = typer.Option("127.0.0.1", help="SSE Host (SSE transport 방식에서만 사용)"),
     port: int = typer.Option(8000, help="SSE Port (SSE transport 방식에서만 사용)"),
-    is_experimental: bool = typer.Option(False, "--experimental"),
 ):
     """지정 transport로 MCP 서버 실행 (디폴트: stdio)"""
 
@@ -92,33 +92,26 @@ def run(
         mcp.run(transport="stdio")
 
     else:
-        if is_experimental is False:
-            console.print(f"Starting SSE MCP Server on {host}:{port}", highlight=False)
-            mcp.settings.host = host
-            mcp.settings.port = port
-            mcp.run(transport="sse")
+        console.print(f"Starting Experimental SSE MCP Server on {host}:{port}", highlight=False)
 
-        else:
-            console.print(f"Starting Experimental SSE MCP Server on {host}:{port}", highlight=False)
+        import uvicorn
 
-            import uvicorn
+        from pyhub.mcptools.core.asgi import application as asgi_application
 
-            from pyhub.mcptools.core.asgi import application as asgi_application
+        if ":" in host:
+            try:
+                host, port = host.split(":")
+                port = int(port)
+            except ValueError as e:
+                raise ValueError("Host 포맷이 잘못되었습니다. --host 'ip:port' 형식이어야 합니다.") from e
 
-            if ":" in host:
-                try:
-                    host, port = host.split(":")
-                    port = int(port)
-                except ValueError as e:
-                    raise ValueError("Host 포맷이 잘못되었습니다. --host 'ip:port' 형식이어야 합니다.") from e
-
-            uvicorn.run(
-                app=asgi_application,
-                host=host,
-                port=port,
-                reload=False,
-                workers=1,
-            )
+        uvicorn.run(
+            app=asgi_application,
+            host=host,
+            port=port,
+            reload=False,
+            workers=1,
+        )
 
 
 @app.command()
@@ -151,6 +144,12 @@ def run_sse_proxy(
                     raise typer.Exit(1) from e
         console.print(f"[red]예외 발생: {e}[/red]")
         raise typer.Exit(1) from e
+
+
+@app.command()
+def run_worker():
+    # channel name
+    call_command("runworker")
 
 
 @app.command(name="list")

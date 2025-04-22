@@ -1,9 +1,14 @@
+import importlib
+import logging
 import os
+from inspect import isclass
+from typing import Dict
 
+from asgiref.typing import ASGIApplication
+from channels.consumer import AsyncConsumer, SyncConsumer
+from channels.routing import ChannelNameRouter, ProtocolTypeRouter
+from django.apps import apps
 from django.core.asgi import get_asgi_application
-from starlette.applications import Starlette
-from starlette.responses import RedirectResponse
-from starlette.routing import Mount, Route
 
 from pyhub.mcptools.core.init import mcp
 
@@ -15,14 +20,52 @@ os.environ.setdefault(
 django_asgi_app = get_asgi_application()
 
 
-async def redirect_root(request):
-    return RedirectResponse(url="/app/")
+sse_app = mcp.sse_app()
+
+logger = logging.getLogger(__name__)
 
 
-application = Starlette(
-    routes=[
-        Route("/", endpoint=redirect_root),  # 루트 경로를 명시적으로 처리
-        Mount("/app", app=django_asgi_app),  # 끝의 슬래시 제거
-        Mount("/", app=mcp.sse_app()),  # mcp 앱을 루트에 마운트하여 /sse, /messages 직접 처리
-    ]
+def discover_workers() -> Dict[str, ASGIApplication]:
+    workers = {}
+    for app_config in apps.get_app_configs():
+        try:
+            mod = importlib.import_module(f"{app_config.name}.workers")
+        except ModuleNotFoundError:
+            continue
+
+        for attr in dir(mod):
+            obj = getattr(mod, attr)
+            if (
+                isclass(obj)
+                and issubclass(obj, (AsyncConsumer, SyncConsumer))
+                and obj not in (AsyncConsumer, SyncConsumer)
+            ):
+                channel_name = getattr(obj, "channel_name", None)
+                if channel_name:
+                    workers[channel_name] = obj.as_asgi()
+                    logger.info(
+                        f"Registered worker - Channel: {channel_name}, " f"Consumer: {obj.__module__}.{obj.__name__}"
+                    )
+    return workers
+
+
+async def http_dispatch(scope, receive, send):
+    """HTTP 요청. FastMCP SSE ASGI App과 Django ASGI App 분기"""
+
+    if scope["type"] != "http":
+        return
+
+    _path = scope.get("path", "")
+    if _path in (mcp.settings.sse_path, mcp.settings.message_path):
+        await sse_app(scope, receive, send)
+    else:
+        await django_asgi_app(scope, receive, send)
+
+
+application = ProtocolTypeRouter(
+    {
+        "http": http_dispatch,
+        # "websocket": ...,
+        "channel": ChannelNameRouter(discover_workers()),
+    }
 )

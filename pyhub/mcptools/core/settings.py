@@ -16,7 +16,8 @@ if "ENV_PATH" in env:
     env.read_env(env_path, overwrite=True)
 
 
-# ASGI_APPLICATION = "pyhub.mcptools.core.asgi.application"
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["127.0.0.1"])
+ASGI_APPLICATION = "pyhub.mcptools.core.asgi.application"
 ROOT_URLCONF = "pyhub.mcptools.urls"
 
 HOME_DIR = Path.home().resolve()
@@ -29,6 +30,8 @@ DEBUG = env.bool("DEBUG", default=False)
 SECRET_KEY = "pyhub.mcptools"
 
 INSTALLED_APPS = [
+    "daphne",
+    "channels",
     "pyhub.mcptools.core",
     "pyhub.mcptools.browser",
     "pyhub.mcptools.excel",
@@ -59,6 +62,20 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.dummy.DummyCache",
     },
 }
+
+CHANNEL_LAYER_DEFAULT_REDIS_HOST = env.str("CHANNEL_LAYER_DEFAULT_REDIS_HOST", default="127.0.0.1")
+CHANNEL_LAYER_DEFAULT_REDIS_PORT = env.int("CHANNEL_LAYER_DEFAULT_REDIS_PORT", default=None)
+
+if CHANNEL_LAYER_DEFAULT_REDIS_HOST and CHANNEL_LAYER_DEFAULT_REDIS_PORT:
+    print(f"run channel layer on {CHANNEL_LAYER_DEFAULT_REDIS_PORT}")
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [(CHANNEL_LAYER_DEFAULT_REDIS_HOST, CHANNEL_LAYER_DEFAULT_REDIS_PORT)],
+            },
+        },
+    }
 
 DATABASE_ROUTERS = ["pyhub.routers.Router"]
 

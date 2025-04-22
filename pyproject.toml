@@ -23,6 +23,8 @@ classifiers = [
 ]
 dependencies = [
     "django>=4.0",
+    "channels[daphne]",
+    "channels-redis",
     "uvicorn",
     "django-environ",
     "mcp",
