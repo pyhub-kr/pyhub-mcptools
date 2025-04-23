@@ -1,15 +1,15 @@
 import asyncio
 import time
 from enum import StrEnum
+from functools import wraps
+from typing import Any, Callable, Optional
 
 from asgiref.sync import sync_to_async
 from django.dispatch import receiver
 from django_q.brokers import get_broker
-from django_q.signals import pre_execute, pre_enqueue, post_execute, post_spawn
-from django_q.tasks import async_task
 from django_q.models import Task
-from functools import wraps
-from typing import Callable, Optional, Any
+from django_q.signals import post_execute, post_spawn, pre_enqueue, pre_execute
+from django_q.tasks import async_task
 
 
 class TaskGroup(StrEnum):
@@ -275,30 +275,26 @@ class TaskResult:
 
             await asyncio.sleep(self.polling_interval)
 
-        return await self.get_value()
+        return self.value
 
-    async def get_value(self) -> Optional[Any]:
+    @property
+    def value(self) -> Optional[Any]:
         """작업 결과값.
 
         Returns:
             Any: 성공한 작업의 결과값 또는 None
         """
-        if self.task is None:
-            self.task = await self.get_task()
-
         if self.task and self.task.success is True:
             return self.task.result
         return None
 
-    async def get_error(self) -> Optional[str]:
+    @property
+    def error(self) -> Optional[str]:
         """작업 오류 메시지.
 
         Returns:
             Optional[str]: 실패한 작업의 오류 메시지 또는 None
         """
-        if self.task is None:
-            self.task = await self.get_task()
-
         if self.task and self.task.success is False:
             return self.task.result
         return None
