@@ -1,4 +1,4 @@
-# 2. BMI 계산하기
+# 2. BMI 수식 자동 생성
 
 <div class="video-container">
     <iframe src="https://www.youtube.com/embed/MFBKm2c5iV8?si=MXwsDKcSxUHHQiKE" allowfullscreen></iframe>
