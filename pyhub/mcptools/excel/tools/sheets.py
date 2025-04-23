@@ -30,7 +30,7 @@ from pyhub.mcptools.fs.utils import validate_path
 
 @mcp.tool(run_in_process=True)
 @macos_excel_request_permission
-def excel_get_opened_workbooks() -> str:
+async def excel_get_opened_workbooks() -> str:
     """Get a list of all open workbooks and their sheets in Excel
 
     Returns:
@@ -76,7 +76,7 @@ def excel_get_opened_workbooks() -> str:
 
 @mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
-def excel_find_data_ranges(
+async def excel_find_data_ranges(
     book_name: str = Field(
         default="",
         description="Name of workbook to use. Optional.",
@@ -159,7 +159,7 @@ def excel_find_data_ranges(
 
 @mcp.tool(enabled=OS.current_is_windows(), run_in_process=True, timeout=5)
 @macos_excel_request_permission
-def excel_get_special_cells_address(
+async def excel_get_special_cells_address(
     sheet_range: str = Field(
         default="",
         description="""Excel range to get data. If not specified, uses the entire used range of the sheet.
@@ -210,7 +210,7 @@ def excel_get_special_cells_address(
 
 @mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
-def excel_get_values(
+async def excel_get_values(
     sheet_range: str = Field(
         description="""Excel range to get data. If not specified, uses the entire used range of the sheet.
             Important: When using expand_mode, specify ONLY the starting cell (e.g., 'A1' not 'A1:B10')
@@ -280,7 +280,7 @@ def excel_get_values(
 
 @mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
-def excel_set_values(
+async def excel_set_values(
     sheet_range: str = Field(
         description="Excel range where to write the data",
         examples=["A1", "B2:B10"],
@@ -346,7 +346,7 @@ def excel_set_values(
 
 @mcp.tool(run_in_process=True, timeout=30)
 @macos_excel_request_permission
-def excel_set_styles(
+async def excel_set_styles(
     styles: str = Field(
         description="""Styles to apply. Supports two formats:
             1. Single range format:
@@ -492,7 +492,7 @@ Report.xlsx|Data|C3:D4|table|0,255,0||false|true""",
 
 @mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
-def excel_autofit(
+async def excel_autofit(
     sheet_range: str = Field(
         description="Excel range to autofit",
         examples=["A1:D10", "A:E"],
@@ -540,7 +540,7 @@ def excel_autofit(
 
 @mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
-def excel_set_formula(
+async def excel_set_formula(
     sheet_range: str = Field(
         description="Excel range where to apply the formula",
         examples=["A1", "B2:B10", "Sheet1!C1:C10"],
@@ -590,7 +590,7 @@ def excel_set_formula(
 
 @mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
-def excel_add_sheet(
+async def excel_add_sheet(
     name: str = Field(
         default="",
         description="Name of the new sheet. Optional.",

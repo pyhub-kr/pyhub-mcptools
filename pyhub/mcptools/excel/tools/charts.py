@@ -8,7 +8,7 @@ from pyhub.mcptools.excel.utils import get_range, get_sheet, json_dumps
 
 @mcp.tool()
 @macos_excel_request_permission
-def excel_get_charts(
+async def excel_get_charts(
     book_name: str = Field(
         default="",
         description="Name of workbook to use. If not specified, uses active workbook.",
@@ -57,7 +57,7 @@ def excel_get_charts(
 
 @mcp.tool()
 @macos_excel_request_permission
-def excel_add_chart(
+async def excel_add_chart(
     source_sheet_range: str = Field(
         description="Excel range containing the source data for the chart",
         examples=["A1:B10", "Sheet1!A1:C5", "Data!A1:D20"],
@@ -156,7 +156,7 @@ def excel_add_chart(
 
 @mcp.tool()
 @macos_excel_request_permission
-def excel_set_chart_props(
+async def excel_set_chart_props(
     name: str = Field(
         description="The name of the chart to modify.",
         examples=["SalesChart", "RevenueGraph"],

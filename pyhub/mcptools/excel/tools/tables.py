@@ -15,7 +15,7 @@ from pyhub.mcptools.excel.utils.tables import PivotTable
 # TODO: macOS에서 xlwings 활용 테이블 생성 시에 오류 발생
 @mcp.tool(enabled=OS.current_is_windows(), run_in_process=True, timeout=5)
 @macos_excel_request_permission
-def excel_convert_to_table(
+async def excel_convert_to_table(
     sheet_range: str = Field(
         description="Excel range containing the source data for the chart",
         examples=["A1:B10", "Sheet1!A1:C5", "Data!A1:D20"],
@@ -89,7 +89,7 @@ def excel_convert_to_table(
 
 @mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
-def excel_add_pivot_table(
+async def excel_add_pivot_table(
     source_sheet_range: str = Field(
         description="Excel range containing the source data for the chart",
         examples=["A1:B10", "Sheet1!A1:C5", "Data!A1:D20"],
@@ -227,7 +227,7 @@ def excel_add_pivot_table(
 
 @mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
-def excel_get_pivot_tables(
+async def excel_get_pivot_tables(
     book_name: str = Field(default=""),
     sheet_name: str = Field(default=""),
 ) -> str:
@@ -246,7 +246,7 @@ def excel_get_pivot_tables(
 
 @mcp.tool(run_in_process=True, timeout=5)
 @macos_excel_request_permission
-def excel_remove_pivot_tables(
+async def excel_remove_pivot_tables(
     remove_all: bool = Field(default=False, description="Remove all pivot tables."),
     pivot_table_names: str = Field(default="", description="Comma-separated pivot table names"),
     book_name: str = Field(default=""),
