@@ -19,6 +19,7 @@ from django.conf import settings
 from django.core.management import call_command
 from django.template.defaultfilters import filesizeformat
 from django.utils import timezone
+from django_q.status import Stat
 from mcp.types import EmbeddedResource, ImageContent, TextContent
 from mcp_proxy.sse_client import run_sse_client
 from pydantic import BaseModel, ValidationError
@@ -867,6 +868,18 @@ def kill(
     kill_mcp_host_process(mcp_host)
 
     console.print(f"[green]Killed {mcp_host.value} processes[/green]")
+
+
+@app.command()
+def q_status():
+    table = Table()
+    table.add_column("status")
+    table.add_column("uptime")
+
+    for stat in Stat.get_all():
+        table.add_row(str(stat.status), str(stat.uptime()))
+
+    console.print(table)
 
 
 @app.command()

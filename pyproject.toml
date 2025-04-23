@@ -38,6 +38,7 @@ dependencies = [
     "platformdirs",
     "django-q2",
     "django-picklefield",
+    "aiofiles",
 ]
 
 [project.optional-dependencies]

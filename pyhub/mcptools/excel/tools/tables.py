@@ -13,7 +13,7 @@ from pyhub.mcptools.excel.utils.tables import PivotTable
 
 
 # TODO: macOS에서 xlwings 활용 테이블 생성 시에 오류 발생
-@mcp.tool(enabled=OS.current_is_windows(), run_in_process=True, timeout=5)
+@mcp.tool(enabled=OS.current_is_windows(), timeout=5)
 @macos_excel_request_permission
 async def excel_convert_to_table(
     sheet_range: str = Field(
@@ -87,7 +87,7 @@ async def excel_convert_to_table(
 # TODO: table 목록/내역 반환
 
 
-@mcp.tool(run_in_process=True, timeout=5)
+@mcp.tool(timeout=5)
 @macos_excel_request_permission
 async def excel_add_pivot_table(
     source_sheet_range: str = Field(
@@ -225,7 +225,7 @@ async def excel_add_pivot_table(
     return f"Pivot table(name={created_pivot_table_name}) created successfully."
 
 
-@mcp.tool(run_in_process=True, timeout=5)
+@mcp.tool(timeout=5)
 @macos_excel_request_permission
 async def excel_get_pivot_tables(
     book_name: str = Field(default=""),
@@ -244,7 +244,7 @@ async def excel_get_pivot_tables(
     return json_dumps(PivotTable.list(sheet))
 
 
-@mcp.tool(run_in_process=True, timeout=5)
+@mcp.tool(timeout=5)
 @macos_excel_request_permission
 async def excel_remove_pivot_tables(
     remove_all: bool = Field(default=False, description="Remove all pivot tables."),

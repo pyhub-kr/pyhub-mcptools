@@ -5,10 +5,7 @@ from functools import wraps
 from typing import Any, Callable, Optional
 
 from asgiref.sync import sync_to_async
-from django.dispatch import receiver
 from django_q.brokers import get_broker
-from django_q.models import Task
-from django_q.signals import post_execute, post_spawn, pre_enqueue, pre_execute
 from django_q.tasks import async_task
 
 
@@ -36,55 +33,6 @@ class TaskStatus(StrEnum):
     FAILURE = "failure"
     SUCCESS = "success"
     NOTHING = "nothing"
-
-
-@receiver(pre_enqueue)
-def on_pre_enqueue(sender, task, **kwargs):
-    """작업이 큐에 들어가기 전에 호출되는 시그널 핸들러.
-
-    Args:
-        sender: 시그널을 보낸 객체
-        task: 큐에 들어갈 작업 정보
-        **kwargs: 추가 키워드 인자
-    """
-    print(f"Task {task['name']} will be queued")
-
-
-@receiver(pre_execute)
-def on_pre_execute(sender, func, task, **kwargs):
-    """작업이 실행되기 전에 호출되는 시그널 핸들러.
-
-    Args:
-        sender: 시그널을 보낸 객체
-        func: 실행될 함수
-        task: 실행될 작업 정보
-        **kwargs: 추가 키워드 인자
-    """
-    print(f"Task {task['name']} will be executed by calling {func}")
-
-
-@receiver(post_execute)
-def on_post_execute(sender, task, **kwargs):
-    """작업이 실행된 후 호출되는 시그널 핸들러.
-
-    Args:
-        sender: 시그널을 보낸 객체
-        task: 실행된 작업 정보
-        **kwargs: 추가 키워드 인자
-    """
-    print(f"Task {task['name']} was executed with result {task['result']}")
-
-
-@receiver(post_spawn)
-def on_post_spawn(sender, proc_name, **kwargs):
-    """새 프로세스가 생성된 후 호출되는 시그널 핸들러.
-
-    Args:
-        sender: 시그널을 보낸 객체
-        proc_name: 생성된 프로세스 이름
-        **kwargs: 추가 키워드 인자
-    """
-    print(f"Process {proc_name} has spawned")
 
 
 class AsyncCallableWrapper:
@@ -195,7 +143,7 @@ class TaskResult:
         task_id: 작업 ID
     """
 
-    task: Optional[Task] = None
+    task: Optional = None
     polling_interval: float = 0.1
 
     def __init__(self, task_id: str):
@@ -242,7 +190,7 @@ class TaskResult:
 
     async def wait(
         self,
-        timeout: int = 0,
+        timeout: int = 30,
         raise_exception: bool = True,
     ) -> Optional[Any]:
         """작업 완료를 비동기로 대기.
@@ -325,7 +273,7 @@ Attempt Count: {self.task.attempt_count}
 Result: {self.task.result}
             """.strip()
 
-    async def get_task(self) -> Optional[Task]:
+    async def get_task(self) -> Optional:
         """작업 정보를 비동기로 조회.
 
         Returns:
@@ -335,6 +283,8 @@ Result: {self.task.result}
             cond = {"id": self.id}
         else:
             cond = {"name": self.id}
+
+        from django_q.models import Task
 
         try:
             return await Task.objects.aget(**cond)
