@@ -9,7 +9,6 @@ from pydantic import Field
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.core.choices import OS
-from pyhub.mcptools.core.types import StringBool
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
 from pyhub.mcptools.excel.types import (
     ExcelCellType,
@@ -310,9 +309,9 @@ def excel_set_values(
     """Write data to a specified range in an Excel workbook.
 
     Performance Tips:
-        - When setting values to multiple consecutive cells, it's more efficient to use a single call 
+        - When setting values to multiple consecutive cells, it's more efficient to use a single call
           with a range (e.g. "A1:B10") rather than making multiple calls for individual cells.
-        - For large datasets, using CSV format with range notation is significantly faster than 
+        - For large datasets, using CSV format with range notation is significantly faster than
           making separate calls for each cell.
 
     Returns:
@@ -350,19 +349,38 @@ def excel_set_values(
 def excel_set_styles(
     styles: str = Field(
         description="""Styles to apply. Supports two formats:
-            1. Single style format: "sheet_range;[options]"
+            1. Single range format:
+               "sheet_range;[options]"
                e.g. "A1:B2;background_color=255,255,0;bold=true"
 
-            2. Batch style format (pipe-separated CSV with header):
-               book_name|sheet_name|sheet_range|expand_mode|background_color|font_color|bold|italic
+            2. Multi-range format (CSV with header):
+               First line must be a header with required columns.
+               Columns are separated by pipe (|) character.
+
+               Required columns:
+               - range: Cell range (e.g. "A1:B2" or "Sheet1!A1")
+
+               Optional columns:
+               - book: Workbook name (e.g. "Book1.xlsx")
+               - sheet: Sheet name
+               - background_color: RGB color (e.g. "255,255,0")
+               - font_color: RGB color (e.g. "255,0,0")
+               - bold: true/false
+               - italic: true/false
+               - expand_mode: table/row/column
         """,
         examples=[
-            # 단일 스타일 포맷
+            # 단일 범위 포맷
             "A1:B2;background_color=255,255,0;bold=true",
             "Sheet1!A1:C5;font_color=255,0,0;italic=true",
             "Sales.xlsx!Sheet1!A1;background_color=0,255,0",
-            # 배치 스타일 포맷 (CSV)
-            """book_name|sheet_name|sheet_range|expand_mode|background_color|font_color|bold|italic
+            # 멀티 범위 포맷 (CSV)
+            """range|background_color
+B2|173,216,230
+B3|144,238,144
+B4|255,165,0""",
+            # 멀티 범위 포맷 (전체 옵션 사용)
+            """book|sheet|range|expand_mode|background_color|font_color|bold|italic
 Sales.xlsx|Sheet1|A1:B2||255,255,0|255,0,0|true|
 Report.xlsx|Data|C3:D4|table|0,255,0||false|true""",
         ],
@@ -371,13 +389,13 @@ Report.xlsx|Data|C3:D4|table|0,255,0||false|true""",
     """Apply styles to specified ranges in an Excel workbook.
 
     Supports two formats:
-    1. Single style format: "sheet_range;[options]"
-       - sheet_range: Required. Can include book and sheet names (e.g. "Book.xlsx!Sheet1!A1:B2")
-       - options: Optional key=value pairs separated by semicolons
+    1. Simple format (single or multiple lines):
+       Each line follows pattern: "sheet_range;[options]"
+       e.g. "A1:B2;background_color=255,255,0;bold=true"
 
-    2. Batch style format: Pipe-separated CSV with header
-       - Header must include required columns
-       - Multiple styles can be applied in one call
+    2. CSV format (must start with "csv:" prefix):
+       Pipe-separated CSV with header:
+       csv:book_name|sheet_name|sheet_range|expand_mode|background_color|font_color|bold|italic
 
     Available style options:
         - background_color: RGB color (e.g. "255,255,0")
@@ -442,7 +460,7 @@ Report.xlsx|Data|C3:D4|table|0,255,0||false|true""",
 
             # Create dict from CSV row
             values = line.split("|")
-            row_data = dict(zip(header, values))
+            row_data = dict(zip(header, values, strict=False))
 
             # Get range for this row
             excel_range = get_range(
