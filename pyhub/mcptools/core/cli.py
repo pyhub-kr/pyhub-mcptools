@@ -197,7 +197,8 @@ def show_app_paths(
 
     if not paths_to_open:
         console.print(
-            "[yellow]Warning: No path specified to open. Please select at least one of --data, --config, --cache, --log.[/yellow]"
+            "[yellow]Warning: No path specified to open. "
+            "Please select at least one of --data, --config, --cache, --log.[/yellow]"
         )
         raise typer.Exit(1)
 
@@ -206,7 +207,7 @@ def show_app_paths(
     table.add_column("Path", style="green")
     table.add_column("Description", style="magenta")
 
-    for (path_type, description), path in zip(path_descriptions, paths_to_open):
+    for (__, description), path in zip(path_descriptions, paths_to_open, strict=False):
         table.add_row(str(path), description)
 
     console.print(table)
