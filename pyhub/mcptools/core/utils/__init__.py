@@ -27,18 +27,18 @@ console = Console()
 
 def make_filecache_setting(
     name: str,
-    location_path: Optional[str] = None,
+    location_path: Optional[Path] = None,
     timeout: Optional[int] = None,
     max_entries: int = 300,
     # 최대치에 도달했을 때 삭제하는 비율 : 3 이면 1/3 삭제, 0 이면 모두 삭제
     cull_frequency: int = 3,
 ) -> dict:
     if location_path is None:
-        location_path = tempfile.gettempdir()
+        location_path = Path(tempfile.gettempdir())
 
     return {
         "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-        "LOCATION": f"{location_path}/{name}",
+        "LOCATION": f"{str(location_path / name)}",
         "TIMEOUT": timeout,
         "OPTIONS": {
             "MAX_ENTRIES": max_entries,

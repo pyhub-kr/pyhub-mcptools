@@ -147,9 +147,89 @@ def run_sse_proxy(
 
 
 @app.command()
-def run_worker():
-    # channel name
-    call_command("runworker")
+def run_workers():
+    # django-channels worker
+    call_command("migrate", "django_q")
+    call_command("qcluster")
+
+
+@app.command(name="paths")
+def show_app_paths(
+    data: bool = typer.Option(False, "--data", help="Open app user data directory"),
+    config: bool = typer.Option(False, "--config", help="Open config file directory"),
+    cache: bool = typer.Option(False, "--cache", help="Open cache file directory"),
+    log: bool = typer.Option(False, "--log", help="Open user log directory"),
+    all_: bool = typer.Option(False, "--all", "-a", help="Open all directories"),
+    mcp_host: Optional[McpHostChoices] = typer.Option(None, help="MCP 호스트 프로그램"),
+    open_folder: bool = typer.Option(False, "--open", "-o", help="경로를 출력하고 폴더 열기"),
+):
+    """Opens the specified path in file explorer or Finder according to the OS.
+
+    Args:
+        data: Open app user data directory
+        config: Open config file directory
+        cache: Open cache file directory
+        log: Open user log directory
+        all_: Open all directories
+        mcp_host: MCP 호스트 프로그램 (로그 폴더 열기 시 사용)
+        open_folder: 경로를 출력하고 폴더 열기 (기본값: 경로만 출력)
+    """
+
+    paths_to_open = []
+    path_descriptions = []
+
+    if data or all_:
+        paths_to_open.append(settings.APP_DATA_DIR)
+        path_descriptions.append(("Data", "앱 데이터 저장소"))
+    if config or all_:
+        paths_to_open.append(settings.APP_CONFIG_DIR)
+        path_descriptions.append(("Config", "설정 파일 저장소"))
+    if cache or all_:
+        paths_to_open.append(settings.APP_CACHE_DIR)
+        path_descriptions.append(("Cache", "임시 파일 저장소"))
+    if log or all_:
+        paths_to_open.append(settings.APP_LOG_DIR)
+        path_descriptions.append(("Log", "로그 파일 저장소"))
+
+    if mcp_host:
+        paths_to_open.append(get_log_dir_path(mcp_host))
+        path_descriptions.append(("Log", f"{mcp_host} 로그 저장소"))
+
+    if not paths_to_open:
+        console.print(
+            "[yellow]Warning: No path specified to open. Please select at least one of --data, --config, --cache, --log.[/yellow]"
+        )
+        raise typer.Exit(1)
+
+    # 테이블 생성
+    table = Table(title="[bold]Application Paths[/bold]", title_justify="left")
+    table.add_column("Path", style="green")
+    table.add_column("Description", style="magenta")
+
+    for (path_type, description), path in zip(path_descriptions, paths_to_open):
+        table.add_row(str(path), description)
+
+    console.print(table)
+
+    if open_folder:
+        for path in paths_to_open:
+            match OS.get_current():
+                case OS.WINDOWS:
+                    subprocess.run(["explorer", str(path)], check=True)
+                case OS.MACOS:
+                    subprocess.run(["open", str(path)], check=True)
+                case OS.LINUX:
+                    for file_manager in ["xdg-open", "nautilus", "thunar", "dolphin", "pcmanfm"]:
+                        try:
+                            subprocess.run([file_manager, str(path)], check=True)
+                            break
+                        except (subprocess.SubprocessError, FileNotFoundError):
+                            continue
+                    else:
+                        console.print(f"[red]Cannot find file manager on Linux: {path}[/red]")
+                case _:
+                    console.print(f"[red]Unsupported operating system: {OS.get_current()}[/red]")
+            console.print(f"[green]Opened path: {path}[/green]")
 
 
 @app.command(name="list")
@@ -804,36 +884,6 @@ def release_note():
     except Exception as e:
         console.print(f"[red]예상치 못한 오류가 발생했습니다: {e}[/red]")
         raise typer.Exit(1) from e
-
-
-@app.command()
-def log_folder(
-    mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
-    is_open: bool = typer.Option(False, "--open", "-o", help="OS의 기본 파일 탐색기로 로그 폴더 열기"),
-):
-    """MCP 호스트 프로그램의 로그 폴더 경로를 출력하거나 파일 탐색기로 엽니다.
-
-    Args:
-        mcp_host: MCP 호스트 프로그램 선택 (기본값: CLAUDE)
-        is_open: True일 경우 OS의 기본 파일 탐색기로 로그 폴더를 엽니다.
-    """
-    dir_path = get_log_dir_path(mcp_host)
-
-    if is_open:
-        match OS.get_current():
-            case OS.WINDOWS:
-                subprocess.run(["explorer", dir_path])
-            case OS.MACOS:
-                subprocess.run(["open", dir_path])
-            case _:
-                try:
-                    subprocess.run(["xdg-open", dir_path])
-                except FileNotFoundError:
-                    console.print("[yellow]현재 OS에서는 디렉토리 열기를 지원하지 않습니다.[/yellow]")
-                    console.print(f"로그 디렉토리 경로: {dir_path}")
-    else:
-        # 경로만 출력
-        console.print(f"로그 디렉토리 경로: {dir_path}")
 
 
 @app.command()

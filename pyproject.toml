@@ -22,7 +22,8 @@ classifiers = [
     "Topic :: Office/Business :: Office Suites",
 ]
 dependencies = [
-    "django>=4.0",
+    "django>=5.2",
+    "django-extensions",
     "channels[daphne]",
     "channels-redis",
     "uvicorn",
@@ -34,6 +35,9 @@ dependencies = [
     "httpx",
     "psutil",
     "cloudpickle",
+    "platformdirs",
+    "django-q2",
+    "django-picklefield",
 ]
 
 [project.optional-dependencies]

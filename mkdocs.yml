@@ -16,6 +16,7 @@ theme:
     accent: indigo
   features:
     - navigation.instant
+    - navigation.instant.progress
     - navigation.tracking
     - navigation.expand
     - navigation.indexes
@@ -95,7 +96,11 @@ nav:
       - mcptools/maps/index.md
   - 활용 레시피:
       - recipes/index.md
-      - recipes/excel/index.md
+      - 엑셀 레시피:
+        - recipes/excel/index.md
+        - recipes/excel/01-basic/index.md
+        - recipes/excel/02-bmi/index.md
+        - recipes/excel/03-pivot-table/index.md
 #     - mcptools/hometax/index.md
 #     - mcptools/shopping/index.md
   - release-notes.md
