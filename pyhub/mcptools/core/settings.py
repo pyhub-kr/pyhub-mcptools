@@ -186,6 +186,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # pyhub.mcptools
 
 EXPERIMENTAL = env.bool("PYHUB_MCPTOOLS_EXPERIMENTAL", default=False)
+USE_MCP_DELEGATOR_ASYNC_TASK = env.bool("USE_MCP_DELEGATOR_ASYNC_TASK", default=False)
 
 # https://api.together.xyz/
 TOGETHER_API_KEY = env.str("TOGETHER_API_KEY", default=None)

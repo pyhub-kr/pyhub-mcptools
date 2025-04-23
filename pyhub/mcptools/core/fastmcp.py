@@ -3,6 +3,7 @@ import re
 from functools import wraps
 from typing import Callable
 
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from mcp.server.fastmcp import FastMCP as OrigFastMCP
 from mcp.types import AnyFunction
@@ -88,7 +89,7 @@ class FastMCP(OrigFastMCP):
                 fn.__doc__ = delegator.__doc__
 
                 # 2) 타입 힌트(annotations) 복사
-                fn.__annotations__ = delegator.__annotations__.copy()
+                fn.__annotations__ = delegator.__annotations__.copy()  # noqa
 
                 # 3) signature 복사 (default로 지정된 Field(...) 정보 포함)
                 sig = inspect.signature(delegator)
@@ -96,17 +97,20 @@ class FastMCP(OrigFastMCP):
 
             @wraps(fn)
             async def wrapper(*args, **kwargs):
-                if delegator is not None and hasattr(delegator, "async_task"):
+                if delegator is None:
+                    return await fn(*args, **kwargs)
+
+                if settings.USE_MCP_DELEGATOR_ASYNC_TASK:
                     task_result = await delegator.async_task(*args, **kwargs)
                     return await task_result.wait(effective_timeout)
-
-                return await fn(*args, **kwargs)
+                else:
+                    return await sync_to_async(delegator)(*args, **kwargs)
 
             if delegator is not None:
                 # wrapper에 우리가 덮어쓴 메타를 다시 붙여주기
                 wrapper.__doc__ = fn.__doc__
-                wrapper.__annotations__ = fn.__annotations__
-                wrapper.__signature__ = fn.__signature__
+                wrapper.__annotations__ = fn.__annotations__  # noqa
+                wrapper.__signature__ = fn.__signature__  # noqa
 
             if experimental and not settings.EXPERIMENTAL:
                 return wrapper
