@@ -1,7 +1,11 @@
+import asyncio
 import base64
+import os
 from datetime import UTC, datetime
 from fnmatch import fnmatch
+from pathlib import Path
 
+import aiofiles
 from django.conf import settings
 from pydantic import Field
 
@@ -12,7 +16,7 @@ ENABLED_FS_TOOLS = settings.FS_LOCAL_HOME is not None
 
 
 @mcp.tool(enabled=ENABLED_FS_TOOLS)
-def fs__read_file(
+async def fs__read_file(
     path: str = Field(
         description="Path to the file to read",
         examples=["data.txt", "~/documents/notes.md"],
@@ -33,8 +37,8 @@ def fs__read_file(
     valid_path = validate_path(path)
 
     try:
-        with valid_path.open("r", encoding="utf-8") as f:
-            return f.read()
+        async with aiofiles.open(valid_path, "r", encoding="utf-8") as f:
+            return await f.read()
     except UnicodeDecodeError as e:
         raise ValueError(f"File {path} is not a valid text file") from e
     except IOError as e:
@@ -42,7 +46,7 @@ def fs__read_file(
 
 
 @mcp.tool(enabled=ENABLED_FS_TOOLS)
-def fs__read_multiple_files(
+async def fs__read_multiple_files(
     paths: list[str] = Field(
         description="List of file paths to read",
         examples=[
@@ -69,8 +73,8 @@ def fs__read_multiple_files(
     for file_path in paths:
         try:
             valid_path = validate_path(file_path)
-            with valid_path.open("rb") as f:  # 바이너리 모드로 읽기
-                content = base64.b64encode(f.read()).decode("utf-8")
+            async with aiofiles.open(valid_path, "rb") as f:  # 바이너리 모드로 읽기
+                content = base64.b64encode(await f.read()).decode("utf-8")
             results.append(f"{file_path}: {content}")
         except (ValueError, IOError) as e:
             results.append(f"{file_path}: Error - {str(e)}")
@@ -79,7 +83,7 @@ def fs__read_multiple_files(
 
 
 @mcp.tool(enabled=ENABLED_FS_TOOLS)
-def fs__write_file(
+async def fs__write_file(
     path: str = Field(
         description="Path where to write the file",
         examples=["output.txt", "~/documents/notes.md"],
@@ -119,13 +123,13 @@ def fs__write_file(
 
     try:
         if text_content:
-            with valid_path.open("wt", encoding=text_encoding) as f:
-                f.write(text_content)
+            async with aiofiles.open(valid_path, "wt", encoding=text_encoding) as f:
+                await f.write(text_content)
         elif base64_content:
             try:
                 binary_content = base64.b64decode(base64_content)
-                with valid_path.open("wb") as f:
-                    f.write(binary_content)
+                async with aiofiles.open(valid_path, "wb") as f:
+                    await f.write(binary_content)
             except Exception as e:
                 raise ValueError(f"Invalid base64 content: {str(e)}") from e
         else:
@@ -137,7 +141,7 @@ def fs__write_file(
 
 
 @mcp.tool(enabled=ENABLED_FS_TOOLS)
-def fs__edit_file(
+async def fs__edit_file(
     path: str = Field(
         description="Path to the file to edit",
         examples=["script.py", "~/documents/notes.md"],
@@ -180,11 +184,11 @@ def fs__edit_file(
     # Convert dict edits to EditOperation objects
     edit_operations = [EditOperation(old_text=edit["old_text"], new_text=edit["new_text"]) for edit in edits]
 
-    return apply_file_edits(valid_path, edit_operations, dry_run)
+    return await apply_file_edits(valid_path, edit_operations, dry_run)
 
 
 @mcp.tool(enabled=ENABLED_FS_TOOLS)
-def fs__create_directory(
+async def fs__create_directory(
     path: str = Field(
         description="Path of the directory to create",
         examples=["new_folder", "~/documents/project/src"],
@@ -274,7 +278,7 @@ async def fs__list_directory(
 
 
 @mcp.tool(enabled=ENABLED_FS_TOOLS)
-def fs__move_file(
+async def fs__move_file(
     source: str = Field(
         description="Source path of file or directory to move",
         examples=["old_name.txt", "~/documents/old_folder"],
@@ -330,7 +334,7 @@ def fs__move_file(
 
 
 @mcp.tool(enabled=ENABLED_FS_TOOLS)
-def fs__find_files(
+async def fs__find_files(
     path: str = Field(
         description="Base directory path to start search from",
         examples=[".", "~/documents", "project/src"],
@@ -365,38 +369,36 @@ def fs__find_files(
     results = []
 
     try:
-        for item in valid_path.rglob("*"):  # recursive glob
+        # os.walk를 asyncio.to_thread로 감싸서 비동기로 처리
+        for root, _, files in await asyncio.to_thread(os.walk, valid_path):
+            root_path = Path(root)
             try:
-                # Skip if not a file
-                if not item.is_file():
+                relative_root = root_path.relative_to(valid_path)
+                current_depth = len(relative_root.parts)
+
+                if max_depth > 0 and current_depth > max_depth:
                     continue
 
-                # Validate each path we traverse
-                validate_path(item)
-                relative_path = item.relative_to(valid_path)
+                for file in files:
+                    file_path = root_path / file
+                    try:
+                        validate_path(file_path)
+                        relative_path = file_path.relative_to(valid_path)
 
-                # Check depth
-                if max_depth > 0:
-                    current_depth = len(relative_path.parts)
-                    if current_depth > max_depth:
+                        should_exclude = any(
+                            fnmatch(str(relative_path), exclude_pattern) for exclude_pattern in exclude_patterns
+                        )
+                        if should_exclude:
+                            continue
+
+                        if name_pattern and not fnmatch(file, name_pattern):
+                            continue
+
+                        results.append(str(file_path))
+                    except ValueError:
                         continue
-
-                # Check if path should be excluded
-                should_exclude = any(
-                    fnmatch(str(relative_path), exclude_pattern) for exclude_pattern in exclude_patterns
-                )
-                if should_exclude:
-                    continue
-
-                # Name pattern check
-                if name_pattern:
-                    if not fnmatch(item.name, name_pattern):
-                        continue
-
-                results.append(str(item))
 
             except ValueError:
-                # Skip paths we don't have permission to access
                 continue
 
         if not results:
@@ -409,7 +411,7 @@ def fs__find_files(
 
 
 @mcp.tool(enabled=ENABLED_FS_TOOLS)
-def fs__get_file_info(
+async def fs__get_file_info(
     path: str = Field(
         description="Path to the file or directory to get info about",
         examples=["script.py", "~/documents/project"],
@@ -438,18 +440,15 @@ def fs__get_file_info(
     valid_path = validate_path(path)
 
     try:
-        stats = valid_path.stat()
+        # os.stat을 asyncio.to_thread로 감싸서 비동기로 처리
+        stats = await asyncio.to_thread(os.stat, valid_path)
 
-        # Format timestamps using timezone-aware UTC
         created = datetime.fromtimestamp(stats.st_ctime, UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         modified = datetime.fromtimestamp(stats.st_mtime, UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         accessed = datetime.fromtimestamp(stats.st_atime, UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-        # Determine type
         type_ = "directory" if valid_path.is_dir() else "file"
-
-        # Format permissions in octal
-        permissions = oct(stats.st_mode)[-3:]  # Get last 3 digits of octal permissions
+        permissions = oct(stats.st_mode)[-3:]
 
         info = {
             "size": f"{stats.st_size:,} bytes",
@@ -467,7 +466,7 @@ def fs__get_file_info(
 
 
 @mcp.tool(enabled=ENABLED_FS_TOOLS)
-def fs__list_allowed_directories() -> str:
+async def fs__list_allowed_directories() -> str:
     """
     Returns the list of directories that this server is allowed to access.
 
