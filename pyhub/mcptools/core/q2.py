@@ -2,6 +2,7 @@ import asyncio
 import time
 from enum import StrEnum
 
+from asgiref.sync import sync_to_async
 from django.dispatch import receiver
 from django_q.brokers import get_broker
 from django_q.signals import pre_execute, pre_enqueue, post_execute, post_spawn
@@ -117,7 +118,7 @@ class AsyncCallableWrapper:
         """
         return self.func(*args, **kwargs)
 
-    def async_task(
+    async def async_task(
         self,
         *args,
         group: Optional[TaskGroup] = None,
@@ -139,7 +140,7 @@ class AsyncCallableWrapper:
         """
         path = f"{self.func.__module__}.{self.func.__name__}"
         actual_group = group or self.default_group
-        task_id: str = async_task(
+        task_id: str = await sync_to_async(async_task)(
             path,
             *args,
             group=actual_group.value if actual_group else None,
@@ -171,6 +172,18 @@ def q_task(group: Optional[TaskGroup] = None):
         return AsyncCallableWrapper(func, default_group=group)
 
     return decorator
+
+
+class TaskTimeoutError(Exception):
+    """작업 대기 시간 초과 시 발생하는 예외"""
+
+    pass
+
+
+class TaskFailureError(Exception):
+    """작업 실패 시 발생하는 예외"""
+
+    pass
 
 
 class TaskResult:
@@ -227,75 +240,65 @@ class TaskResult:
             return self.task.attempt_count
         return None
 
-    async def wait(self, timeout: int = 0) -> Optional[Any]:
+    async def wait(
+        self,
+        timeout: int = 0,
+        raise_exception: bool = True,
+    ) -> Optional[Any]:
         """작업 완료를 비동기로 대기.
 
         Args:
             timeout: 대기 시간 제한(초) (기본값: 0, 무제한)
+            raise_exception: timeout 또는 작업 실패 시 예외 발생 여부 (기본값: True)
 
         Returns:
             Optional[Any]: 작업 결과 또는 None
+
+        Raises:
+            TaskTimeoutError: timeout이 발생하고 raise_exception이 True인 경우
+            TaskFailureError: 작업이 실패하고 raise_exception이 True인 경우
         """
         start_time = time.time()
 
         while True:
             self.task = await self.get_task()
 
-            if self.task is not None:
+            if self.task is not None:  # noqa
+                if raise_exception and self.status == TaskStatus.FAILURE:
+                    raise TaskFailureError(f"Task {self.id} failed with error: {self.error}")
                 break
 
-            if time.time() - start_time >= timeout:
+            if timeout > 0 and time.time() - start_time >= timeout:  # noqa
+                if raise_exception:
+                    raise TaskTimeoutError(f"Task {self.id} timed out after {timeout} seconds")
                 break
 
             await asyncio.sleep(self.polling_interval)
 
-        return self.value
+        return await self.get_value()
 
-    def wait_sync(self, timeout: int = 0) -> Optional[Any]:
-        """작업 완료를 동기적으로 대기.
-
-        Args:
-            timeout: 대기 시간 제한(초) (기본값: 0, 무제한)
-
-        Returns:
-            Optional[Any]: 작업 결과 또는 None
-        """
-        start_time = time.time()
-
-        while True:
-            self.task = self.get_task_sync()
-
-            if self.task is not None:
-                break
-
-            if time.time() - start_time >= timeout:
-                break
-
-            time.sleep(self.polling_interval)
-
-        return self.value
-
-    @property
-    def value(self) -> Any:
+    async def get_value(self) -> Optional[Any]:
         """작업 결과값.
 
         Returns:
             Any: 성공한 작업의 결과값 또는 None
         """
         if self.task is None:
-            self.task = self.get_task_sync()
+            self.task = await self.get_task()
 
         if self.task and self.task.success is True:
             return self.task.result
         return None
 
-    @property
-    def error(self) -> Optional[str]:
+    async def get_error(self) -> Optional[str]:
         """작업 오류 메시지.
 
         Returns:
             Optional[str]: 실패한 작업의 오류 메시지 또는 None
         """
+        if self.task is None:
+            self.task = await self.get_task()
+
         if self.task and self.task.success is False:
             return self.task.result
         return None
@@ -342,23 +345,7 @@ Result: {self.task.result}
         except Task.DoesNotExist:
             return None
 
-    def get_task_sync(self) -> Optional[Task]:
-        """작업 정보를 동기적으로 조회.
-
-        Returns:
-            Optional[Task]: 작업 객체 또는 None
-        """
-        if len(self.id) == 32:
-            cond = {"id": self.id}
-        else:
-            cond = {"name": self.id}
-
-        try:
-            return Task.objects.get(**cond)
-        except Task.DoesNotExist:
-            return None
-
-    def retry(self) -> Optional["TaskResult"]:
+    async def retry(self) -> Optional["TaskResult"]:
         """현재 작업을 재시도.
 
         Returns:
@@ -367,7 +354,7 @@ Result: {self.task.result}
         if self.status == TaskStatus.NOTHING:
             return None
 
-        task_id: str = async_task(
+        task_id: str = await sync_to_async(async_task)(
             self.task.func,
             *self.task.args or [],
             group=self.task.group,
@@ -376,7 +363,7 @@ Result: {self.task.result}
         )
         return TaskResult(task_id)
 
-    def kill(self):
+    async def kill(self) -> None:
         """현재 실행 중인 작업을 강제 종료."""
         broker = get_broker()
-        broker.delete(self.id)
+        await sync_to_async(broker.delete)(self.id)
