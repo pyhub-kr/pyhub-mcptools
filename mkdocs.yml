@@ -102,6 +102,7 @@ nav:
         - recipes/excel/02-bmi/index.md
         - recipes/excel/03-auto-formula/index.md
         - recipes/excel/04-pivot-table/index.md
+        - recipes/excel/05-vlookup/index.md
 #     - mcptools/hometax/index.md
 #     - mcptools/shopping/index.md
   - release-notes.md
