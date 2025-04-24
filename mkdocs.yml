@@ -49,6 +49,11 @@ markdown_extensions:
   - attr_list
 
 plugins:
+  # https://squidfunk.github.io/mkdocs-material/setup/setting-up-social-cards/
+  - social:
+      enabled: true
+      cards_layout_options:
+        font_family: "Noto Sans KR"
   - search
   - mkdocstrings:
       handlers:

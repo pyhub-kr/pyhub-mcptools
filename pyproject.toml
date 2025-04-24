@@ -72,6 +72,8 @@ docs = [
     "mkdocstrings>=0.20.0",
     "mkdocstrings-python>=1.0.0",
     "mkdocs-glightbox",
+    "mkdocs-git-revision-date-localized-plugin",
+    "mkdocs-material[imaging]",
 ]
 build = ["setuptools", "wheel", "build", "twine"]
 
