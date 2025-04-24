@@ -427,6 +427,10 @@ Sales.xlsx|Sheet1|A1:B2||255,255,0|255,0,0|true|false""",
                 continue
 
             values = line.split("|")
+
+            if len(values) < len(header):
+                raise ValueError(f"Invalid CSV format. Expected {len(header)} columns, got {len(values)}.")
+
             row_data = dict(zip(header, values, strict=False))
 
             excel_range = get_range(

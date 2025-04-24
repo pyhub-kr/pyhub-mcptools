@@ -15,17 +15,26 @@ def test_get_opened_workbooks():
     assert isinstance(json.loads(ret), dict)
 
 
-def test_set_styles():
-    styles = """range|background_color|font_color
-A1|255,200,200|0,0,0
-A2|255,200,200|0,0,0
-A5|255,200,200|0,0,0
-A6|255,200,200|0,0,0
-A8|255,200,200|0,0,0
-A9|255,200,200|0,0,0
-A3|200,255,200|0,0,128
-A4|180,180,255|255,255,255
-A7|180,180,255|255,255,255
-A10|180,180,255|255,255,255"""
+@pytest.mark.parametrize(
+    "styles",
+    [
+        """book_name|sheet_name|sheet_range|expand_mode|background_color|font_color|bold|italic
+|A2:B2||255,230,230|0,0,0|false|false
+|A3:B3||230,242,255|0,0,0|false|false
+|A4:B4||255,250,230|0,0,0|false|false
+|A5:B5||230,255,230|0,0,0|false|false
+|A6:B6||230,242,255|0,0,0|false|false
+|A7:B7||230,242,255|0,0,0|false|false
+|A8:B8||255,230,240|0,0,0|false|false
+|A9:B9||255,250,230|0,0,0|false|false
+|A10:B10||255,250,230|0,0,0|false|false
+|A11:B11||230,255,230|0,0,0|false|false""",
+        "A1:B2;background_color=255,255,0;bold=true",
+        "Sheet1!A1:C5;font_color=255,0,0;italic=true",
+        """book_name|sheet_name|sheet_range|expand_mode|background_color|font_color|bold|italic
+|Sheet1|A1:B2||255,255,0|255,0,0|true|false""",
+    ],
+)
+def test_set_styles(styles):
     ret = sheets_tasks.set_styles(styles)
     print(ret)
