@@ -10,6 +10,7 @@ copyright: Copyright &copy; 2025 파이썬사랑방 (<a href="mailto:me@pyhub.kr
 
 theme:
   name: material
+  logo: assets/logo-128.png
   custom_dir: overrides
   palette:
     primary: indigo
@@ -50,10 +51,19 @@ markdown_extensions:
 
 plugins:
   # https://squidfunk.github.io/mkdocs-material/setup/setting-up-social-cards/
-  - social:
+  - local_social:
       enabled: true
       cards_layout_options:
-        font_family: "Noto Sans KR"
+        font_path:
+          Regular: "./fonts/NotoSansKR-Regular.ttf"
+          Bold: "./fonts/NotoSansKR-Bold.ttf"
+          Light: "./fonts/NotoSansKR-Light.ttf"
+          Medium: "./fonts/NotoSansKR-Medium.ttf"
+          Thin: "./fonts/NotoSansKR-Thin.ttf"
+          Black: "./fonts/NotoSansKR-Black.ttf"
+          ExtraBold: "./fonts/NotoSansKR-ExtraBold.ttf"
+          ExtraLight: "./fonts/NotoSansKR-ExtraLight.ttf"
+          SemiBold: "./fonts/NotoSansKR-SemiBold.ttf"
   - search
   - mkdocstrings:
       handlers:

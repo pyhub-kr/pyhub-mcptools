@@ -91,6 +91,9 @@ Documentation = "https://pyhub-kr.github.io/pyhub-mcptools"
 "pyhub.mcptools.excel" = "pyhub.mcptools.excel.__main__:app"
 "pyhub.mcptools.setup" = "pyhub.mcptools.setup.__main__:app"
 
+[project.entry-points."mkdocs.plugins"]
+local_social = "plugins.local_social.plugin:LocalSocialPlugin"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

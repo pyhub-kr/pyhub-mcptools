@@ -39,8 +39,10 @@ build-onedir: clean
 
 docs:
 	uv pip install -e ".[docs]"
+	sh ./scripts/download-fonts.sh
 	uv run mkdocs serve --dev-addr localhost:8080
 
 docs-build:
 	uv pip install -e ".[docs]"
+	sh ./scripts/download-fonts.sh
 	uv run mkdocs build --clean --site-dir docs-build
