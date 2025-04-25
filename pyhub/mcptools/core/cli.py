@@ -157,7 +157,43 @@ def run_sse_proxy(
 
 
 @app.command()
-def run_worker(
+def celery_revoke(
+    is_hard_terminate: bool = typer.Option(
+        False,
+        "--hard",
+        "-H",
+        help="Hard terminate all active tasks",
+    ),
+    is_purge: bool = typer.Option(
+        False,
+        "--purge",
+        "-P",
+        help="메시지 브로커에서 대기 중인 모든 작업 메시지를 제거합니다. 이미 워커가 가져간 작업이나 실행 중인 작업에는 영향을 주지 않습니다.",
+    ),
+):
+    """현재 실행 중인 작업을 취소(Revoke)합니다. --hard 옵션을 지정하면 강제 종료합니다."""
+
+    active_tasks = celery_app.control.inspect().active()
+
+    if active_tasks is None:
+        console.print(f"[red]조회 실패[/red]")
+
+    else:
+        # 모든 task에 대해 revoke 실행
+        for worker, tasks in active_tasks.items():
+            console.print(f"{worker}: {len(tasks)} tasks")
+            for task_id in tasks:
+                celery_app.control.revoke(task_id, terminate=is_hard_terminate)
+                console.print(f"Revoked task {task_id}")
+
+    # 전체 Queue 비우기
+    if is_purge:
+        console.print(f"대기 중인 모든 작업 메시지를 제거합니다.")
+        celery_app.control.purge()
+
+
+@app.command()
+def celery_run(
     use_xlwings_queue: bool = typer.Option(
         False,
         "--xlwings-queue",
@@ -185,7 +221,10 @@ def run_worker(
 
     if use_xlwings_queue:
         queues = "xlwings"
-        pool = pool or "threads"
+        # solo : 단일 프로세스, 단일 스레드로 동작
+        # pool 타입에 띠라 prefork 조차도 COM 접근으로 인해 SIGSEGV이 발생할 수 있기에,
+        # 안전하게 solo 타입을 디폴트로 지정
+        pool = pool or "solo"
     else:
         queues = settings.CELERY_TASK_DEFAULT_QUEUE
         pool = pool or "eventlet"
@@ -215,7 +254,7 @@ def run_worker(
         # Worker 인스턴스 생성 및 실행
         worker = celery_app.Worker(
             hostname=hostname,
-            pool=pool or "threads",
+            pool=pool,
             concurrency=concurrency or (1 if use_xlwings_queue else 2),
             loglevel=log_level or ("DEBUG" if settings.DEBUG else "INFO"),
             logfile=logfile,

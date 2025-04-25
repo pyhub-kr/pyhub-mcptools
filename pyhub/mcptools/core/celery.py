@@ -73,16 +73,6 @@ class AsyncCallableWrapper:
         result = self.func.delay(*args, **kwargs)
         return TaskResult(result.id)
 
-        # task_id: str = await sync_to_async(async_task)(
-        #     path,
-        #     *args,
-        #     queue=actual_queue.value if actual_queue else None,
-        #     sync=sync,
-        #     hook=hook,
-        #     **kwargs,
-        # )
-        # return TaskResult(task_id)
-
 
 def celery_task(
     queue: Optional[str] = None,
@@ -169,69 +159,61 @@ class TaskResult:
     def id(self) -> str:
         return self.task_id
 
-    @property
-    def status(self) -> TaskStatus:
-        """Celery 작업 상태를 TaskStatus Enum으로 반환."""
-        celery_status = self._async_result.status
-        # Map Celery status strings to TaskStatus Enum
-        try:
-            return TaskStatus(celery_status)
-        except ValueError:
-            # Handle unknown statuses if necessary
-            return TaskStatus.PENDING  # Or some other default/unknown status
-
     async def wait(
         self,
         timeout: Optional[float] = None,
         raise_exception: bool = True,
-        interval: float = 0.1,  # 폴링 간격 (초)
+        interval: float = 0.1,
+        revoke_on_timeout: bool = False,
     ) -> Optional[Any]:
-        """작업 완료를 비동기 폴링 방식으로 대기"""
+        """작업 완료를 비동기 폴링 방식으로 대기
 
+        Args:
+            timeout
+            raise_exception
+            interval : 폴링 간격
+            revoke_on_timeout (book, False) : timeout 발생 시 Task Revoke 여부
+        """
         start_time = time.monotonic()
         current_interval = interval  # 초기 폴링 간격
         max_interval = 5.0  # 최대 폴링 간격 (초)
-        backoff_factor = 1.5  # 백오프 증가율
-
+        backoff_factor = 1.1  # 백오프 증가율
         while True:
             # 작업이 최종 상태에 도달하면, 상태를 확인합니다.
             if await self.ready():
                 # SUCCESS
                 if await self.successful():
-                    return self._async_result.result
+                    return await self.result()
                 # FAILURE, REVOKED
                 else:
                     if raise_exception:
-                        original_exception = self._async_result.result
+                        original_exception = await self.result()
                         raise TaskFailureError(f"Task {self.id} failed") from original_exception
                     else:
                         return None  # 예외를 발생시키지 않으면 None 반환
-
-            # 타임아웃 확인
             if timeout is not None:
                 elapsed_time = time.monotonic() - start_time
                 if elapsed_time > timeout:
+                    if revoke_on_timeout:
+                        await self.revoke(terminate=True)
                     if raise_exception:
                         raise TaskTimeoutError(f"Task {self.id} timed out after {timeout} seconds")
                     else:
                         return None  # 예외를 발생시키지 않으면 None 반환
-
-            # 다음 폴링까지 대기
             await asyncio.sleep(current_interval)
-
             # 지수적 백오프: 폴링 간격을 점진적으로 증가
             current_interval = min(current_interval * backoff_factor, max_interval)
 
     async def get_value(self) -> Optional[Any]:
         """성공한 작업의 결과값."""
         if await self.successful():
-            return await self.get_result()
+            return await self.result()
         return None
 
     async def get_error(self) -> Optional[Any]:  # Can be Exception or traceback string
         """실패한 작업의 오류 정보 (예외 객체 또는 트레이스백)."""
         if await self.failed():
-            return await self.get_result()
+            return await self.result()
         return None
 
     async def revoke(
@@ -241,21 +223,40 @@ class TaskResult:
     ) -> None:
         """작업 실행을 취소하거나 실행 중인 작업을 종료"""
 
-        # Revoke prevents future execution.
-        # Terminate attempts to kill a running task (requires signal support in worker)
-        self._async_result.revoke(terminate=terminate, signal=signal.value)
+        # terminate=True : 강제 종료
+
+        # terminate=False : 취소 요청
+        #  - task에서는 주기적으로 self.request.called_directly or self.is_revoked() 여부를 검사하여 안전하게 종료 가능.
+
+        async_func = sync_to_async(self._async_result.revoke, thread_sensitive=True)
+        await async_func(terminate=terminate, signal=signal.value)
+
+    async def status(self) -> TaskStatus:
+        """Celery 작업 상태를 TaskStatus Enum으로 반환."""
+
+        async_func = sync_to_async(lambda: self._async_result.status, thread_sensitive=True)
+        celery_status = await async_func()
+        try:
+            return TaskStatus(celery_status)
+        except ValueError:
+            return TaskStatus.PENDING  # Or some other default/unknown status
 
     async def ready(self) -> bool:
-        return await sync_to_async(self._async_result.ready, thread_sensitive=True)()
+        async_func = sync_to_async(self._async_result.ready, thread_sensitive=True)
+        return await async_func()
 
     async def successful(self) -> bool:
-        return await sync_to_async(self._async_result.successful, thread_sensitive=True)()
+        async_func = sync_to_async(self._async_result.successful, thread_sensitive=True)
+        return await async_func()
 
     async def failed(self) -> bool:
-        return await sync_to_async(self._async_result.failed, thread_sensitive=True)()
+        async_func = sync_to_async(self._async_result.failed, thread_sensitive=True)
+        return await async_func()
 
-    async def get_traceback(self) -> Optional[str]:
-        return await sync_to_async(self._async_result.traceback, thread_sensitive=True)()
+    async def traceback(self) -> Optional[str]:
+        async_func = sync_to_async(lambda: self._async_result.traceback, thread_sensitive=True)
+        return await async_func()
 
-    async def get_result(self) -> Optional[Any]:
-        return await sync_to_async(self._async_result.result, thread_sensitive=True)()
+    async def result(self) -> Optional[Any]:
+        async_func = sync_to_async(lambda: self._async_result.result, thread_sensitive=True)
+        return await async_func()

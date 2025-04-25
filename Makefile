@@ -31,7 +31,7 @@ publish: build
 build-onedir: clean
 	uv pip install --upgrade -e ".[build,all]"
 	uv pip install --upgrade pyinstaller
-	uv run pyinstaller --console --onedir --collect-all mcp_proxy --collect-all pyhub.mcptools --name pyhub.mcptools pyhub/mcptools/__main__.py
+	uv run pyinstaller --console --onedir --collect-all celery --collect-all mcp_proxy --collect-all kombu --collect-all dns --collect-all eventlet --collect-all pyhub.mcptools --name pyhub.mcptools pyhub/mcptools/__main__.py
 
 #
 # docs

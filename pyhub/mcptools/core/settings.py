@@ -246,8 +246,8 @@ CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default="rpc://")
 # TASK 실행 관련
 CELERY_TASK_ALWAYS_EAGER = False  # 개발환경에서 True로 설정하면 비동기 작업을 동기적으로 실행
 CELERY_TASK_EAGER_PROPAGATES = True  # eager 모드에서 예외 전파 여부
-CELERY_TASK_TIME_LIMIT = 3600  # 작업 최대 실행 시간 (초)
-CELERY_TASK_SOFT_TIME_LIMIT = 3540  # 소프트 타임아웃 (초) - 정상적인 종료를 위한 시간
+CELERY_TASK_SOFT_TIME_LIMIT = 3540  # 소프트 타임아웃 (초) - 작업 내부에서 Graceful 종료 로직 가능
+CELERY_TASK_TIME_LIMIT = 3600  # 작업 최대 실행 시간 (초) - 강제 종료
 
 # Queue 설정
 CELERY_TASK_DEFAULT_QUEUE = "default"
@@ -277,6 +277,7 @@ CELERY_TASK_ROUTES = {
 }
 
 # 결과 백엔드 설정
+# RPC 백엔드를 쓸 경우 결과가 “reply queue” 에 저장되므로, 결과 만료는 클라이언트가 가져간 뒤 자동 삭제
 CELERY_RESULT_EXPIRES = 60 * 60 * 24  # 결과 보관 기간 (24시간)
 CELERY_RESULT_EXTENDED = True  # 확장된 작업 결과 정보 저장
 CELERY_RESULT_PERSISTENT = True  # RabbitMQ 결과 영속성 보장
@@ -291,8 +292,11 @@ CELERY_TASK_ACKS_LATE = True  # 작업 완료 후 승인
 CELERY_TASK_REJECT_ON_WORKER_LOST = True  # 워커 중단 시 작업 거부
 
 # 워커 설정
+CELERY_WORKER_POOL_RESTARTS = True
+CELERY_MULTIPROCESSING_CONTEXT = "spawn"  # or "forever"
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # 워커 당 프리페치 수를 1로 제한
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 1  # 메모리 누수 방지를 위해 태스크 1개 실행 후 워커 재시작
+CELERY_WORKER_MAX_MEMORY_PER_CHILD = 200_000  # 메모리 200MB 초과 시 워커 재시작
 CELERY_WORKER_SEND_TASK_EVENTS = True
 CELERY_WORKER_CONCURRENCY = 1  # 동시 실행 워커 수를 1로 제한
 CELERY_TASK_TRACK_STARTED = True  # 태스크 시작 추적

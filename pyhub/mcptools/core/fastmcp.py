@@ -1,12 +1,15 @@
+import asyncio
 import inspect
+import multiprocessing
 import re
 from functools import wraps
 from typing import Callable
 
-from asgiref.sync import sync_to_async
 from django.conf import settings
 from mcp.server.fastmcp import FastMCP as OrigFastMCP
 from mcp.types import AnyFunction
+
+from pyhub.mcptools.core.celery import TaskTimeoutError
 
 
 class SyncFunctionNotAllowedError(TypeError):
@@ -101,10 +104,19 @@ class FastMCP(OrigFastMCP):
                     return await fn(*args, **kwargs)
 
                 if settings.USE_MCP_DELEGATOR_ASYNC_TASK:
+                    # wait 함수 내에서는 timeout이 지나면 즉시 반환
+                    # 따로 강제 종료를 요청하지 않았습니다.
                     task_result = await delegator.async_task(*args, **kwargs)
                     return await task_result.wait(effective_timeout)
                 else:
-                    return await sync_to_async(delegator)(*args, **kwargs)
+                    # 쓰레드 방식에서는 timeout이 되어도 함수가 끝나기 전에는 timeout 예외가 발생하지 않으므로
+                    # 멀티 프로세싱 방식으로 실행하여, timeout이 발생하면 강제 종료
+                    return execute_with_process_timeout(
+                        func=delegator,
+                        *args,
+                        timeout=effective_timeout,
+                        **kwargs,
+                    )
 
             if delegator is not None:
                 # wrapper에 우리가 덮어쓴 메타를 다시 붙여주기
@@ -137,3 +149,53 @@ class FastMCP(OrigFastMCP):
             return wrapper
 
         return decorator
+
+
+# 가장 확실한 방법은 별도의 프로세스에서 함수를 실행하고 타임아웃 시 프로세스를 종료하는 것입니다.
+# ex) 복잡한 계산, 머신러닝 추론, 외부 바이너리 호출에 적합
+
+
+def _worker(func, _q, *_args, **_kwargs):
+    try:
+        result = func(*_args, **_kwargs)
+        _q.put((True, result))
+    except Exception as e:
+        _q.put((False, e))
+
+
+def execute_with_process_timeout(func, *args, timeout: float = None, **kwargs):
+    """
+    별도 프로세스에서 func를 실행하고, timeout 초과 시 프로세스를 종료합니다.
+    """
+
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(target=_worker, args=(func, q, *args), kwargs=kwargs)
+    p.start()
+    p.join(timeout)
+
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        raise TaskTimeoutError(f"{func.__name__} timed out after {timeout} seconds")
+
+    success, payload = q.get()
+    if success:
+        return payload
+    else:
+        raise payload
+
+
+# 스레드 강제 종료 불가 : cancel()는 태스크 취소 표식만 남기고, 실제로 래핑된 스레드는 계속 실행 → 리소스 누수
+# ex) HTTP 요청, DB 조회, 파일 입출력 등
+
+
+async def execute_with_timeout(func, *args, timeout: float = None, **kwargs):
+    """
+    sync 함수를 별도 스레드에서 실행하고,
+    timeout 초과 시 TaskTimeoutError를 발생시킵니다.
+    """
+    try:
+        # asyncio.to_thread → Python 3.9+ 권장
+        return await asyncio.wait_for(asyncio.to_thread(func, *args, **kwargs), timeout)
+    except asyncio.TimeoutError:
+        raise TaskTimeoutError(f"{func.__name__} timed out after {timeout} seconds")
