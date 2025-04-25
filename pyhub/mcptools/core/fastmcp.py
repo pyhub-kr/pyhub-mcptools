@@ -25,7 +25,7 @@ class DelegatorNotDecoratedError(TypeError):
 
 
 class FastMCP(OrigFastMCP):
-    DEFAULT_PROCESS_TIMEOUT = 10
+    DEFAULT_PROCESS_TIMEOUT = 30
 
     def _get_function_path(self, fn: Callable) -> tuple[str, str]:
         """함수의 모듈 경로와 이름을 반환합니다."""
