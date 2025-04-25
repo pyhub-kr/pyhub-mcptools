@@ -23,8 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "django>=5.2",
-    "django-extensions",
-    "channels[daphne]",
+    "channels",
     "channels-redis",
     "uvicorn",
     "django-environ",
@@ -36,8 +35,9 @@ dependencies = [
     "psutil",
     "cloudpickle",
     "platformdirs",
-    "django-q2",
-    "django-picklefield",
+    "celery",
+    "eventlet",
+    "pika",
     "aiofiles",
 ]
 

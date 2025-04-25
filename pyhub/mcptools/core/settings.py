@@ -2,11 +2,10 @@ from pathlib import Path
 
 from environ import Env
 from platformdirs import (
-    user_data_path,
-    user_config_path,
     user_cache_path,
+    user_config_path,
+    user_data_path,
     user_log_path,
-    site_data_path,
 )
 
 from pyhub.mcptools.core.utils import (
@@ -15,7 +14,6 @@ from pyhub.mcptools.core.utils import (
     get_databases,
     make_filecache_setting,
 )
-
 
 env = Env()
 
@@ -58,13 +56,10 @@ SECRET_KEY = env.str(
 )
 
 INSTALLED_APPS = [
-    "daphne",
     "channels",
-    "django_extensions",
     "pyhub.mcptools.core",
     "pyhub.mcptools.browser",
     "pyhub.mcptools.excel",
-    "django_q",
 ]
 MIDDLEWARE = []
 
@@ -95,8 +90,6 @@ CACHES = {
 }
 
 
-#
-# django-q2 사용을 위해 비활성화
 #
 # CHANNEL_LAYER_DEFAULT_REDIS_HOST = env.str("CHANNEL_LAYER_DEFAULT_REDIS_HOST", default="127.0.0.1")
 # CHANNEL_LAYER_DEFAULT_REDIS_PORT = env.int("CHANNEL_LAYER_DEFAULT_REDIS_PORT", default=None)
@@ -244,60 +237,76 @@ NAVER_MAP_CLIENT_ID = env.str("NAVER_MAP_CLIENT_ID", default=None)
 NAVER_MAP_CLIENT_SECRET = env.str("NAVER_MAP_CLIENT_SECRET", default=None)
 
 
-# django-q2
-# https://django-q2.readthedocs.io/en/master/configure.html
+# Celery Configuration
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html
 
-from psutil import cpu_count  # noqa
+CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="amqp://guest:guest@127.0.0.1//")
+CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default="rpc://")
 
-Q_CLUSTER_DEFAULT_WORKERS = env.int("Q_CLUSTER_DEFAULT_WORKERS", default=cpu_count())
+# TASK 실행 관련
+CELERY_TASK_ALWAYS_EAGER = False  # 개발환경에서 True로 설정하면 비동기 작업을 동기적으로 실행
+CELERY_TASK_EAGER_PROPAGATES = True  # eager 모드에서 예외 전파 여부
+CELERY_TASK_TIME_LIMIT = 3600  # 작업 최대 실행 시간 (초)
+CELERY_TASK_SOFT_TIME_LIMIT = 3540  # 소프트 타임아웃 (초) - 정상적인 종료를 위한 시간
 
-# 작업이 lock된 이후, dequeue를 통해 다른 클러스터가 다시 접근 가능해지는 시간 (초)
-# 예상치못한 worker 실패 시에 잠금이 만료되면 다른 클러스터가 다시 가져갈 수 있음 (회복 가능성 확보)
-Q_CLUSTER_DEFAULT_RETRY = env.int("Q_CLUSTER_DEFAULT_RETRY", default=120)
-Q_CLUSTER_DEFAULT_TIMEOUT = env.int("Q_CLUSTER_DEFAULT_TIMEOUT", default=60)
-
-Q_CLUSTER_XLWINGS_WORKERS = env.int("Q_CLUSTER_XLWINGS_WORKERS", default=1)
-Q_CLUSTER_XLWINGS_RETRY = env.int("Q_CLUSTER_XLWINGS_RETRY", default=120)
-Q_CLUSTER_XLWINGS_TIMEOUT = env.int("Q_CLUSTER_XLWINGS_TIMEOUT", default=60)
-
-
-Q_CLUSTER = {
-    "name": "default",
-    "orm": "default",  # settings.DATABASES["default"] 활용
-    "workers": Q_CLUSTER_DEFAULT_WORKERS,  # 작업자 수
-    "timeout": Q_CLUSTER_DEFAULT_TIMEOUT,  # 작업 타임아웃 (초)
-    "retry": Q_CLUSTER_DEFAULT_RETRY,  # 재시도 간격 (초)
-    "bulk": 10,  # ORM broker에서 한 번에 가져올 작업 수
-    "poll": 0.01,  # ORM broker polling 간격 (초)
-    "compress": True,  # 큰 데이터 전송 시 압축
-    # "cpu_affinity": 0,  # worker에게 할당할 CPU 코어 수. (윈도우나 일부 시스템에서 미지원 가능성)
-    # 리소스 관리
-    "recycle": 500,  # worker 재시작 전 처리할 작업 수 (default: 500)
-    "max_rss": None,  # 최대 허용 메모리 (KB), default: None
-    "queue_limit": 100,  # 각 클러스터 별, 작업 큐 크기, default: workers ** 2
-    #
-    "max_attempts": 3,  # 실패 시 최대 재시도 횟수
-    "ack_failures": True,  # 실패한 작업도 승인 (큐에서 제거)
-    "save_limit": 500,  # 성공한 작업 반환값 최대 저장수
-    "save_limit_per": "group",  # 그룹 별 저장 제한
-    "label": f"{APP_NAME} Task Queue",  # 관리자 UI 레이블
-    "catch_up": True,  # 누락된 예약 작업 실행
-    "ALT_CLUSTERS": {
-        "xlwings": {
-            "name": "xlwings",
-            "orm": "default",
-            "workers": Q_CLUSTER_XLWINGS_WORKERS,
-            "timeout": Q_CLUSTER_XLWINGS_TIMEOUT,
-            "retry": Q_CLUSTER_XLWINGS_RETRY,
-            "recycle": 50,
-            "bulk": 10,
-        },
-        # "low_priority": {
-        #     "name": "low_priority",
-        #     "orm": "default",
-        #     "workers": 1,
-        #     "timeout": 300,
-        #     "recycle": 600,
+# Queue 설정
+CELERY_TASK_DEFAULT_QUEUE = "default"
+CELERY_TASK_QUEUES = {
+    "default": {
+        "exchange": "default",
+        "exchange_type": "direct",
+        "routing_key": "default",
+    },
+    "xlwings": {
+        "exchange": "xlwings",
+        "exchange_type": "direct",
+        "routing_key": "xlwings",
+        "prefetch_count": 1,
+        # "queue_arguments": {
+        #     "x-max-priority": 10,
+        #     "x-max-length": 100,  # 큐 최대 길이 제한
+        #     "x-message-ttl": 3600000,  # 1시간
         # },
     },
 }
+
+# Task 라우팅
+CELERY_TASK_ROUTES = {
+    "pyhub.mcptools.excel.*": {"queue": "xlwings"},
+    "*": {"queue": "default"},
+}
+
+# 결과 백엔드 설정
+CELERY_RESULT_EXPIRES = 60 * 60 * 24  # 결과 보관 기간 (24시간)
+CELERY_RESULT_EXTENDED = True  # 확장된 작업 결과 정보 저장
+CELERY_RESULT_PERSISTENT = True  # RabbitMQ 결과 영속성 보장
+
+# 시리얼라이제이션
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+
+# 재시도 설정
+CELERY_TASK_ACKS_LATE = True  # 작업 완료 후 승인
+CELERY_TASK_REJECT_ON_WORKER_LOST = True  # 워커 중단 시 작업 거부
+
+# 워커 설정
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # 워커 당 프리페치 수를 1로 제한
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1  # 메모리 누수 방지를 위해 태스크 1개 실행 후 워커 재시작
+CELERY_WORKER_SEND_TASK_EVENTS = True
+CELERY_WORKER_CONCURRENCY = 1  # 동시 실행 워커 수를 1로 제한
+CELERY_TASK_TRACK_STARTED = True  # 태스크 시작 추적
+CELERY_WORKER_POOL = "threads"  # 프로세스 대신 스레드 풀 사용
+
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BROKER_CONNECTION_RETRY = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = 5
+
+# CELERY_BEAT_SCHEDULE = {
+#     'sample-task': {
+#         'task': 'pyhub.mcptools.core.tasks.sample_task', # Example task path
+#         'schedule': 3600.0, # Run every hour
+#         'args': (16, 16),
+#     },
+# }

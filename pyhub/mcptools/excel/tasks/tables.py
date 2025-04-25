@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from pyhub.mcptools.core.q2 import q_task, TaskGroup
+from pyhub.mcptools.core.celery import celery_task
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
 from pyhub.mcptools.excel.forms import PivotTableCreateForm
 from pyhub.mcptools.excel.types import (
@@ -11,7 +11,7 @@ from pyhub.mcptools.excel.utils import get_range, get_sheet, json_dumps, str_to_
 from pyhub.mcptools.excel.utils.tables import PivotTable
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def convert_to_table(
     sheet_range: str = Field(
@@ -82,7 +82,7 @@ def convert_to_table(
     return f"Table(name='{table.name}') created successfully."
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def add_pivot_table(
     source_sheet_range: str = Field(
@@ -220,7 +220,7 @@ def add_pivot_table(
     return f"Pivot table(name={created_pivot_table_name}) created successfully."
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def get_pivot_tables(
     book_name: str = Field(default=""),
@@ -239,7 +239,7 @@ def get_pivot_tables(
     return json_dumps(PivotTable.list(sheet))
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def remove_pivot_tables(
     remove_all: bool = Field(default=False, description="Remove all pivot tables."),

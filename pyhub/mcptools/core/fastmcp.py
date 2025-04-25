@@ -16,7 +16,7 @@ class SyncFunctionNotAllowedError(TypeError):
 
 
 class DelegatorNotDecoratedError(TypeError):
-    """delegator 함수에 q_task 데코레이터가 적용되지 않은 경우의 예외"""
+    """delegator 함수에 celery_task 데코레이터가 적용되지 않은 경우의 예외"""
 
     pass
 
@@ -56,7 +56,7 @@ class FastMCP(OrigFastMCP):
         Raises:
             TypeError: 장식자가 잘못 사용된 경우
             SyncFunctionNotAllowedError: 동기 함수가 사용된 경우
-            DelegatorNotDecoratedError: delegator 함수에 q_task 장식자가 적용되지 않은 경우
+            DelegatorNotDecoratedError: delegator 함수에 celery_task 장식자가 적용되지 않은 경우
         """
 
         if callable(name):
@@ -82,7 +82,7 @@ class FastMCP(OrigFastMCP):
 
                 if hasattr(delegator, "async_task") is False:
                     raise DelegatorNotDecoratedError(
-                        f"Delegator function {delegator.__name__} must be decorated with @q_task"
+                        f"Delegator function {delegator.__name__} must be decorated with @celery_task"
                     )
 
                 # 1) docstring 복사

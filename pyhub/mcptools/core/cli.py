@@ -14,12 +14,12 @@ from typing import Callable, Optional, Sequence
 import httpx
 import typer
 from asgiref.sync import async_to_sync
+from celery.bin.worker import detach
+from celery.exceptions import SecurityError
 from click import Choice, ClickException
 from django.conf import settings
-from django.core.management import call_command
 from django.template.defaultfilters import filesizeformat
 from django.utils import timezone
-from django_q.status import Stat
 from mcp.types import EmbeddedResource, ImageContent, TextContent
 from mcp_proxy.sse_client import run_sse_client
 from pydantic import BaseModel, ValidationError
@@ -28,7 +28,15 @@ from rich.table import Table
 from typer.core import TyperCommand
 from typer.models import ArgumentInfo, CommandFunctionType, OptionInfo
 
-from pyhub.mcptools.core.choices import OS, FormatChoices, McpHostChoices, TransportChoices
+from pyhub.mcptools.celery import app as celery_app
+from pyhub.mcptools.core.choices import (
+    OS,
+    FormatChoices,
+    McpHostChoices,
+    TransportChoices,
+    CeleryPoolChoices,
+    CeleryLogLevelChoices,
+)
 from pyhub.mcptools.core.init import mcp
 from pyhub.mcptools.core.updater import apply_update
 from pyhub.mcptools.core.utils import (
@@ -41,6 +49,7 @@ from pyhub.mcptools.core.utils import (
 from pyhub.mcptools.core.utils.process import kill_mcp_host_process
 from pyhub.mcptools.core.utils.sse import is_mcp_sse_server_alive
 from pyhub.mcptools.core.versions import PackageVersionChecker
+from celery.platforms import maybe_drop_privileges
 
 
 class PyhubTyper(typer.Typer):
@@ -148,10 +157,82 @@ def run_sse_proxy(
 
 
 @app.command()
-def run_workers():
-    # django-channels worker
-    call_command("migrate", "django_q")
-    call_command("qcluster")
+def run_worker(
+    use_xlwings_queue: bool = typer.Option(
+        False,
+        "--xlwings-queue",
+        "-x",
+        help="Use xlwings queue for worker",
+    ),
+    pool: Optional[CeleryPoolChoices] = typer.Option(None),
+    concurrency: Optional[int] = typer.Option(None),
+    log_level: Optional[CeleryLogLevelChoices] = typer.Option(None),
+    hostname: Optional[str] = typer.Option(None, help="Worker hostname"),
+    is_detach: bool = typer.Option(False, "--detach", "-D", help="Start worker as daemon"),
+    logfile: Optional[str] = typer.Option(None, help="Path to log file"),
+    pidfile: Optional[str] = typer.Option(None, help="Path to pid file"),
+    uid: Optional[str] = typer.Option(None, help="User id to run worker as"),
+    gid: Optional[str] = typer.Option(None, help="Group id to run worker as"),
+):
+    """Start a worker instance.
+
+    Examples:
+        $ pyhub.mcptools run-worker --log-level INFO
+        $ pyhub.mcptools run-worker --xlwings-queue -l INFO
+        $ pyhub.mcptools run-worker --concurrency 4
+        $ pyhub.mcptools run-worker --detach --logfile /path/to/worker.log
+    """
+
+    if use_xlwings_queue:
+        queues = "xlwings"
+        pool = pool or "threads"
+    else:
+        queues = settings.CELERY_TASK_DEFAULT_QUEUE
+        pool = pool or "eventlet"
+
+    try:
+        # 데몬 모드로 실행
+        if is_detach:
+            argv = ["-m", "celery"] + sys.argv[1:]
+            for flag in ("--detach", "-D", "--uid", "--gid"):
+                if flag in argv:
+                    argv.remove(flag)
+
+            return detach(
+                path=sys.executable,
+                argv=argv,
+                logfile=logfile,
+                pidfile=pidfile,
+                uid=uid,
+                gid=gid,
+                app=celery_app,
+                hostname=hostname,
+            )
+
+        # 권한 변경이 필요한 경우
+        maybe_drop_privileges(uid=uid, gid=gid)
+
+        # Worker 인스턴스 생성 및 실행
+        worker = celery_app.Worker(
+            hostname=hostname,
+            pool=pool or "threads",
+            concurrency=concurrency or (1 if use_xlwings_queue else 2),
+            loglevel=log_level or ("DEBUG" if settings.DEBUG else "INFO"),
+            logfile=logfile,
+            pidfile=pidfile,
+            queues=queues,
+        )
+        worker.start()
+        raise typer.Exit(worker.exitcode)
+
+    except SecurityError as e:
+        console.print(f"[red]Security Error: {e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+    # TODO: beat
 
 
 @app.command(name="paths")
@@ -868,18 +949,6 @@ def kill(
     kill_mcp_host_process(mcp_host)
 
     console.print(f"[green]Killed {mcp_host.value} processes[/green]")
-
-
-@app.command()
-def q_status():
-    table = Table()
-    table.add_column("status")
-    table.add_column("uptime")
-
-    for stat in Stat.get_all():
-        table.add_row(str(stat.status), str(stat.uptime()))
-
-    console.print(table)
 
 
 @app.command()

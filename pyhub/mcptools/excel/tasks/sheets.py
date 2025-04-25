@@ -3,23 +3,23 @@ from pathlib import Path
 import xlwings as xw
 from pydantic import Field
 
-from pyhub.mcptools.core.q2 import q_task, TaskGroup
+from pyhub.mcptools.core.celery import celery_task
 from pyhub.mcptools.excel.decorators import macos_excel_request_permission
-from pyhub.mcptools.excel.types import ExcelExpandMode, ExcelCellType, ExcelGetValueType
+from pyhub.mcptools.excel.types import ExcelCellType, ExcelExpandMode, ExcelGetValueType
 from pyhub.mcptools.excel.utils import (
-    normalize_text,
-    get_sheet,
-    json_dumps,
-    get_range,
     convert_to_csv,
     csv_loads,
-    json_loads,
     fix_data,
+    get_range,
+    get_sheet,
+    json_dumps,
+    json_loads,
+    normalize_text,
 )
 from pyhub.mcptools.fs.utils import validate_path
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def get_opened_workbooks() -> str:
     """Get a list of all open workbooks and their sheets in Excel
@@ -65,7 +65,7 @@ def get_opened_workbooks() -> str:
     )
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def find_data_ranges(
     book_name: str = Field(
@@ -143,7 +143,7 @@ def find_data_ranges(
     return json_dumps(data_ranges)
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def get_special_cells_address(
     sheet_range: str = Field(
@@ -194,7 +194,7 @@ def get_special_cells_address(
     return range_.get_address()
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def get_values(
     sheet_range: str = Field(
@@ -259,7 +259,7 @@ def get_values(
     return convert_to_csv(data)
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def set_values(
     sheet_range: str = Field(
@@ -325,7 +325,7 @@ def set_values(
     return f"Successfully set values to {range_.address}."
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def set_styles(
     styles: str = Field(
@@ -456,7 +456,7 @@ Sales.xlsx|Sheet1|A1:B2||255,255,0|255,0,0|true|false""",
     return f"Successfully set styles to {addresses}."
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def autofit(
     sheet_range: str = Field(
@@ -504,7 +504,7 @@ def autofit(
     return "Successfully autofit."
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def set_formula(
     sheet_range: str = Field(
@@ -554,7 +554,7 @@ def set_formula(
     return "Successfully set formula."
 
 
-@q_task(group=TaskGroup.XLWINGS)
+@celery_task(queue="xlwings")
 @macos_excel_request_permission
 def add_sheet(
     name: str = Field(
