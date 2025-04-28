@@ -73,16 +73,16 @@ setup_path() {
   if [ -n "$INSTALL_NAME" ]; then
     case "$(uname)" in
       "Darwin")
-        EXTRACT_BASE="$HOME/Library/Application Support/$INSTALL_NAME"
+        EXTRACT_PATH="$HOME/Library/Application Support/$INSTALL_NAME"
         ;;
       "Linux")
-        EXTRACT_BASE="$HOME/.local/share/$INSTALL_NAME"
+        EXTRACT_PATH="$HOME/.local/share/$INSTALL_NAME"
         ;;
       "MINGW"*|"MSYS"*|"CYGWIN"*|"Windows_NT")
         if [ -n "$APPDATA" ]; then
-          EXTRACT_BASE="$APPDATA/$INSTALL_NAME"
+          EXTRACT_PATH="$APPDATA/$INSTALL_NAME"
         else
-          EXTRACT_BASE="$HOME/.config/$INSTALL_NAME"
+          EXTRACT_PATH="$HOME/.config/$INSTALL_NAME"
         fi
         ;;
       *)
@@ -90,7 +90,7 @@ setup_path() {
         exit 1
         ;;
     esac
-    echo "Install name provided. Using path: $EXTRACT_BASE"
+    echo "Install name provided. Using path: $EXTRACT_PATH"
   else
     echo "Default extraction path is: $DEFAULT_EXTRACT_BASE"
     # 파이프 실행 환경을 감지하여, 사용자 입력 가능 여부 확인
@@ -102,12 +102,6 @@ setup_path() {
     if [ -z "$EXTRACT_BASE" ]; then
       EXTRACT_BASE="$DEFAULT_EXTRACT_BASE"
     fi
-  fi
-
-  # 경로가 이미 'pyhub.mcptools'로 끝나는지 확인
-  if [[ "$EXTRACT_BASE" == */pyhub.mcptools ]]; then
-    EXTRACT_PATH="$EXTRACT_BASE"
-  else
     EXTRACT_PATH="$EXTRACT_BASE/pyhub.mcptools"
   fi
 
