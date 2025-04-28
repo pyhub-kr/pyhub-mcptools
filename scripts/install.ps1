@@ -4,8 +4,10 @@ param(
     [string]$Owner = "pyhub-kr", # GitHub repository owner
     [string]$Repo = "pyhub-mcptools", # GitHub repository name
     [string]$InstallDir, # Custom installation directory
+    [string]$InstallName, # 추가
     [switch]$NoPrompt, # Auto install without user prompts
-    [switch]$AddToPath = $true, # Add installation directory to PATH
+    [switch]$AddToPath, # Add installation directory to PATH
+    [switch]$ForceOverwrite, # <-- 추가
     [string]$Token                   # GitHub API token
 )
 
@@ -18,7 +20,6 @@ function Show-Progress
         [string]$Message  # Message to display
     )
 
-    $percent = ($Step / $TotalSteps) * 100
     $progress = [math]::Min([math]::Max(0,[math]::Round($percent)), 100)
 
     Write-Progress -Activity "Installing pyhub.mcptools" -Status $Message -PercentComplete $progress
@@ -49,42 +50,47 @@ function Initialize-Environment
 # Function to set installation path
 function Set-InstallPath
 {
-    Write-Host "Default extraction path is: $script:defaultExtractBasePath"
+    # InstallName 인자가 있으면 %APPDATA%\InstallName 사용
+    if ($InstallName) {
+        $appdata = [Environment]::GetFolderPath("ApplicationData")
+        $script:extractPath = Join-Path $appdata $InstallName
+        Write-Host "InstallName provided. Using path: $script:extractPath"
+    }
+    else {
+        Write-Host "Default extraction path is: $script:defaultExtractBasePath"
 
-    # For auto install mode or custom path provided
-    if ($NoPrompt -or $InstallDir)
-    {
-        $script:extractBasePath = if ($InstallDir)
+        if ($NoPrompt -or $InstallDir)
         {
-            $InstallDir
+            $script:extractBasePath = if ($InstallDir)
+            {
+                $InstallDir
+            }
+            else
+            {
+                $script:defaultExtractBasePath
+            }
         }
         else
         {
-            $script:defaultExtractBasePath
+            $userPath = Read-Host "Use this path? (Press Enter to accept or type a new path)"
+            $script:extractBasePath = if ( [string]::IsNullOrWhiteSpace($userPath))
+            {
+                $script:defaultExtractBasePath
+            }
+            else
+            {
+                $userPath
+            }
         }
-    }
-    else
-    {
-        # Ask user for path confirmation
-        $userPath = Read-Host "Use this path? (Press Enter to accept or type a new path)"
-        $script:extractBasePath = if ( [string]::IsNullOrWhiteSpace($userPath))
-        {
-            $script:defaultExtractBasePath
-        }
-        else
-        {
-            $userPath
-        }
-    }
 
-    # Restore original code (using Join-Path)
-    $script:extractPath = Join-Path $script:extractBasePath "pyhub.mcptools"
+        $script:extractPath = Join-Path $script:extractBasePath "pyhub.mcptools"
+    }
 
     # Check and handle existing folder
     if (Test-Path $script:extractPath)
     {
         $proceed = $true
-        if (-not $NoPrompt)
+        if (-not $NoPrompt -and -not $ForceOverwrite)
         {
             $response = Read-Host "The path already exists. Delete it and continue? (y/N)"
             $proceed = $response -eq "y"
@@ -340,6 +346,9 @@ function Install-PyHubMCPTools
     Remove-Item -Force "$( $downloadResult.OutputFile ).sha256"
     
     # Add installation directory to PATH if enabled
+    if (-not $PSBoundParameters.ContainsKey('AddToPath')) {
+        $AddToPath = $true
+    }
     if ($AddToPath)
     {
         Update-PathVariable -AddedPath $installPath

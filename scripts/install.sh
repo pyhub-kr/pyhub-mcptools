@@ -13,6 +13,25 @@ OWNER="pyhub-kr"
 REPO="pyhub-mcptools"
 DEFAULT_EXTRACT_BASE="$HOME/mcptools"
 
+FORCE_OVERWRITE=0
+INSTALL_NAME=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -f|--force)
+      FORCE_OVERWRITE=1
+      shift
+      ;;
+    --install-name)
+      INSTALL_NAME="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
 # 프로그레스바 표시 함수
 show_progress() {
   local width=50
@@ -51,11 +70,33 @@ check_os() {
 
 # 설치 경로 설정 함수
 setup_path() {
-  echo "Default extraction path is: $DEFAULT_EXTRACT_BASE"
-  read -p "Use this path? (Press Enter to accept or type a new path): " EXTRACT_BASE
-
-  if [ -z "$EXTRACT_BASE" ]; then
-    EXTRACT_BASE="$DEFAULT_EXTRACT_BASE"
+  if [ -n "$INSTALL_NAME" ]; then
+    case "$(uname)" in
+      "Darwin")
+        EXTRACT_BASE="$HOME/Library/Application Support/$INSTALL_NAME"
+        ;;
+      "Linux")
+        EXTRACT_BASE="$HOME/.local/share/$INSTALL_NAME"
+        ;;
+      "MINGW"*|"MSYS"*|"CYGWIN"*|"Windows_NT")
+        if [ -n "$APPDATA" ]; then
+          EXTRACT_BASE="$APPDATA/$INSTALL_NAME"
+        else
+          EXTRACT_BASE="$HOME/.config/$INSTALL_NAME"
+        fi
+        ;;
+      *)
+        echo "❌ Unsupported OS for install-name option."
+        exit 1
+        ;;
+    esac
+    echo "Install name provided. Using path: $EXTRACT_BASE"
+  else
+    echo "Default extraction path is: $DEFAULT_EXTRACT_BASE"
+    read -p "Use this path? (Press Enter to accept or type a new path): " EXTRACT_BASE
+    if [ -z "$EXTRACT_BASE" ]; then
+      EXTRACT_BASE="$DEFAULT_EXTRACT_BASE"
+    fi
   fi
 
   # 경로가 이미 'pyhub.mcptools'로 끝나는지 확인
@@ -64,18 +105,23 @@ setup_path() {
   else
     EXTRACT_PATH="$EXTRACT_BASE/pyhub.mcptools"
   fi
-  
-  # 기존 폴더가 있으면 삭제 여부 확인
+
+  # 기존 폴더가 있으면 삭제 여부 확인 또는 강제 삭제
   if [ -d "$EXTRACT_PATH" ]; then
-    read -p "The path '$EXTRACT_PATH' already exists. Delete and continue? (y/N): " CONFIRM
-    if [[ "$CONFIRM" == "y" || "$CONFIRM" == "Y" ]]; then
+    if [ "$FORCE_OVERWRITE" -eq 1 ]; then
+      echo "The path '$EXTRACT_PATH' already exists. Deleting (force mode)..."
       rm -rf "$EXTRACT_PATH"
     else
-      echo "Installation aborted."
-      exit 0
+      read -p "The path '$EXTRACT_PATH' already exists. Delete and continue? (y/N): " CONFIRM
+      if [[ "$CONFIRM" == "y" || "$CONFIRM" == "Y" ]]; then
+        rm -rf "$EXTRACT_PATH"
+      else
+        echo "Installation aborted."
+        exit 0
+      fi
     fi
   fi
-  
+
   echo "📁 Installation path set to: $EXTRACT_PATH"
   return 0
 }
