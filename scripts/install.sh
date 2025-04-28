@@ -126,7 +126,7 @@ setup_path() {
         rm -rf "$EXTRACT_PATH"
       else
         echo "Installation aborted."
-        exit 0
+        exit 1
       fi
     fi
   fi
