@@ -280,6 +280,7 @@ def show_app_paths(
     config: bool = typer.Option(False, "--config", help="Open config file directory"),
     cache: bool = typer.Option(False, "--cache", help="Open cache file directory"),
     log: bool = typer.Option(False, "--log", help="Open user log directory"),
+    app_: bool = typer.Option(False, "--app", help="Open app directory"),
     all_: bool = typer.Option(False, "--all", "-a", help="Open all directories"),
     mcp_host: Optional[McpHostChoices] = typer.Option(None, help="MCP 호스트 프로그램"),
     open_folder: bool = typer.Option(False, "--open", "-o", help="경로를 출력하고 폴더 열기"),
@@ -291,6 +292,7 @@ def show_app_paths(
         config: Open config file directory
         cache: Open cache file directory
         log: Open user log directory
+        app_: Open app directory
         all_: Open all directories
         mcp_host: MCP 호스트 프로그램 (로그 폴더 열기 시 사용)
         open_folder: 경로를 출력하고 폴더 열기 (기본값: 경로만 출력)
@@ -311,6 +313,9 @@ def show_app_paths(
     if log or all_:
         paths_to_open.append(settings.APP_LOG_DIR)
         path_descriptions.append(("Log", "로그 파일 저장소"))
+    if app_ or all_:
+        paths_to_open.append(settings.APP_DIR_PATH)
+        path_descriptions.append(("App", "앱 설치 경로"))
 
     if mcp_host:
         paths_to_open.append(get_log_dir_path(mcp_host))
@@ -334,24 +339,28 @@ def show_app_paths(
     console.print(table)
 
     if open_folder:
+        path: Path
         for path in paths_to_open:
-            match OS.get_current():
-                case OS.WINDOWS:
-                    subprocess.run(["explorer", str(path)], check=True)
-                case OS.MACOS:
-                    subprocess.run(["open", str(path)], check=True)
-                case OS.LINUX:
-                    for file_manager in ["xdg-open", "nautilus", "thunar", "dolphin", "pcmanfm"]:
-                        try:
-                            subprocess.run([file_manager, str(path)], check=True)
-                            break
-                        except (subprocess.SubprocessError, FileNotFoundError):
-                            continue
-                    else:
-                        console.print(f"[red]Cannot find file manager on Linux: {path}[/red]")
-                case _:
-                    console.print(f"[red]Unsupported operating system: {OS.get_current()}[/red]")
-            console.print(f"[green]Opened path: {path}[/green]")
+            try:
+                match OS.get_current():
+                    case OS.WINDOWS:
+                        subprocess.run(["explorer", str(path)], check=True)
+                    case OS.MACOS:
+                        subprocess.run(["open", str(path)], check=True)
+                    case OS.LINUX:
+                        for file_manager in ["xdg-open", "nautilus", "thunar", "dolphin", "pcmanfm"]:
+                            try:
+                                subprocess.run([file_manager, str(path)], check=True)
+                                break
+                            except (subprocess.SubprocessError, FileNotFoundError):
+                                continue
+                        else:
+                            console.print(f"[red]Cannot find file manager on Linux: {path}[/red]")
+                    case _:
+                        console.print(f"[red]Unsupported operating system: {OS.get_current()}[/red]")
+                console.print(f"[green]Opened path: {path}[/green]")
+            except subprocess.CalledProcessError as e:
+                console.print(f"[red]Failed to open path: {path}[/red]")
 
 
 @app.command(name="list")

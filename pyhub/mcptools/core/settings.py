@@ -29,6 +29,9 @@ APP_CACHE_DIR = user_cache_path(APP_NAME, APP_AUTHOR, ensure_exists=True)
 # 유저 로그 저장 경로
 APP_LOG_DIR = user_log_path(APP_NAME, APP_AUTHOR, ensure_exists=True)
 
+# 지정 버전의 pyhub.mcptools 다운로드 경로
+APP_DIR_PATH = user_data_path("pyhub.mcptools.app", APP_AUTHOR, ensure_exists=True)
+
 
 DEFAULT_ENV_PATH = APP_CONFIG_DIR / ".env"
 if DEFAULT_ENV_PATH.is_file():
