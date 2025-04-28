@@ -93,7 +93,12 @@ setup_path() {
     echo "Install name provided. Using path: $EXTRACT_BASE"
   else
     echo "Default extraction path is: $DEFAULT_EXTRACT_BASE"
-    read -p "Use this path? (Press Enter to accept or type a new path): " EXTRACT_BASE
+    # 파이프 실행 환경을 감지하여, 사용자 입력 가능 여부 확인
+    if [ -t 0 ]; then
+      read -p "Use this path? (Press Enter to accept or type a new path): " EXTRACT_BASE
+    else
+      EXTRACT_BASE=""
+    fi
     if [ -z "$EXTRACT_BASE" ]; then
       EXTRACT_BASE="$DEFAULT_EXTRACT_BASE"
     fi
@@ -112,7 +117,11 @@ setup_path() {
       echo "The path '$EXTRACT_PATH' already exists. Deleting (force mode)..."
       rm -rf "$EXTRACT_PATH"
     else
-      read -p "The path '$EXTRACT_PATH' already exists. Delete and continue? (y/N): " CONFIRM
+      if [ -t 0 ]; then
+        read -p "The path '$EXTRACT_PATH' already exists. Delete and continue? (y/N): " CONFIRM
+      else
+        CONFIRM="n"
+      fi
       if [[ "$CONFIRM" == "y" || "$CONFIRM" == "Y" ]]; then
         rm -rf "$EXTRACT_PATH"
       else
