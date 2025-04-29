@@ -899,6 +899,8 @@ def env_remove(
         except FileNotFoundError:
             config_data = {}
 
+        env_vars = config_data
+
     else:
         config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
         config_data = read_config_file(config_path)
@@ -912,9 +914,10 @@ def env_remove(
             console.print(f"[yellow]{server_name} 서버에 등록된 환경변수가 없습니다.[/yellow]")
             raise typer.Exit(0)
 
+        env_vars = config_data["mcpServers"][server_name]["env"]
+
     if env_name is None:
         # 환경변수 목록 출력
-        env_vars = config_data["mcpServers"][server_name]["env"]
         table = Table(title=f"{server_name} 환경변수 목록")
         table.add_column("번호")
         table.add_column("환경변수명")
