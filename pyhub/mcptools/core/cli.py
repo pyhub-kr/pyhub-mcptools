@@ -548,10 +548,12 @@ def setup_add(
                 console.print(f"[red]잘못된 환경변수 형식: {env_str}[/red]")
                 raise typer.Exit(1) from e
 
-    current_cmd = sys.argv[0]
-    current_exe_path = str(Path(current_cmd).resolve())
-
-    if getattr(sys, "frozen", False) is False:
+    if getattr(sys, "frozen", False):
+        current_exe_path = sys.executable
+    else:
+        # 실제 파일의 위치가 아니라, 실행 커맨드의 이름을 반환
+        current_cmd = sys.argv[0]
+        current_exe_path = str(Path(current_cmd).resolve())
         # 소스 파일을 직접 실행할 때, 현재 실행된 python 경로를 파이썬 entry 소스 파일 경로 앞에 추가
         current_exe_path = sys.executable + " " + current_exe_path
 
