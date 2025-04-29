@@ -30,7 +30,7 @@ APP_CACHE_DIR = user_cache_path(APP_NAME, APP_AUTHOR, ensure_exists=True)
 APP_LOG_DIR = user_log_path(APP_NAME, APP_AUTHOR, ensure_exists=True)
 
 # 지정 버전의 pyhub.mcptools 다운로드 경로
-APP_DIR_PATH = user_data_path("pyhub.mcptools.app", APP_AUTHOR, ensure_exists=True)
+APP_DIR_PATH = user_data_path("pyhub.mcptools.cli", APP_AUTHOR, ensure_exists=True)
 
 GLOBAL_ENV_FILE_PATH = APP_DATA_DIR / "global-env.json"
 
