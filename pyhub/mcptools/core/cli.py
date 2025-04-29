@@ -16,6 +16,7 @@ import typer
 from asgiref.sync import async_to_sync
 from celery.bin.worker import detach
 from celery.exceptions import SecurityError
+from celery.platforms import maybe_drop_privileges
 from click import Choice, ClickException
 from django.conf import settings
 from django.template.defaultfilters import filesizeformat
@@ -31,11 +32,11 @@ from typer.models import ArgumentInfo, CommandFunctionType, OptionInfo
 from pyhub.mcptools.celery import app as celery_app
 from pyhub.mcptools.core.choices import (
     OS,
+    CeleryLogLevelChoices,
+    CeleryPoolChoices,
     FormatChoices,
     McpHostChoices,
     TransportChoices,
-    CeleryPoolChoices,
-    CeleryLogLevelChoices,
 )
 from pyhub.mcptools.core.init import mcp
 from pyhub.mcptools.core.updater import apply_update
@@ -49,7 +50,6 @@ from pyhub.mcptools.core.utils import (
 from pyhub.mcptools.core.utils.process import kill_mcp_host_process
 from pyhub.mcptools.core.utils.sse import is_mcp_sse_server_alive
 from pyhub.mcptools.core.versions import PackageVersionChecker
-from celery.platforms import maybe_drop_privileges
 
 
 class PyhubTyper(typer.Typer):
@@ -168,7 +168,10 @@ def celery_revoke(
         False,
         "--purge",
         "-P",
-        help="메시지 브로커에서 대기 중인 모든 작업 메시지를 제거합니다. 이미 워커가 가져간 작업이나 실행 중인 작업에는 영향을 주지 않습니다.",
+        help=(
+            "메시지 브로커에서 대기 중인 모든 작업 메시지를 제거합니다. "
+            "이미 워커가 가져간 작업이나 실행 중인 작업에는 영향을 주지 않습니다."
+        ),
     ),
 ):
     """현재 실행 중인 작업을 취소(Revoke)합니다. --hard 옵션을 지정하면 강제 종료합니다."""
@@ -176,7 +179,7 @@ def celery_revoke(
     active_tasks = celery_app.control.inspect().active()
 
     if active_tasks is None:
-        console.print(f"[red]조회 실패[/red]")
+        console.print("[red]조회 실패[/red]")
 
     else:
         # 모든 task에 대해 revoke 실행
@@ -188,7 +191,7 @@ def celery_revoke(
 
     # 전체 Queue 비우기
     if is_purge:
-        console.print(f"대기 중인 모든 작업 메시지를 제거합니다.")
+        console.print("대기 중인 모든 작업 메시지를 제거합니다.")
         celery_app.control.purge()
 
 
@@ -266,10 +269,10 @@ def celery_run(
 
     except SecurityError as e:
         console.print(f"[red]Security Error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     # TODO: beat
 
@@ -359,7 +362,7 @@ def show_app_paths(
                     case _:
                         console.print(f"[red]Unsupported operating system: {OS.get_current()}[/red]")
                 console.print(f"[green]Opened path: {path}[/green]")
-            except subprocess.CalledProcessError as e:
+            except subprocess.CalledProcessError:
                 console.print(f"[red]Failed to open path: {path}[/red]")
 
 
@@ -782,42 +785,35 @@ def setup_restore(
 
 @app.command()
 def env_print(
-    mcp_host: Optional[McpHostChoices] = typer.Argument(default=None, help="MCP 호스트 프로그램"),
-    server_name: Optional[str] = typer.Option("pyhub.mcptools", "--server-name", "-n", help="Server Name"),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
-    is_json: bool = typer.Option(False, "--json", "-j"),
 ):
     """지정 MCP 서버의 환경변수 내역을 출력"""
 
-    if mcp_host is None:
+    all_envs = {}
+
+    # 글로벌 환경변수 추가
+    try:
+        with settings.GLOBAL_ENV_FILE_PATH.open("rt", encoding="utf-8") as f:
+            all_envs["global"] = json.loads(f.read())
+    except FileNotFoundError:
+        all_envs["global"] = {}
+
+    # 각 MCP 호스트의 환경변수 추가
+    for host in McpHostChoices:
         try:
-            with settings.GLOBAL_ENV_FILE_PATH.open("rt", encoding="utf-8") as f:
-                envs = json.loads(f.read())
-        except FileNotFoundError as e:
-            envs = {}
+            config_path = get_config_path(host, is_verbose, allow_exit=False)
+            config_data = read_config_file(config_path)
+            host_envs = {}
 
-    else:
-        config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
-        config_data = read_config_file(config_path)
+            for server, server_config in config_data.get("mcpServers", {}).items():
+                host_envs[server] = server_config.get("env", {})
 
-        if server_name not in config_data["mcpServers"]:
-            console.print(f"[red]Error: {config_path} 경로에 {server_name} 설정이 없습니다.[/red]")
-            raise typer.Exit(1)
+            if host_envs:
+                all_envs[host.value] = host_envs
+        except (FileNotFoundError, json.JSONDecodeError):
+            continue
 
-        envs = config_data["mcpServers"][server_name].get("env", {})
-
-    if is_json:
-        print(json.dumps(envs, ensure_ascii=False))
-
-    else:
-        table = Table()
-        table.add_column("name")
-        table.add_column("value")
-
-        for k, v in envs.items():
-            table.add_row(k, v)
-
-        console.print(table)
+    print(json.dumps(all_envs, ensure_ascii=False, indent=2))
 
 
 @app.command()
