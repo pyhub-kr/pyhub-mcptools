@@ -61,7 +61,6 @@ class TransportChoices(TextChoices):
 
 class McpHostChoices(TextChoices):
     CLAUDE = "claude"
-    # cursor 는 설정 파일 위치를 못 찾았습니다.
     CURSOR = "cursor"
     WINDSURF = "windsurf"
 

@@ -578,18 +578,48 @@ ex) {current_exe_path} run sse
         run_command = f"{current_exe_path} run-sse-proxy {sse_url}"
 
     words = run_command.split()
+    command = words[0]
+    args = " ".join(words[1:])
+
+    setup_write(
+        mcp_host=mcp_host,
+        command=command,
+        args=args,
+        env=env_dict,
+        uid=config_name,
+        is_dry=is_dry,
+        is_verbose=is_verbose,
+    )
+
+
+@app.command()
+def setup_write(
+    mcp_host: McpHostChoices = typer.Argument(),
+    command: str = typer.Option(),
+    args: str = typer.Option(),
+    env: list[str] = typer.Option(),
+    uid: str = typer.Option(),
+    is_dry: bool = typer.Option(False, "--dry", help="실제 적용하지 않고 설정값만 확인합니다."),
+    is_verbose: bool = typer.Option(False, "--verbose", "-v"),
+):
+    envs = dict()
+    for row in env:
+        k, v = row.split("=")
+        envs[k] = v
+
+    config_name = uid
     new_config = {
-        "command": words[0],
-        "args": words[1:],
+        "command": command,
+        "args": args.split(),
+        "env": envs,
     }
-    if env_dict:
-        new_config["env"] = env_dict
 
     if is_dry is True:
         console.print(json.dumps(new_config, indent=4, ensure_ascii=False))
 
     else:
         config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
+        print(f"config_path : {config_path}")
 
         try:
             config_data = read_config_file(config_path)
