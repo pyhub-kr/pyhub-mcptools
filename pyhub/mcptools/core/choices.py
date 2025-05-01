@@ -60,6 +60,7 @@ class TransportChoices(TextChoices):
 
 
 class McpHostChoices(TextChoices):
+    ORIGIN = "origin"
     CLAUDE = "claude"
     CURSOR = "cursor"
     WINDSURF = "windsurf"

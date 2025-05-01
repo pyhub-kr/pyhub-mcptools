@@ -652,51 +652,33 @@ def setup_write(
 @app.command()
 def setup_print(
     mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
-    fmt: FormatChoices = typer.Option(FormatChoices.JSON, "--format", "-f", help="출력 포맷"),
+    all_: bool = typer.Option(False, "--all", "-a"),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """[MCP 설정파일] 표준 출력"""
 
-    config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
+    if all_:
+        config_data = {}
+        for mcp_host in McpHostChoices:
+            config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
 
-    try:
-        config_data = read_config_file(config_path)
-    except FileNotFoundError as e:
-        console.print(f"{config_path} 파일이 없습니다.")
-        raise typer.Abort() from e
+            try:
+                mcp_config_data = read_config_file(config_path)
+            except FileNotFoundError:
+                continue
 
-    if fmt == FormatChoices.TABLE:
-        mcp_servers = config_data.get("mcpServers", {})
+            config_data[mcp_host] = mcp_config_data.copy()
 
-        config_keys: set = set()
-        for config in mcp_servers.values():
-            config_keys.update(config.keys())
-
-        config_keys: list = sorted(config_keys - {"command", "args"})
-
-        table = Table(title=f"[bold]{len(mcp_servers)}개의 MCP 서버가 등록되어있습니다.[/bold]", title_justify="left")
-        table.add_column("id")
-        table.add_column("name")
-        table.add_column("command")
-        table.add_column("args")
-        for key in config_keys:
-            table.add_column(key)
-
-        for row_idx, (name, config) in enumerate(mcp_servers.items(), start=1):
-            server_config = " ".join(config.get("args", []))
-            row = [str(row_idx), name, config["command"], server_config]
-            for key in config_keys:
-                v = config.get(key, "")
-                if v:
-                    row.append(repr(v))
-                else:
-                    row.append("")
-            table.add_row(*row)
-
-        console.print()
-        console.print(table)
     else:
-        console.print(json.dumps(config_data, indent=4, ensure_ascii=False))
+        config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
+
+        try:
+            config_data = read_config_file(config_path)
+        except FileNotFoundError as e:
+            console.print(f"{config_path} 파일이 없습니다.")
+            raise typer.Abort() from e
+
+    print(json.dumps(config_data, indent=4, ensure_ascii=False))
 
 
 @app.command()

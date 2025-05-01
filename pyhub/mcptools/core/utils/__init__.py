@@ -187,18 +187,27 @@ def get_config_path(
     current_os = OS.get_current()
 
     match mcp_host, current_os:
+        # origin
+        case McpHostChoices.ORIGIN, OS.WINDOWS:
+            config_path = settings.APP_CONFIG_DIR / "mcp-origin.json"
+        case McpHostChoices.ORIGIN, OS.MACOS:
+            config_path = settings.APP_CONFIG_DIR / "mcp-origin.json"
+        # claude
         case McpHostChoices.CLAUDE, OS.WINDOWS:
             config_path = Path(os.environ["APPDATA"]) / "Claude/claude_desktop_config.json"
         case McpHostChoices.CLAUDE, OS.MACOS:
             config_path = Path.home() / "Library/Application Support/Claude/claude_desktop_config.json"
+        # cursor
         case McpHostChoices.CURSOR, OS.WINDOWS:
             config_path = Path.home() / ".cursor/mcp.json"
         case McpHostChoices.CURSOR, OS.MACOS:
             config_path = Path.home() / ".cursor/mcp.json"
+        # windsurf
         case McpHostChoices.WINDSURF, OS.WINDOWS:
             config_path = Path.home() / ".codeium/windsurf/mcp_config.json"
         case McpHostChoices.WINDSURF, OS.MACOS:
             config_path = Path.home() / ".codeium/windsurf/mcp_config.json"
+        # else
         case _:
             error_msg = f"{current_os.value}의 {mcp_host.value} 프로그램은 지원하지 않습니다."
             if allow_exit is False:
