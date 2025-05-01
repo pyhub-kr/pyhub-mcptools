@@ -602,6 +602,8 @@ def setup_write(
     is_dry: bool = typer.Option(False, "--dry", help="실제 적용하지 않고 설정값만 확인합니다."),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
+    """[MCP 설정파일] 인자로 전달받은 MCP 설정을 지정 MCP Host 설정에 쓰기"""
+
     envs = dict()
     for row in env:
         k, v = row.split("=")
@@ -714,6 +716,7 @@ def setup_edit(
 @app.command()
 def setup_remove(
     mcp_host: McpHostChoices = typer.Argument(default=McpHostChoices.CLAUDE, help="MCP 호스트 프로그램"),
+    config_name: Optional[str] = typer.Option(None, "--config-name", "-n", help="Server Name"),
     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """[MCP 설정파일] 지정 서버 제거"""
@@ -733,26 +736,31 @@ def setup_remove(
     if len(mcp_servers) == 0:
         raise ClickException("등록된 mcpServers 설정이 없습니다.")
 
-    setup_print(mcp_host=mcp_host, fmt=FormatChoices.TABLE, is_verbose=is_verbose)
+    if config_name is None:
+        setup_print(mcp_host=mcp_host, fmt=FormatChoices.TABLE, is_verbose=is_verbose)
 
-    # choice >= 1
-    choice: str = typer.prompt(
-        "제거할 MCP 서버 번호를 선택하세요",
-        type=Choice(list(map(str, range(1, len(mcp_servers) + 1)))),
-        prompt_suffix=": ",
-        show_choices=False,
-    )
+        # choice >= 1
+        choice: str = typer.prompt(
+            "제거할 MCP 서버 번호를 선택하세요",
+            type=Choice(list(map(str, range(1, len(mcp_servers) + 1)))),
+            prompt_suffix=": ",
+            show_choices=False,
+        )
 
-    idx = int(choice) - 1
-    selected_key = tuple(mcp_servers.keys())[idx]
+        idx = int(choice) - 1
+        config_name = tuple(mcp_servers.keys())[idx]
 
-    # 확인 메시지
-    if not typer.confirm(f"설정에서 '{selected_key}' 서버를 제거하시겠습니까?"):
-        console.print("[yellow]작업이 취소되었습니다.[/yellow]")
-        raise typer.Exit(0)
+        # 확인 메시지
+        if not typer.confirm(f"설정에서 '{config_name}' 서버를 제거하시겠습니까?"):
+            console.print("[yellow]작업이 취소되었습니다.[/yellow]")
+            raise typer.Exit(0)
 
     # 서버 제거
-    del mcp_servers[selected_key]
+    try:
+        del mcp_servers[config_name]
+    except KeyError as e:
+        raise ClickException(f"{config_name} 설정을 찾을 수 없ㅅ브니다.")
+
     config_data["mcpServers"] = mcp_servers
 
     # 설정 파일에 저장
@@ -761,7 +769,7 @@ def setup_remove(
         json_str = json.dumps(config_data, indent=2, ensure_ascii=False)
         f.write(json_str)
 
-    console.print(f"[green]'{selected_key}' 서버가 성공적으로 제거했습니다.[/green]")
+    console.print(f"[green]'{config_name}' 서버가 성공적으로 제거했습니다.[/green]")
 
 
 @app.command()
