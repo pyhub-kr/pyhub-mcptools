@@ -164,16 +164,28 @@ function Download-Asset
     $downloadUrl = $asset.browser_download_url
     $outputFile = Join-Path $tempDir $asset.name
 
-    # Execute download
     Write-Host "Downloading to temp directory: $downloadUrl"
 
-    try
-    {
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $outputFile -ErrorAction Stop
+    try {
+        $request = [System.Net.WebRequest]::Create($downloadUrl)
+        $response = $request.GetResponse()
+        $totalLength = $response.ContentLength
+        $responseStream = $response.GetResponseStream()
+        $fileStream = [System.IO.File]::OpenWrite($outputFile)
+        $buffer = New-Object byte[] 8192
+        $totalRead = 0
+
+        while (($read = $responseStream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            $fileStream.Write($buffer, 0, $read)
+            $totalRead += $read
+            $percent = [math]::Round(($totalRead / $totalLength) * 100, 2)
+            Write-Progress -Activity "Downloading $($asset.name)" -Status "$percent%" -PercentComplete $percent
+        }
+
+        $fileStream.Close()
+        $responseStream.Close()
         Write-Host "Download complete: $outputFile"
-    }
-    catch
-    {
+    } catch {
         Write-Error "Failed to download file: $_"
         exit 1
     }
