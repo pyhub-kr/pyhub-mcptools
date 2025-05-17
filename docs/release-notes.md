@@ -13,6 +13,12 @@
 pyhub.mcptools update
 ```
 
+## v0.9.6
+
++ celery를 통한 비동기 워커 지원
++ 설치 스크립트에서 설치 경로를 사용자 디렉토리 지원
++ 전역 환경변수 관리 기능 추가
+
 ## v0.9.3
 
 + `excel_add_pivot_table` 도구 : macOS 지원 추가
