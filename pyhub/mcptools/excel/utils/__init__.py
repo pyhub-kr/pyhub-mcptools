@@ -169,7 +169,9 @@ def _render_applescript(
     elif isinstance(script, Template):
         return script.render(Context(context))
     else:
-        return script.format(**context)
+        if context:
+            return script.format(**context)
+        return script
 
 
 async def applescript_run(

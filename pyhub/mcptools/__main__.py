@@ -56,6 +56,7 @@ if __name__ == "__main__":
     #
     # commands
     #
+    import_module("pyhub.mcptools.email.__main__")
     import_module("pyhub.mcptools.excel.__main__")
     import_module("pyhub.mcptools.fs.__main__")
     import_module("pyhub.mcptools.maps.__main__")
@@ -65,6 +66,7 @@ if __name__ == "__main__":
     #
     # Tools
     #
+    import_module("pyhub.mcptools.email.tools")
     import_module("pyhub.mcptools.excel.tools")
     import_module("pyhub.mcptools.fs.tools")
     import_module("pyhub.mcptools.maps.tools")
