@@ -60,7 +60,7 @@ if __name__ == "__main__":
     import_module("pyhub.mcptools.excel.__main__")
     import_module("pyhub.mcptools.fs.__main__")
     import_module("pyhub.mcptools.maps.__main__")
-    import_module("pyhub.mcptools.music.__main__")
+    # import_module("pyhub.mcptools.music.__main__")
     import_module("pyhub.mcptools.search.__main__")
 
     #
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     import_module("pyhub.mcptools.excel.tools")
     import_module("pyhub.mcptools.fs.tools")
     import_module("pyhub.mcptools.maps.tools")
-    import_module("pyhub.mcptools.music.tools")
+    # import_module("pyhub.mcptools.music.tools")
     import_module("pyhub.mcptools.search.tools")
 
     app()

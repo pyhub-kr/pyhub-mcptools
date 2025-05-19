@@ -19,6 +19,7 @@ class Email:
     cc: Optional[str]
     received_at: Optional[str]
     attachments: list[EmailAttachment]
+    body: Optional[str] = None
 
 
 class EmailFolderType(Enum):

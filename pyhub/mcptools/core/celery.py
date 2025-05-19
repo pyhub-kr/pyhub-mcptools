@@ -10,7 +10,7 @@ import asyncio
 
 from django.conf import settings
 
-from pyhub.mcptools.celery import app as celery_app
+from pyhub.mcptools.celery_app import app as celery_app
 from pyhub.mcptools.core.choices import CeleryTaskSignal
 
 

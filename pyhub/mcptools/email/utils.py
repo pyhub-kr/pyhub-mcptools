@@ -56,7 +56,7 @@ class JSONEncoder(json.JSONEncoder):
     def _is_empty(self, value: Any) -> bool:
         if self.skip_empty is None:
             return False
-        
+
         # skip_empty가 문자열인 경우 (단일 옵션)
         if isinstance(self.skip_empty, str):
             if self.skip_empty == "all":
@@ -67,7 +67,7 @@ class JSONEncoder(json.JSONEncoder):
                 or (self.skip_empty == "empty_list" and value == [])
                 or (self.skip_empty == "empty_dict" and value == {})
             )
-        
+
         # skip_empty가 컬렉션인 경우 (다중 옵션)
         return (
             ("none" in self.skip_empty and value is None)
@@ -105,7 +105,7 @@ def json_dumps(
     json_data: Any,
     use_base64: bool = False,
     skip_empty: Optional[EmptyValueTypes] = None,
-    indent: Optional[int] = None,
+    indent: int = 2,
 ) -> str:
     return json.dumps(
         json_data,

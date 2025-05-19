@@ -29,7 +29,7 @@ from rich.table import Table
 from typer.core import TyperCommand
 from typer.models import ArgumentInfo, CommandFunctionType, OptionInfo
 
-from pyhub.mcptools.celery import app as celery_app
+from pyhub.mcptools.celery_app import app as celery_app
 from pyhub.mcptools.core.choices import (
     OS,
     CeleryLogLevelChoices,

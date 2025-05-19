@@ -29,8 +29,8 @@ class OutlookConnection:
     """Outlook 연결 정보를 담는 데이터 클래스
 
     Attributes:
-        outlook: Outlook MAPI 네임스페이스 객체
         application: Outlook 애플리케이션 객체
+        outlook: Outlook MAPI 네임스페이스 객체
     """
 
     application: win32com.client.CDispatch
@@ -122,7 +122,6 @@ def get_emails(
 ) -> list[Email]:
     now = datetime.datetime.now()
     threshold_at = now - datetime.timedelta(hours=max_hours)
-    print("threshold_at:", threshold_at)
 
     def process_emails(_conn: OutlookConnection) -> list[Email]:
         if email_folder_type is not None:
@@ -139,12 +138,15 @@ def get_emails(
         folder_items.Sort("[ReceivedTime]", True)
 
         if query:
-            terms = [term.strip() for term in query.split(" OR ")]
-            sql_conditions = []
-            for term in terms:
-                sql_conditions.append(f'"urn:schemas:httpmail:subject" LIKE "%{term}%"')
-                sql_conditions.append(f'"urn:schemas:httpmail:fromname" LIKE "%{term}%"')
-                sql_conditions.append(f'"urn:schemas:httpmail:textdescription" LIKE "%{term}%"')
+            # sql_conditions = []
+            # terms = [term.strip() for term in query.split(" OR ")]
+            # for term in terms:
+            #     sql_conditions.append(f'"urn:schemas:httpmail:subject" LIKE "%{term}%"')
+            #     sql_conditions.append(f'"urn:schemas:httpmail:fromname" LIKE "%{term}%"')
+            #     sql_conditions.append(f'"urn:schemas:httpmail:textdescription" LIKE "%{term}%"')
+            sql_conditions = [
+                f'"urn:schemas:httpmail:subject" LIKE "%{query}%"',
+            ]
 
             filter_term = f"@SQL=" + " OR ".join(sql_conditions)
             folder_items.Restrict(filter_term)
@@ -212,7 +214,7 @@ def get_email_body(
         message = _conn.outlook.GetItemFromID(identifier)
         plain = getattr(message, "Body", None)
         html = getattr(message, "HTMLBody", None)
-        
+
         if html:
             return html_to_text(html)
         return plain or ""
