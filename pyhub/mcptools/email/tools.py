@@ -70,7 +70,7 @@ async def outlook__list_recent_inbox_emails(
 
 
 @mcp.tool(enabled=OS.current_is_windows(), experimental=EXPERIMENTAL)
-async def outlook__get_email_body(
+async def outlook__get_email(
     identifier: str = Field(
         description="Unique identifier of the email to retrieve",
     ),
@@ -83,7 +83,8 @@ async def outlook__get_email_body(
     Returns:
         str: Email body content
     """
-    return await sync_to_async(outlook.get_email_body)(identifier)
+    email = await sync_to_async(outlook.get_email)(identifier)
+    return json_dumps(email, use_base64=True)
 
 
 @mcp.tool(enabled=OS.current_is_windows(), experimental=EXPERIMENTAL)

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
@@ -18,8 +18,8 @@ class Email:
     to: str
     cc: Optional[str]
     received_at: Optional[str]
-    attachments: list[EmailAttachment]
     body: Optional[str] = None
+    attachments: list[EmailAttachment] = field(default_factory=list)
 
 
 class EmailFolderType(Enum):

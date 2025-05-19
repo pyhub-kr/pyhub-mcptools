@@ -167,21 +167,6 @@ def get_emails(
                         to = getattr(message, "To", "")
                         cc = getattr(message, "CC", "")
                         entry_id = getattr(message, "EntryID", None)
-                        has_attachments: bool = (
-                            getattr(message, "Attachments").Count > 0 if hasattr(message, "Attachments") else False
-                        )
-                        attachments: list[EmailAttachment] = []
-                        if has_attachments:
-                            for i in range(1, message.Attachments.Count + 1):
-                                attachment = message.Attachments.Item(i)
-                                filename = attachment.FileName
-                                temp_path = os.path.join(os.getcwd(), filename)
-                                attachment.SaveAsFile(temp_path)
-                                with open(temp_path, "rb") as f:
-                                    content_base64 = base64.b64encode(f.read()).decode("utf-8")
-                                os.remove(temp_path)
-                                attachments.append(EmailAttachment(filename=filename, content_base64=content_base64))
-
                         mail = Email(
                             identifier=entry_id,
                             subject=subject,
@@ -190,7 +175,6 @@ def get_emails(
                             to=to,
                             cc=cc,
                             received_at=received_at,
-                            attachments=attachments,
                         )
                         email_list.append(mail)
             except Exception as e:
@@ -206,24 +190,51 @@ def get_emails(
         return process_emails(connection)
 
 
-def get_email_body(
+def get_email(
     identifier: str,
     connection: Optional[OutlookConnection] = None,
-) -> str:
-    def process_body(_conn: OutlookConnection) -> str:
+) -> Email:
+    def process_email(_conn: OutlookConnection) -> Email:
         message = _conn.outlook.GetItemFromID(identifier)
+        subject = getattr(message, "Subject")
+        sender_name = getattr(message, "SenderName", "")
+        sender_email = getattr(message, "SenderEmailAddress", "")
+        to = getattr(message, "To", "")
+        cc = getattr(message, "CC", "")
+        received_at = getattr(message, "ReceivedTime", None)
+        if received_at:
+            received_at = received_at.replace(tzinfo=None)
         plain = getattr(message, "Body", None)
         html = getattr(message, "HTMLBody", None)
-
-        if html:
-            return html_to_text(html)
-        return plain or ""
+        body = html_to_text(html) if html else plain or ""
+        attachments: list[EmailAttachment] = []
+        if hasattr(message, "Attachments") and message.Attachments.Count > 0:
+            for i in range(1, message.Attachments.Count + 1):
+                attachment = message.Attachments.Item(i)
+                filename = attachment.FileName
+                temp_path = os.path.join(os.getcwd(), filename)
+                attachment.SaveAsFile(temp_path)
+                with open(temp_path, "rb") as f:
+                    content_base64 = base64.b64encode(f.read()).decode("utf-8")
+                os.remove(temp_path)
+                attachments.append(EmailAttachment(filename=filename, content_base64=content_base64))
+        return Email(
+            identifier=identifier,
+            subject=subject,
+            sender_name=sender_name,
+            sender_email=sender_email,
+            to=to,
+            cc=cc,
+            received_at=received_at,
+            body=body,
+            attachments=attachments,
+        )
 
     if connection is None:
         with outlook_connection() as conn:
-            return process_body(conn)
+            return process_email(conn)
     else:
-        return process_body(connection)
+        return process_email(connection)
 
 
 def get_account_for_email_address(
