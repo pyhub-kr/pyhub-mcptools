@@ -163,13 +163,13 @@ USE_TZ = True
 
 # Limit languages to Korean and English only
 LANGUAGES = [
-    ('ko', '한국어'),
-    ('en', 'English'),
+    ("ko", "한국어"),
+    ("en", "English"),
 ]
 
 # Disable locale middleware if not needed
-if 'django.middleware.locale.LocaleMiddleware' in MIDDLEWARE:
-    MIDDLEWARE.remove('django.middleware.locale.LocaleMiddleware')
+if "django.middleware.locale.LocaleMiddleware" in MIDDLEWARE:
+    MIDDLEWARE.remove("django.middleware.locale.LocaleMiddleware")
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
@@ -227,6 +227,8 @@ PERPLEXITY_SEARCH_CONTEXT_SIZE = env.str("PERPLEXITY_SEARCH_CONTEXT_SIZE", defau
 ONLY_EXPOSE_TOOLS = env.list("ONLY_EXPOSE_TOOLS", default=None)
 
 USE_PYTHON_TOOLS = env.bool("USE_PYTHON_TOOLS", default=False)
+
+USE_SENTIMENT_TOOLS = env.bool("USE_SENTIMENT_TOOLS", default=False)
 
 #
 # filesystem

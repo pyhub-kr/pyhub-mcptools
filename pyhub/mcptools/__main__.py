@@ -63,6 +63,7 @@ if __name__ == "__main__":
     # import_module("pyhub.mcptools.music.__main__")
     import_module("pyhub.mcptools.search.__main__")
     import_module("pyhub.mcptools.python.__main__")
+    import_module("pyhub.mcptools.sentiment.__main__")
 
     #
     # Tools
@@ -74,5 +75,6 @@ if __name__ == "__main__":
     # import_module("pyhub.mcptools.music.tools")
     import_module("pyhub.mcptools.search.tools")
     import_module("pyhub.mcptools.python.tools")
+    import_module("pyhub.mcptools.sentiment.tools")
 
     app()
