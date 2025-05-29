@@ -7,15 +7,17 @@ from pyhub.mcptools.microsoft.outlook.tools import (
 
 # Import Excel tools
 from pyhub.mcptools.microsoft.excel.tools import (
-    # Sheets
+    # Sheets - Compatibility tools
     excel_get_opened_workbooks,
-    excel_find_data_ranges,
-    excel_get_special_cells_address,
     excel_get_values,
     excel_set_values,
+    # Sheets - Integrated tools
+    excel_get_info,
+    excel_set_cell_data,
+    # Sheets - Independent tools
+    excel_find_data_ranges,
     excel_set_styles,
     excel_autofit,
-    excel_set_formula,
     excel_add_sheet,
     # Charts
     excel_get_charts,
@@ -33,15 +35,17 @@ from pyhub.mcptools.microsoft.excel.tools import (
 __all__ = [
     # Outlook tools
     "outlook",
-    # Excel tools - Sheets
+    # Excel tools - Sheets (Compatibility)
     "excel_get_opened_workbooks",
-    "excel_find_data_ranges",
-    "excel_get_special_cells_address",
     "excel_get_values",
     "excel_set_values",
+    # Excel tools - Sheets (Integrated)
+    "excel_get_info",
+    "excel_set_cell_data",
+    # Excel tools - Sheets (Independent)
+    "excel_find_data_ranges",
     "excel_set_styles",
     "excel_autofit",
-    "excel_set_formula",
     "excel_add_sheet",
     # Excel tools - Charts
     "excel_get_charts",
