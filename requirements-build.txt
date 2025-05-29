@@ -1,0 +1,4 @@
+# PyInstaller 빌드 시 경고 해결을 위한 추가 의존성
+cryptography  # for celery.security
+sqlalchemy    # for kombu.transport.sqlalchemy
+pyOpenSSL     # for eventlet.green.OpenSSL
