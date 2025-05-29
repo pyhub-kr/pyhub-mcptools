@@ -131,3 +131,6 @@ dmypy.json
 uv.lock
 
 /fonts
+
+.claude
+
