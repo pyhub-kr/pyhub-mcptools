@@ -2,9 +2,7 @@
 
 # Import Outlook tools
 from pyhub.mcptools.microsoft.outlook.tools import (
-    outlook__send_email,
-    outlook__list_emails,
-    outlook__get_email,
+    outlook,
 )
 
 # Import Excel tools
@@ -34,9 +32,7 @@ from pyhub.mcptools.microsoft.excel.tools import (
 
 __all__ = [
     # Outlook tools
-    "outlook__send_email",
-    "outlook__list_emails",
-    "outlook__get_email",
+    "outlook",
     # Excel tools - Sheets
     "excel_get_opened_workbooks",
     "excel_find_data_ranges",
