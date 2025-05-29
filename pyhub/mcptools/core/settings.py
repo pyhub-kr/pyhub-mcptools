@@ -63,7 +63,7 @@ INSTALLED_APPS = [
     "channels",
     "pyhub.mcptools.core",
     "pyhub.mcptools.browser",
-    "pyhub.mcptools.excel",
+    "pyhub.mcptools.microsoft.excel",
 ]
 MIDDLEWARE = []
 
@@ -276,7 +276,7 @@ CELERY_TASK_QUEUES = {
 
 # Task 라우팅
 CELERY_TASK_ROUTES = {
-    "pyhub.mcptools.excel.*": {"queue": "xlwings"},
+    "pyhub.mcptools.microsoft.excel.*": {"queue": "xlwings"},
     "*": {"queue": "default"},
 }
 

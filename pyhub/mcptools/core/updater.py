@@ -33,8 +33,7 @@ def download_update(version: str, target_dir: str = ".", verbose: bool = False) 
     # .github/workflows/release.yml 에서 명시한 파일명 포댓을 따릅니다.
 
     url = (
-        f"https://github.com/pyhub-kr/pyhub-mcptools/releases/download/v{version}/"
-        f"{get_download_filename(version)}"
+        f"https://github.com/pyhub-kr/pyhub-mcptools/releases/download/v{version}/" f"{get_download_filename(version)}"
     )
     if verbose:
         print("Download", url)
