@@ -37,6 +37,7 @@ dependencies = [
     "cloudpickle",
     "platformdirs",
     "celery",
+    "kombu",
     "eventlet",
     "pika",
     "aiofiles",
