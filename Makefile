@@ -58,6 +58,8 @@ build-onedir: clean
 		--collect-all pyhub.mcptools \
 		--name pyhub.mcptools \
 		pyhub/mcptools/__main__.py
+	@echo "Analyzing build size..."
+	@python scripts/analyze_build_size.py dist/pyhub.mcptools
 
 # Build optimized executable with minimal locale files
 build-onedir-optimized: clean
@@ -72,13 +74,13 @@ build-onedir-optimized: clean
 		--collect-all eventlet \
 		--collect-all pyhub.mcptools \
 		--exclude-module django.contrib.gis \
-		--exclude-module django.contrib.postgres \
 		--exclude-module django.db.backends.mysql \
-		--exclude-module django.db.backends.postgresql \
 		--exclude-module django.db.backends.oracle \
 		--exclude-module django.test \
 		--name pyhub.mcptools \
 		pyhub/mcptools/__main__.py
+	@echo "Analyzing build size..."
+	@python scripts/analyze_build_size.py dist/pyhub.mcptools
 
 #
 # docs
