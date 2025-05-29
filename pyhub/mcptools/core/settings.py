@@ -161,6 +161,16 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Limit languages to Korean and English only
+LANGUAGES = [
+    ('ko', '한국어'),
+    ('en', 'English'),
+]
+
+# Disable locale middleware if not needed
+if 'django.middleware.locale.LocaleMiddleware' in MIDDLEWARE:
+    MIDDLEWARE.remove('django.middleware.locale.LocaleMiddleware')
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 STATIC_URL = env.str("STATIC_URL", default="static/")

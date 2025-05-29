@@ -51,12 +51,32 @@ build-onedir: clean
 	-uv pip install cryptography sqlalchemy pyOpenSSL
 	@echo "Building executable..."
 	$(PYTHON_WARNINGS) uv run pyinstaller --console --onedir \
-		--collect-all celery \
+		--additional-hooks-dir=pyinstaller_hooks \
 		--collect-all mcp_proxy \
-		--collect-all kombu \
 		--collect-all dns \
 		--collect-all eventlet \
 		--collect-all pyhub.mcptools \
+		--name pyhub.mcptools \
+		pyhub/mcptools/__main__.py
+
+# Build optimized executable with minimal locale files
+build-onedir-optimized: clean
+	uv pip install --upgrade -e ".[build,all]"
+	uv pip install --upgrade pyinstaller
+	-uv pip install cryptography sqlalchemy pyOpenSSL
+	@echo "Building optimized executable with minimal locales..."
+	$(PYTHON_WARNINGS) uv run pyinstaller --console --onedir \
+		--additional-hooks-dir=pyinstaller_hooks \
+		--collect-all mcp_proxy \
+		--collect-all dns \
+		--collect-all eventlet \
+		--collect-all pyhub.mcptools \
+		--exclude-module django.contrib.gis \
+		--exclude-module django.contrib.postgres \
+		--exclude-module django.db.backends.mysql \
+		--exclude-module django.db.backends.postgresql \
+		--exclude-module django.db.backends.oracle \
+		--exclude-module django.test \
 		--name pyhub.mcptools \
 		pyhub/mcptools/__main__.py
 
