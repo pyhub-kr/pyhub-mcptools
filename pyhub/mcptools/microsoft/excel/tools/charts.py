@@ -14,7 +14,7 @@ from pyhub.mcptools.microsoft.excel.utils import (
 
 # Note: excel_get_charts is now part of excel_get_info tool
 # Keeping this for backward compatibility if needed
-@mcp.tool(timeout=5)
+@mcp.tool(timeout=20)
 async def excel_get_charts(
     book_name: str = Field(
         default="",
@@ -53,7 +53,7 @@ async def excel_get_charts(
     return await asyncio.to_thread(_get_charts)
 
 
-@mcp.tool(timeout=10)
+@mcp.tool(timeout=30)
 async def excel_add_chart(
     source_sheet_range: str = Field(
         description="Excel range containing chart data",
@@ -139,7 +139,7 @@ async def excel_add_chart(
     return await asyncio.to_thread(_add_chart)
 
 
-@mcp.tool(timeout=10)
+@mcp.tool(timeout=30)
 async def excel_set_chart_props(
     name: str = Field(
         description="Name of the chart to modify",

@@ -18,7 +18,7 @@ from pyhub.mcptools.microsoft.excel.forms import PivotTableCreateForm
 # TODO: macOS 지원 추가 : macOS에서 xlwings 활용 테이블 생성 시에 오류 발생
 
 
-@mcp.tool(timeout=5, enabled=OS.current_is_windows())
+@mcp.tool(timeout=20, enabled=OS.current_is_windows())
 async def excel_convert_to_table(
     sheet_range: str = Field(
         description="Excel range to convert to table",
@@ -98,7 +98,7 @@ async def excel_convert_to_table(
 # TODO: table 목록/내역 반환
 
 
-@mcp.tool(timeout=10)
+@mcp.tool(timeout=30)
 async def excel_add_pivot_table(
     source_sheet_range: str = Field(
         description="Data source range for pivot table",
@@ -207,7 +207,7 @@ async def excel_add_pivot_table(
 
 # Note: excel_get_pivot_tables is now part of excel_get_info tool
 # Keeping this for backward compatibility if needed
-@mcp.tool(timeout=5)
+@mcp.tool(timeout=20)
 async def excel_get_pivot_tables(
     book_name: str = Field(
         default="",
@@ -234,7 +234,7 @@ async def excel_get_pivot_tables(
     return await asyncio.to_thread(_get_pivot_tables)
 
 
-@mcp.tool(timeout=5)
+@mcp.tool(timeout=20)
 async def excel_remove_pivot_tables(
     remove_all: bool = Field(
         default=False,

@@ -17,23 +17,23 @@ from pyhub.mcptools.microsoft.excel.utils.tables import PivotTable
 
 
 # Keep compatibility tools with delegator pattern
-@mcp.tool(delegator=sheets_tasks.get_opened_workbooks, timeout=10)
+@mcp.tool(delegator=sheets_tasks.get_opened_workbooks, timeout=30)
 async def excel_get_opened_workbooks():
     pass
 
 
-@mcp.tool(delegator=sheets_tasks.get_values, timeout=5)
+@mcp.tool(delegator=sheets_tasks.get_values, timeout=20)
 async def excel_get_values():
     pass
 
 
-@mcp.tool(delegator=sheets_tasks.set_values, timeout=5)
+@mcp.tool(delegator=sheets_tasks.set_values, timeout=20)
 async def excel_set_values():
     pass
 
 
 # New integrated info tool
-@mcp.tool(timeout=10)
+@mcp.tool(timeout=30)
 async def excel_get_info(
     info_type: Literal["workbooks", "charts", "pivot_tables", "special_cells"] = Field(
         description="Type of information to retrieve"
@@ -158,7 +158,7 @@ async def excel_get_info(
 
 
 # New integrated set_cell_data tool
-@mcp.tool(timeout=5)
+@mcp.tool(timeout=20)
 async def excel_set_cell_data(
     data_type: Literal["values", "formula"] = Field(
         description="Type of data to set"
@@ -260,7 +260,7 @@ async def excel_set_cell_data(
 
 
 # Independent tools with direct implementation
-@mcp.tool(timeout=5)
+@mcp.tool(timeout=20)
 async def excel_find_data_ranges(
     book_name: str = Field(
         default="",
@@ -468,7 +468,7 @@ async def excel_set_styles(
     return await asyncio.to_thread(_set_styles)
 
 
-@mcp.tool(timeout=5)
+@mcp.tool(timeout=20)
 async def excel_autofit(
     sheet_range: str = Field(
         description="Excel range to autofit",
@@ -512,7 +512,7 @@ async def excel_autofit(
     return await asyncio.to_thread(_autofit)
 
 
-@mcp.tool(timeout=5)
+@mcp.tool(timeout=20)
 async def excel_add_sheet(
     name: str = Field(
         default="",
