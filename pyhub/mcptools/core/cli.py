@@ -552,18 +552,24 @@ def setup_add(
                 raise typer.Exit(1) from e
 
     if getattr(sys, "frozen", False):
+        # 패키징된 실행 파일인 경우
         current_exe_path = sys.executable
+        if transport == TransportChoices.STDIO:
+            run_command = f"{current_exe_path} run stdio"
+        else:
+            run_command = f"{current_exe_path} run-sse-proxy {sse_url}"
     else:
-        # 실제 파일의 위치가 아니라, 실행 커맨드의 이름을 반환
-        current_cmd = sys.argv[0]
-        current_exe_path = str(Path(current_cmd).resolve())
-        # 소스 파일을 직접 실행할 때, 현재 실행된 python 경로를 파이썬 entry 소스 파일 경로 앞에 추가
-        current_exe_path = sys.executable + " " + current_exe_path
+        # 개발 환경에서 소스 실행인 경우 - Python 모듈로 실행
+        python_exe = sys.executable
+        if transport == TransportChoices.STDIO:
+            run_command = f"{python_exe} -m pyhub.mcptools run stdio"
+        else:
+            run_command = f"{python_exe} -m pyhub.mcptools run-sse-proxy {sse_url}"
 
-    if transport == TransportChoices.STDIO:
-        run_command = f"{current_exe_path} run stdio"
+        # 에러 메시지용 current_exe_path 설정
+        current_exe_path = f"{python_exe} -m pyhub.mcptools"
 
-    else:
+    if transport == TransportChoices.SSE:
         if async_to_sync(is_mcp_sse_server_alive)(sse_url=sse_url):
             if is_verbose:
                 console.print(f"[green]✔ SSE 서버 연결 성공: {sse_url}[/green]")
@@ -574,8 +580,6 @@ def setup_add(
 ex) {current_exe_path} run sse
 """
             )
-
-        run_command = f"{current_exe_path} run-sse-proxy {sse_url}"
 
     words = run_command.split()
     command = words[0]
@@ -803,189 +807,192 @@ def setup_restore(
         raise typer.Exit(1) from e
 
 
-@app.command()
-def env_print(
-    is_verbose: bool = typer.Option(False, "--verbose", "-v"),
-):
-    """지정 MCP 서버의 환경변수 내역을 출력"""
-
-    all_envs = {}
-
-    # 글로벌 환경변수 추가
-    try:
-        with settings.GLOBAL_ENV_FILE_PATH.open("rt", encoding="utf-8") as f:
-            all_envs["global"] = json.loads(f.read())
-    except FileNotFoundError:
-        all_envs["global"] = {}
-
-    # 각 MCP 호스트의 환경변수 추가
-    for host in McpHostChoices:
-        try:
-            config_path = get_config_path(host, is_verbose, allow_exit=False)
-            config_data = read_config_file(config_path)
-            host_envs = {}
-
-            for server, server_config in config_data.get("mcpServers", {}).items():
-                host_envs[server] = server_config.get("env", {})
-
-            if host_envs:
-                all_envs[host.value] = host_envs
-        except (FileNotFoundError, json.JSONDecodeError):
-            continue
-
-    print(json.dumps(all_envs, ensure_ascii=False, indent=2))
-
-
-@app.command()
-def env_add(
-    mcp_host: Optional[McpHostChoices] = typer.Argument(default=None, help="MCP 호스트 프로그램"),
-    server_name: Optional[str] = typer.Option("pyhub.mcptools", "--server-name", "-n", help="Server Name"),
-    env_name: str = typer.Option(None, "--env-name"),
-    env_value: str = typer.Option(None, "--env-value"),
-    is_verbose: bool = typer.Option(False, "--verbose", "-v"),
-):
-    """지정 MCP 서버에 환경변수를 추가합니다. 같은 이름을 환경변수를 추가하면 기존 환경변수를 덮어씁니다."""
-
-    is_entered = False
-
-    # 환경변수명 입력 받기
-    if env_name is None:
-        env_name = typer.prompt("환경변수명").upper()
-        if not env_name:
-            console.print("[red]환경변수명은 비워둘 수 없습니다.[/red]")
-            raise typer.Exit(1)
-        is_entered = True
-
-    # 환경변수 값 입력 받기
-    if env_value is None:
-        env_value = typer.prompt("환경변수 값")
-        is_entered = True
-
-    if is_entered:
-        # 확인 받기
-        is_confirm = typer.confirm(f"환경변수 {env_name}={env_value}를 추가하시겠습니까?")
-        if not is_confirm:
-            console.print("[yellow]환경변수 추가가 취소되었습니다.[/yellow]")
-            raise typer.Exit(0)
-
-    if mcp_host is None:
-        config_path = settings.GLOBAL_ENV_FILE_PATH
-
-        try:
-            with settings.GLOBAL_ENV_FILE_PATH.open("rt", encoding="utf-8") as f:
-                config_data = json.loads(f.read())
-        except FileNotFoundError:
-            config_data = {}
-
-        config_data[env_name] = env_value
-
-    else:
-        config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
-        config_data = read_config_file(config_path)
-
-        if server_name not in config_data["mcpServers"]:
-            console.print(f"[red]Error: {config_path} 경로에 {server_name} 설정이 없습니다.[/red]")
-            raise typer.Exit(1)
-
-        # 환경변수 추가
-        config_data["mcpServers"][server_name].setdefault("env", {})
-        config_data["mcpServers"][server_name]["env"][env_name] = env_value
-
-    # 설정 파일 저장
-    with config_path.open("wt", encoding="utf-8") as f:
-        json_str = json.dumps(config_data, indent=2, ensure_ascii=False)
-        f.write(json_str)
-
-    console.print(f"[green]환경변수 {env_name}={env_value}가 {server_name}에 추가되었습니다.[/green]")
-
-
-@app.command()
-def env_remove(
-    mcp_host: Optional[McpHostChoices] = typer.Argument(default=None, help="MCP 호스트 프로그램"),
-    server_name: Optional[str] = typer.Option("pyhub.mcptools", "--server-name", "-n", help="Server Name"),
-    env_name: Optional[str] = typer.Option(None, "--env-name"),
-    is_verbose: bool = typer.Option(False, "--verbose", "-v"),
-):
-    """지정 MCP 서버에서 환경변수를 제거합니다"""
-
-    if mcp_host is None:
-        config_path = settings.GLOBAL_ENV_FILE_PATH
-
-        try:
-            with settings.GLOBAL_ENV_FILE_PATH.open("rt", encoding="utf-8") as f:
-                config_data = json.loads(f.read())
-        except FileNotFoundError:
-            config_data = {}
-
-        env_vars = config_data
-
-    else:
-        config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
-        config_data = read_config_file(config_path)
-
-        if server_name not in config_data["mcpServers"]:
-            console.print(f"[red]Error: {config_path} 경로에 {server_name} 설정이 없습니다.[/red]")
-            raise typer.Exit(1)
-
-        # 서버에 환경변수가 없는 경우
-        if "env" not in config_data["mcpServers"][server_name] or not config_data["mcpServers"][server_name]["env"]:
-            console.print(f"[yellow]{server_name} 서버에 등록된 환경변수가 없습니다.[/yellow]")
-            raise typer.Exit(0)
-
-        env_vars = config_data["mcpServers"][server_name]["env"]
-
-    if env_name is None:
-        # 환경변수 목록 출력
-        table = Table(title=f"{server_name} 환경변수 목록")
-        table.add_column("번호")
-        table.add_column("환경변수명")
-        table.add_column("값")
-
-        for idx, (k, v) in enumerate(env_vars.items(), 1):
-            table.add_row(str(idx), k, v)
-
-        console.print(table)
-
-        # 환경변수명 또는 인덱스 입력 받기
-        env_input = typer.prompt("제거할 환경변수명 또는 번호").strip()
-        if not env_input:
-            console.print("[red]환경변수명 또는 번호는 비워둘 수 없습니다.[/red]")
-            raise typer.Exit(1)
-
-        # 인덱스로 입력된 경우
-        if env_input.isdigit():
-            idx = int(env_input)
-            if idx < 1 or idx > len(env_vars):
-                console.print(f"[red]유효하지 않은 번호입니다. 1에서 {len(env_vars)} 사이의 번호를 입력해주세요.[/red]")
-                raise typer.Exit(1)
-            env_name = list(env_vars.keys())[idx - 1]
-        else:
-            env_name = env_input.upper()
-            if env_name not in env_vars:
-                console.print(f"[red]환경변수 {env_name}이(가) {server_name}에 존재하지 않습니다.[/red]")
-                raise typer.Exit(1)
-
-        # 확인 받기
-        is_confirm = typer.confirm(f"환경변수 {env_name}={env_vars[env_name]}을(를) 제거하시겠습니까?")
-        if not is_confirm:
-            console.print("[yellow]환경변수 제거가 취소되었습니다.[/yellow]")
-            raise typer.Exit(0)
-
-    # 환경변수 제거
-    if mcp_host is None:
-        if env_name in config_data:
-            del config_data[env_name]
-
-    else:
-        if env_name in config_data["mcpServers"][server_name]["env"]:
-            del config_data["mcpServers"][server_name]["env"][env_name]
-
-    # 설정 파일 저장
-    with open(config_path, "wt", encoding="utf-8") as f:
-        json_str = json.dumps(config_data, indent=2, ensure_ascii=False)
-        f.write(json_str)
-
-    console.print(f"[green]환경변수 {env_name}이(가) {server_name}에서 제거되었습니다.[/green]")
+# @app.command()
+# def env_print(
+#     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
+# ):
+#     """지정 MCP 서버의 환경변수 내역을 출력"""
+#
+#     all_envs = {}
+#
+#     # 글로벌 환경변수 추가
+#     try:
+#         with settings.GLOBAL_ENV_FILE_PATH.open("rt", encoding="utf-8") as f:
+#             all_envs["global"] = json.loads(f.read())
+#     except FileNotFoundError:
+#         all_envs["global"] = {}
+#
+#     # 각 MCP 호스트의 환경변수 추가
+#     for host in McpHostChoices:
+#         try:
+#             config_path = get_config_path(host, is_verbose, allow_exit=False)
+#             config_data = read_config_file(config_path)
+#             host_envs = {}
+#
+#             for server, server_config in config_data.get("mcpServers", {}).items():
+#                 host_envs[server] = server_config.get("env", {})
+#
+#             if host_envs:
+#                 all_envs[host.value] = host_envs
+#         except (FileNotFoundError, json.JSONDecodeError):
+#             continue
+#
+#     print(json.dumps(all_envs, ensure_ascii=False, indent=2))
+#
+#
+# @app.command()
+# def env_add(
+#     mcp_host: Optional[McpHostChoices] = typer.Argument(default=None, help="MCP 호스트 프로그램"),
+#     server_name: Optional[str] = typer.Option("pyhub.mcptools", "--server-name", "-n", help="Server Name"),
+#     env_name: str = typer.Option(None, "--env-name"),
+#     env_value: str = typer.Option(None, "--env-value"),
+#     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
+# ):
+#     """지정 MCP 서버에 환경변수를 추가합니다. 같은 이름을 환경변수를 추가하면 기존 환경변수를 덮어씁니다."""
+#
+#     is_entered = False
+#
+#     # 환경변수명 입력 받기
+#     if env_name is None:
+#         env_name = typer.prompt("환경변수명").upper()
+#         if not env_name:
+#             console.print("[red]환경변수명은 비워둘 수 없습니다.[/red]")
+#             raise typer.Exit(1)
+#         is_entered = True
+#
+#     # 환경변수 값 입력 받기
+#     if env_value is None:
+#         env_value = typer.prompt("환경변수 값")
+#         is_entered = True
+#
+#     if is_entered:
+#         # 확인 받기
+#         is_confirm = typer.confirm(f"환경변수 {env_name}={env_value}를 추가하시겠습니까?")
+#         if not is_confirm:
+#             console.print("[yellow]환경변수 추가가 취소되었습니다.[/yellow]")
+#             raise typer.Exit(0)
+#
+#     if mcp_host is None:
+#         config_path = settings.GLOBAL_ENV_FILE_PATH
+#
+#         try:
+#             with settings.GLOBAL_ENV_FILE_PATH.open("rt", encoding="utf-8") as f:
+#                 config_data = json.loads(f.read())
+#         except FileNotFoundError:
+#             config_data = {}
+#
+#         config_data[env_name] = env_value
+#
+#     else:
+#         config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
+#         config_data = read_config_file(config_path)
+#
+#         if server_name not in config_data["mcpServers"]:
+#             console.print(f"[red]Error: {config_path} 경로에 {server_name} 설정이 없습니다.[/red]")
+#             raise typer.Exit(1)
+#
+#         # 환경변수 추가
+#         config_data["mcpServers"][server_name].setdefault("env", {})
+#         config_data["mcpServers"][server_name]["env"][env_name] = env_value
+#
+#     print("config_path :", config_path)
+#     print("config_data :", config_data)
+#
+#     # 설정 파일 저장
+#     with config_path.open("wt", encoding="utf-8") as f:
+#         json_str = json.dumps(config_data, indent=2, ensure_ascii=False)
+#         f.write(json_str)
+#
+#     console.print(f"[green]환경변수 {env_name}={env_value}가 {server_name}에 추가되었습니다.[/green]")
+#
+#
+# @app.command()
+# def env_remove(
+#     mcp_host: Optional[McpHostChoices] = typer.Argument(default=None, help="MCP 호스트 프로그램"),
+#     server_name: Optional[str] = typer.Option("pyhub.mcptools", "--server-name", "-n", help="Server Name"),
+#     env_name: Optional[str] = typer.Option(None, "--env-name"),
+#     is_verbose: bool = typer.Option(False, "--verbose", "-v"),
+# ):
+#     """지정 MCP 서버에서 환경변수를 제거합니다"""
+#
+#     if mcp_host is None:
+#         config_path = settings.GLOBAL_ENV_FILE_PATH
+#
+#         try:
+#             with settings.GLOBAL_ENV_FILE_PATH.open("rt", encoding="utf-8") as f:
+#                 config_data = json.loads(f.read())
+#         except FileNotFoundError:
+#             config_data = {}
+#
+#         env_vars = config_data
+#
+#     else:
+#         config_path = get_config_path(mcp_host, is_verbose, allow_exit=True)
+#         config_data = read_config_file(config_path)
+#
+#         if server_name not in config_data["mcpServers"]:
+#             console.print(f"[red]Error: {config_path} 경로에 {server_name} 설정이 없습니다.[/red]")
+#             raise typer.Exit(1)
+#
+#         # 서버에 환경변수가 없는 경우
+#         if "env" not in config_data["mcpServers"][server_name] or not config_data["mcpServers"][server_name]["env"]:
+#             console.print(f"[yellow]{server_name} 서버에 등록된 환경변수가 없습니다.[/yellow]")
+#             raise typer.Exit(0)
+#
+#         env_vars = config_data["mcpServers"][server_name]["env"]
+#
+#     if env_name is None:
+#         # 환경변수 목록 출력
+#         table = Table(title=f"{server_name} 환경변수 목록")
+#         table.add_column("번호")
+#         table.add_column("환경변수명")
+#         table.add_column("값")
+#
+#         for idx, (k, v) in enumerate(env_vars.items(), 1):
+#             table.add_row(str(idx), k, v)
+#
+#         console.print(table)
+#
+#         # 환경변수명 또는 인덱스 입력 받기
+#         env_input = typer.prompt("제거할 환경변수명 또는 번호").strip()
+#         if not env_input:
+#             console.print("[red]환경변수명 또는 번호는 비워둘 수 없습니다.[/red]")
+#             raise typer.Exit(1)
+#
+#         # 인덱스로 입력된 경우
+#         if env_input.isdigit():
+#             idx = int(env_input)
+#             if idx < 1 or idx > len(env_vars):
+#                 console.print(f"[red]유효하지 않은 번호입니다. 1에서 {len(env_vars)} 사이의 번호를 입력해주세요.[/red]")
+#                 raise typer.Exit(1)
+#             env_name = list(env_vars.keys())[idx - 1]
+#         else:
+#             env_name = env_input.upper()
+#             if env_name not in env_vars:
+#                 console.print(f"[red]환경변수 {env_name}이(가) {server_name}에 존재하지 않습니다.[/red]")
+#                 raise typer.Exit(1)
+#
+#         # 확인 받기
+#         is_confirm = typer.confirm(f"환경변수 {env_name}={env_vars[env_name]}을(를) 제거하시겠습니까?")
+#         if not is_confirm:
+#             console.print("[yellow]환경변수 제거가 취소되었습니다.[/yellow]")
+#             raise typer.Exit(0)
+#
+#     # 환경변수 제거
+#     if mcp_host is None:
+#         if env_name in config_data:
+#             del config_data[env_name]
+#
+#     else:
+#         if env_name in config_data["mcpServers"][server_name]["env"]:
+#             del config_data["mcpServers"][server_name]["env"][env_name]
+#
+#     # 설정 파일 저장
+#     with open(config_path, "wt", encoding="utf-8") as f:
+#         json_str = json.dumps(config_data, indent=2, ensure_ascii=False)
+#         f.write(json_str)
+#
+#     console.print(f"[green]환경변수 {env_name}이(가) {server_name}에서 제거되었습니다.[/green]")
 
 
 @app.command()

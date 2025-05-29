@@ -200,3 +200,107 @@ async def get_emails(
 ) -> list[Email]:
     client = AppleMailClient()
     return await client.get_emails(max_hours, query, email_folder_type, email_folder_name)
+
+
+async def send_email(
+    subject: str,
+    message: str,
+    from_email: str,
+    recipient_list: list[str],
+    html_message: Optional[str] = None,
+    cc_list: Optional[list[str]] = None,
+    bcc_list: Optional[list[str]] = None,
+    connection: Optional[any] = None,  # For compatibility with Outlook
+    force_sync: bool = True,  # For compatibility with Outlook
+) -> bool:
+    """Send email via Apple Mail
+
+    Args:
+        subject: Email subject
+        message: Plain text message
+        from_email: Sender email address
+        recipient_list: List of recipient email addresses
+        html_message: HTML message (currently ignored, uses plain text)
+        cc_list: List of CC recipients
+        bcc_list: List of BCC recipients
+        connection: Ignored (for compatibility)
+        force_sync: Ignored (for compatibility)
+
+    Returns:
+        True if sent successfully
+    """
+
+    # Escape special characters for AppleScript
+    def escape_applescript(text: str) -> str:
+        if not text:
+            return ""
+        return text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
+
+    # Use plain text message (Apple Mail AppleScript doesn't support HTML directly)
+    body_text = message if message else (html_to_text(html_message) if html_message else "")
+
+    # Build recipient scripts
+    to_recipients_script = (
+        "\n            ".join(
+            [f'make new to recipient with properties {{address:"{addr}"}}' for addr in recipient_list]
+        )
+        if recipient_list
+        else "-- No TO recipients"
+    )
+
+    cc_recipients_script = (
+        "\n            ".join(
+            [f'make new cc recipient with properties {{address:"{addr}"}}' for addr in (cc_list or [])]
+        )
+        if cc_list
+        else "-- No CC recipients"
+    )
+
+    bcc_recipients_script = (
+        "\n            ".join(
+            [f'make new bcc recipient with properties {{address:"{addr}"}}' for addr in (bcc_list or [])]
+        )
+        if bcc_list
+        else "-- No BCC recipients"
+    )
+
+    script = f"""
+    tell application "Mail"
+        -- Create new message
+        set newMessage to make new outgoing message with properties {{subject:"{escape_applescript(subject)}", content:"{escape_applescript(body_text)}"}}
+
+        -- Set sender (find account by email)
+        set accountFound to false
+        repeat with acc in accounts
+            set accEmails to email addresses of acc
+            repeat with accEmail in accEmails
+                if accEmail as string is equal to "{from_email}" then
+                    set sender of newMessage to acc
+                    set accountFound to true
+                    exit repeat
+                end if
+            end repeat
+            if accountFound then exit repeat
+        end repeat
+
+        -- Add recipients
+        tell newMessage
+            -- Add TO recipients
+            {to_recipients_script}
+
+            -- Add CC recipients
+            {cc_recipients_script}
+
+            -- Add BCC recipients  
+            {bcc_recipients_script}
+        end tell
+
+        -- Send the message
+        send newMessage
+        
+        return "SUCCESS"
+    end tell
+    """
+
+    result = await applescript_run(script)
+    return "SUCCESS" in result

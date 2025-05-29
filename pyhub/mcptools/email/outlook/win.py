@@ -2,11 +2,13 @@ import base64
 import datetime
 import logging
 import os
+import time
 from typing import Optional, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
 import pythoncom
+import pywintypes
 import win32com.client
 from pyhub.mcptools.email.utils import html_to_text
 
@@ -14,8 +16,6 @@ from pyhub.mcptools.email.outlook.base import OutlookItemType, OutlookFolderType
 from pyhub.mcptools.email.types import Email, EmailAttachment, EmailFolderType
 
 logger = logging.getLogger(__name__)
-
-pythoncom.CoInitialize()
 
 
 @dataclass
@@ -38,22 +38,61 @@ class OutlookConnection:
 
 
 @contextmanager
-def outlook_connection() -> Generator[OutlookConnection, None, None]:
+def outlook_connection(timeout: int = 30) -> Generator[OutlookConnection, None, None]:
     """Outlook 애플리케이션 연결을 관리하는 context manager
+
+    Args:
+        timeout: 연결 타임아웃 (초)
 
     Yields:
         OutlookConnection: Outlook 연결 정보를 담은 객체
 
     Raises:
-        AttributeError: Outlook이 설치되어 있지 않은 경우
+        RuntimeError: Outlook 연결 실패
+        ConnectionError: MAPI 연결 실패
     """
-    application = win32com.client.Dispatch("Outlook.Application")
+    pythoncom.CoInitialize()
+    application = None
+
     try:
+        # COM 객체 생성 재시도 로직
+        for attempt in range(3):
+            try:
+                application = win32com.client.Dispatch("Outlook.Application")
+                break
+            except pywintypes.com_error as e:
+                if attempt == 2:
+                    error_code = e.args[0] if e.args else None
+                    if error_code == -2147221005:  # 0x800401F3
+                        raise RuntimeError("Outlook이 설치되지 않았거나 접근할 수 없습니다")
+                    else:
+                        raise RuntimeError(f"Outlook COM 오류: {e}")
+                time.sleep(1)
+
+        # MAPI 연결
         outlook = application.GetNamespace("MAPI")
+
+        # 연결 확인 (폴더 접근 테스트)
+        try:
+            _ = outlook.GetDefaultFolder(OutlookFolderType.olFolderInbox)
+        except pywintypes.com_error:
+            raise ConnectionError("Outlook MAPI 연결 실패")
+
         yield OutlookConnection(application=application, outlook=outlook)
-    except AttributeError:
-        logger.error("Outlook이 설치되어 있지 않습니다.")
+
+    except (pywintypes.com_error, AttributeError) as e:
+        if isinstance(e, AttributeError):
+            logger.error("Outlook이 설치되어 있지 않습니다.")
+            raise RuntimeError("Outlook이 설치되어 있지 않습니다")
         raise
+    finally:
+        # COM 리소스 정리
+        if application:
+            try:
+                del application
+            except:
+                pass
+        pythoncom.CoUninitialize()
 
 
 def get_folders(connection: Optional[OutlookConnection] = None) -> list[OutlookFolderInfo]:
@@ -73,8 +112,11 @@ def get_folders(connection: Optional[OutlookConnection] = None) -> list[OutlookF
                 )
             for subfolder in _folder.Folders:
                 walk_folder(subfolder, level + 1)
-        except Exception as _e:
-            logger.error("폴더 정보를 가져오는 중 오류 발생 : %s", _e)
+        except pywintypes.com_error as e:
+            error_code = e.args[0] if e.args else None
+            logger.error("폴더 정보를 가져오는 중 COM 오류 발생: %s (코드: %s)", e, error_code)
+        except Exception as e:
+            logger.error("폴더 정보를 가져오는 중 오류 발생: %s", e)
 
     try:
 
@@ -278,7 +320,8 @@ def send_email(
     cc_list: Optional[list[str]] = None,
     bcc_list: Optional[list[str]] = None,
     connection: Optional[OutlookConnection] = None,
-) -> None:
+    force_sync: bool = True,
+) -> bool:
     """Outlook을 통해 이메일을 발송합니다.
 
     Args:
@@ -290,9 +333,23 @@ def send_email(
         cc_list (Optional[list[str]], optional): 참조 수신자 이메일 주소 목록. Defaults to None.
         bcc_list (Optional[list[str]], optional): 숨은 참조 수신자 이메일 주소 목록. Defaults to None.
         connection (Optional[OutlookConnection], optional): Outlook 연결 객체. Defaults to None.
+        force_sync (bool, optional): 강제 동기화 여부. Defaults to True.
+
+    Returns:
+        bool: 발송 성공 여부
     """
 
-    def process_send(_conn: OutlookConnection) -> None:
+    def process_send(_conn: OutlookConnection) -> bool:
+        outlook = _conn.outlook
+
+        # 온라인 상태 확인 및 동기화
+        try:
+            if not outlook.Offline and force_sync:
+                # 동기화 강제 실행 (백그라운드)
+                outlook.SendAndReceive(False)
+        except Exception as e:
+            logger.warning("동기화 실패: %s", e)
+
         mail = _conn.application.CreateItem(OutlookItemType.olMailItem)
         mail.Subject = subject
         mail.To = "; ".join(recipient_list)
@@ -304,8 +361,12 @@ def send_email(
             mail.BCC = "; ".join(bcc_list)
 
         # 특정 계정으로 발송 설정
-        account = get_account_for_email_address(from_email, _conn)
-        mail.SendUsingAccount = account
+        try:
+            account = get_account_for_email_address(from_email, _conn)
+            mail.SendUsingAccount = account
+        except ValueError as e:
+            logger.error("발송 계정 설정 실패: %s", e)
+            raise
 
         if html_message:
             # HTML 형식으로 설정
@@ -316,14 +377,64 @@ def send_email(
             mail.BodyFormat = OutlookBodyFormat.olFormatPlain
             mail.Body = message
 
-        # https://learn.microsoft.com/en-us/office/vba/api/outlook.mailitem.send(method)
-        mail.Send()
+        # 발송 전 저장
+        mail.Save()
+
+        # 발송
+        try:
+            mail.Send()
+
+            # 발송 확인 (Outbox 체크)
+            if force_sync:
+                try:
+                    outbox = outlook.GetDefaultFolder(OutlookFolderType.olFolderOutbox)
+                    start_time = time.time()
+
+                    # 최대 10초간 Outbox 확인
+                    while time.time() - start_time < 10:
+                        outbox_items = outbox.Items
+                        found = False
+
+                        try:
+                            for item in outbox_items:
+                                if item.Subject == subject and item.To == "; ".join(recipient_list):
+                                    found = True
+                                    break
+                        except pywintypes.com_error:
+                            # 아이템 접근 중 에러 발생 시 계속 진행
+                            pass
+
+                        if not found:
+                            # Outbox에서 사라짐 = 발송됨
+                            logger.info("이메일 발송 완료: %s", subject)
+                            return True
+
+                        # 수동 동기화 시도
+                        try:
+                            outlook.SendAndReceive(True)  # 대기하며 동기화
+                        except Exception as e:
+                            logger.warning("수동 동기화 실패: %s", e)
+
+                        time.sleep(1)
+
+                    # 10초 후에도 Outbox에 있으면 경고
+                    logger.warning("이메일이 Outbox에 남아있습니다: %s (10초 타임아웃)", subject)
+
+                except Exception as e:
+                    logger.error("Outbox 확인 중 오류: %s", e)
+
+        except pywintypes.com_error as e:
+            error_code = e.args[0] if e.args else None
+            logger.error("이메일 발송 실패: %s (코드: %s)", e, error_code)
+            raise RuntimeError(f"이메일 발송 실패: {e}")
+
+        return True
 
     if connection is None:
         with outlook_connection() as conn:
-            process_send(conn)
+            return process_send(conn)
     else:
-        process_send(connection)
+        return process_send(connection)
 
 
 def get_sent_mail_count(outlook: win32com.client.CDispatch) -> int:
