@@ -1,0 +1,14 @@
+{
+    "makefile.configureOnOpen": false,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "editor.renderWhitespace": "trailing",
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.rulers": [120]
+    },
+    "[markdown]": {
+        "files.trimTrailingWhitespace": false
+    }
+}
