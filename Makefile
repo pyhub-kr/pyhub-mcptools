@@ -18,8 +18,17 @@ lint:
 	uv run djlint $(or $(filter-out $@,$(MAKECMDGOALS)),./pyhub) --check
 
 clean:
+ifeq ($(OS),Windows_NT)
+	@echo "Cleaning on Windows..."
+	@powershell -NoProfile -Command "Get-ChildItem -Path . -Filter __pycache__ -Recurse -Directory -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; exit 0"
+	@powershell -NoProfile -Command "if (Test-Path dist) { Remove-Item -Path dist -Recurse -Force }; exit 0"
+	@powershell -NoProfile -Command "if (Test-Path build) { Remove-Item -Path build -Recurse -Force }; exit 0"
+	@powershell -NoProfile -Command "Remove-Item -Path *.egg-info, *.spec, .pytest_cache, .mypy_cache, .ruff_cache -Recurse -Force -ErrorAction SilentlyContinue; exit 0"
+else
+	@echo "Cleaning on Unix..."
 	find . -name __pycache__ | xargs rm -rf
 	rm -rf dist/ build/ *.egg-info *.spec .pytest_cache .mypy_cache .ruff_cache
+endif
 
 build: clean
 	uv pip install -e ".[build]"
@@ -28,24 +37,19 @@ build: clean
 publish: build
 	uv run -m twine upload dist/*
 
-# OS별 설정
+# OS-specific settings
 ifeq ($(OS),Windows_NT)
-    PYTHON_WARNINGS = set PYTHONWARNINGS=ignore::UserWarning:altgraph,ignore::PydanticJsonSchemaWarning &&
+    PYTHON_WARNINGS = set PYTHONWARNINGS=ignore::UserWarning:altgraph &&
 else
-    PYTHON_WARNINGS = PYTHONWARNINGS=ignore::UserWarning:altgraph,ignore::PydanticJsonSchemaWarning
+    PYTHON_WARNINGS = PYTHONWARNINGS=ignore::UserWarning:altgraph
 endif
 
+# Build executable with PyInstaller
 build-onedir: clean
 	uv pip install --upgrade -e ".[build,all]"
 	uv pip install --upgrade pyinstaller
-	# Windows 빌드 시 필요한 추가 의존성 설치 (에러 무시)
 	-uv pip install cryptography sqlalchemy pyOpenSSL
-	# spec 파일 사용 또는 기본 옵션으로 빌드
-ifeq ($(wildcard pyhub.mcptools.spec),pyhub.mcptools.spec)
-	@echo "Building with spec file..."
-	$(PYTHON_WARNINGS) uv run pyinstaller pyhub.mcptools.spec --clean
-else
-	@echo "Building with default options..."
+	@echo "Building executable..."
 	$(PYTHON_WARNINGS) uv run pyinstaller --console --onedir \
 		--collect-all celery \
 		--collect-all mcp_proxy \
@@ -55,7 +59,6 @@ else
 		--collect-all pyhub.mcptools \
 		--name pyhub.mcptools \
 		pyhub/mcptools/__main__.py
-endif
 
 #
 # docs
@@ -63,10 +66,18 @@ endif
 
 docs:
 	uv pip install -e ".[docs]"
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File ./scripts/download-fonts.ps1
+else
 	sh ./scripts/download-fonts.sh
+endif
 	uv run mkdocs serve --dev-addr localhost:8080
 
 docs-build:
 	uv pip install -e ".[docs]"
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File ./scripts/download-fonts.ps1
+else
 	sh ./scripts/download-fonts.sh
+endif
 	uv run mkdocs build --clean --site-dir docs-build
