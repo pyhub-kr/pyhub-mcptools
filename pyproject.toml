@@ -36,10 +36,6 @@ dependencies = [
     "psutil",
     "cloudpickle",
     "platformdirs",
-    "celery",
-    "kombu",
-    "eventlet",
-    "pika",
     "aiofiles",
     "pywin32; sys_platform == 'win32'",
 ]

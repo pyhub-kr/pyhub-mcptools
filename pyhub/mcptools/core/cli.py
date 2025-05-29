@@ -14,9 +14,6 @@ from typing import Callable, Optional, Sequence
 import httpx
 import typer
 from asgiref.sync import async_to_sync
-from celery.bin.worker import detach
-from celery.exceptions import SecurityError
-from celery.platforms import maybe_drop_privileges
 from click import Choice, ClickException
 from django.conf import settings
 from django.template.defaultfilters import filesizeformat
@@ -29,11 +26,8 @@ from rich.table import Table
 from typer.core import TyperCommand
 from typer.models import ArgumentInfo, CommandFunctionType, OptionInfo
 
-from pyhub.mcptools.celery_app import app as celery_app
 from pyhub.mcptools.core.choices import (
     OS,
-    CeleryLogLevelChoices,
-    CeleryPoolChoices,
     FormatChoices,
     McpHostChoices,
     TransportChoices,
@@ -156,125 +150,125 @@ def run_sse_proxy(
         raise typer.Exit(1) from e
 
 
-@app.command()
-def celery_revoke(
-    is_hard_terminate: bool = typer.Option(
-        False,
-        "--hard",
-        "-H",
-        help="Hard terminate all active tasks",
-    ),
-    is_purge: bool = typer.Option(
-        False,
-        "--purge",
-        "-P",
-        help=(
-            "메시지 브로커에서 대기 중인 모든 작업 메시지를 제거합니다. "
-            "이미 워커가 가져간 작업이나 실행 중인 작업에는 영향을 주지 않습니다."
-        ),
-    ),
-):
-    """현재 실행 중인 작업을 취소(Revoke)합니다. --hard 옵션을 지정하면 강제 종료합니다."""
+# @app.command()
+# def celery_revoke_disabled(
+#     is_hard_terminate: bool = typer.Option(
+#         False,
+#         "--hard",
+#         "-H",
+#         help="Hard terminate all active tasks",
+#     ),
+#     is_purge: bool = typer.Option(
+#         False,
+#         "--purge",
+#         "-P",
+#         help=(
+#             "메시지 브로커에서 대기 중인 모든 작업 메시지를 제거합니다. "
+#             "이미 워커가 가져간 작업이나 실행 중인 작업에는 영향을 주지 않습니다."
+#         ),
+#     ),
+# ):
+#     """현재 실행 중인 작업을 취소(Revoke)합니다. --hard 옵션을 지정하면 강제 종료합니다."""
+#
+#     active_tasks = celery_app.control.inspect().active()
+#
+#     if active_tasks is None:
+#         console.print("[red]조회 실패[/red]")
+#
+#     else:
+#         # 모든 task에 대해 revoke 실행
+#         for worker, tasks in active_tasks.items():
+#             console.print(f"{worker}: {len(tasks)} tasks")
+#             for task_id in tasks:
+#                 celery_app.control.revoke(task_id, terminate=is_hard_terminate)
+#                 console.print(f"Revoked task {task_id}")
+#
+#     # 전체 Queue 비우기
+#     if is_purge:
+#         console.print("대기 중인 모든 작업 메시지를 제거합니다.")
+#         celery_app.control.purge()
 
-    active_tasks = celery_app.control.inspect().active()
 
-    if active_tasks is None:
-        console.print("[red]조회 실패[/red]")
-
-    else:
-        # 모든 task에 대해 revoke 실행
-        for worker, tasks in active_tasks.items():
-            console.print(f"{worker}: {len(tasks)} tasks")
-            for task_id in tasks:
-                celery_app.control.revoke(task_id, terminate=is_hard_terminate)
-                console.print(f"Revoked task {task_id}")
-
-    # 전체 Queue 비우기
-    if is_purge:
-        console.print("대기 중인 모든 작업 메시지를 제거합니다.")
-        celery_app.control.purge()
-
-
-@app.command()
-def celery_run(
-    use_xlwings_queue: bool = typer.Option(
-        False,
-        "--xlwings-queue",
-        "-x",
-        help="Use xlwings queue for worker",
-    ),
-    pool: Optional[CeleryPoolChoices] = typer.Option(None),
-    concurrency: Optional[int] = typer.Option(None),
-    log_level: Optional[CeleryLogLevelChoices] = typer.Option(None),
-    hostname: Optional[str] = typer.Option(None, help="Worker hostname"),
-    is_detach: bool = typer.Option(False, "--detach", "-D", help="Start worker as daemon"),
-    logfile: Optional[str] = typer.Option(None, help="Path to log file"),
-    pidfile: Optional[str] = typer.Option(None, help="Path to pid file"),
-    uid: Optional[str] = typer.Option(None, help="User id to run worker as"),
-    gid: Optional[str] = typer.Option(None, help="Group id to run worker as"),
-):
-    """Start a worker instance.
-
-    Examples:
-        $ pyhub.mcptools run-worker --log-level INFO
-        $ pyhub.mcptools run-worker --xlwings-queue -l INFO
-        $ pyhub.mcptools run-worker --concurrency 4
-        $ pyhub.mcptools run-worker --detach --logfile /path/to/worker.log
-    """
-
-    if use_xlwings_queue:
-        queues = "xlwings"
-        # solo : 단일 프로세스, 단일 스레드로 동작
-        # pool 타입에 띠라 prefork 조차도 COM 접근으로 인해 SIGSEGV이 발생할 수 있기에,
-        # 안전하게 solo 타입을 디폴트로 지정
-        pool = pool or "solo"
-    else:
-        queues = settings.CELERY_TASK_DEFAULT_QUEUE
-        pool = pool or "eventlet"
-
-    try:
-        # 데몬 모드로 실행
-        if is_detach:
-            argv = ["-m", "celery"] + sys.argv[1:]
-            for flag in ("--detach", "-D", "--uid", "--gid"):
-                if flag in argv:
-                    argv.remove(flag)
-
-            return detach(
-                path=sys.executable,
-                argv=argv,
-                logfile=logfile,
-                pidfile=pidfile,
-                uid=uid,
-                gid=gid,
-                app=celery_app,
-                hostname=hostname,
-            )
-
-        # 권한 변경이 필요한 경우
-        maybe_drop_privileges(uid=uid, gid=gid)
-
-        # Worker 인스턴스 생성 및 실행
-        worker = celery_app.Worker(
-            hostname=hostname,
-            pool=pool,
-            concurrency=concurrency or (1 if use_xlwings_queue else 2),
-            loglevel=log_level or ("DEBUG" if settings.DEBUG else "INFO"),
-            logfile=logfile,
-            pidfile=pidfile,
-            queues=queues,
-        )
-        worker.start()
-        raise typer.Exit(worker.exitcode)
-
-    except SecurityError as e:
-        console.print(f"[red]Security Error: {e}[/red]")
-        raise typer.Exit(1) from e
-    except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1) from e
-
-    # TODO: beat
+# @app.command()
+# def celery_run(
+#     use_xlwings_queue: bool = typer.Option(
+#         False,
+#         "--xlwings-queue",
+#         "-x",
+#         help="Use xlwings queue for worker",
+#     ),
+#     pool: Optional[CeleryPoolChoices] = typer.Option(None),
+#     concurrency: Optional[int] = typer.Option(None),
+#     log_level: Optional[CeleryLogLevelChoices] = typer.Option(None),
+#     hostname: Optional[str] = typer.Option(None, help="Worker hostname"),
+#     is_detach: bool = typer.Option(False, "--detach", "-D", help="Start worker as daemon"),
+#     logfile: Optional[str] = typer.Option(None, help="Path to log file"),
+#     pidfile: Optional[str] = typer.Option(None, help="Path to pid file"),
+#     uid: Optional[str] = typer.Option(None, help="User id to run worker as"),
+#     gid: Optional[str] = typer.Option(None, help="Group id to run worker as"),
+# ):
+#     """Start a worker instance.
+#
+#     Examples:
+#         $ pyhub.mcptools run-worker --log-level INFO
+#         $ pyhub.mcptools run-worker --xlwings-queue -l INFO
+#         $ pyhub.mcptools run-worker --concurrency 4
+#         $ pyhub.mcptools run-worker --detach --logfile /path/to/worker.log
+#     """
+#
+#     if use_xlwings_queue:
+#         queues = "xlwings"
+#         # solo : 단일 프로세스, 단일 스레드로 동작
+#         # pool 타입에 띠라 prefork 조차도 COM 접근으로 인해 SIGSEGV이 발생할 수 있기에,
+#         # 안전하게 solo 타입을 디폴트로 지정
+#         pool = pool or "solo"
+#     else:
+#         queues = settings.CELERY_TASK_DEFAULT_QUEUE
+#         pool = pool or "eventlet"
+#
+#     try:
+#         # 데몬 모드로 실행
+#         if is_detach:
+#             argv = ["-m", "celery"] + sys.argv[1:]
+#             for flag in ("--detach", "-D", "--uid", "--gid"):
+#                 if flag in argv:
+#                     argv.remove(flag)
+#
+#             return detach(
+#                 path=sys.executable,
+#                 argv=argv,
+#                 logfile=logfile,
+#                 pidfile=pidfile,
+#                 uid=uid,
+#                 gid=gid,
+#                 app=celery_app,
+#                 hostname=hostname,
+#             )
+#
+#         # 권한 변경이 필요한 경우
+#         maybe_drop_privileges(uid=uid, gid=gid)
+#
+#         # Worker 인스턴스 생성 및 실행
+#         worker = celery_app.Worker(
+#             hostname=hostname,
+#             pool=pool,
+#             concurrency=concurrency or (1 if use_xlwings_queue else 2),
+#             loglevel=log_level or ("DEBUG" if settings.DEBUG else "INFO"),
+#             logfile=logfile,
+#             pidfile=pidfile,
+#             queues=queues,
+#         )
+#         worker.start()
+#         raise typer.Exit(worker.exitcode)
+#
+#     except SecurityError as e:
+#         console.print(f"[red]Security Error: {e}[/red]")
+#         raise typer.Exit(1) from e
+#     except Exception as e:
+#         console.print(f"[red]Error: {e}[/red]")
+#         raise typer.Exit(1) from e
+#
+#     # TODO: beat
 
 
 @app.command(name="paths")

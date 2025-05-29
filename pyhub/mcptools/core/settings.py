@@ -183,7 +183,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # pyhub.mcptools
 
 EXPERIMENTAL = env.bool("PYHUB_MCPTOOLS_EXPERIMENTAL", default=False)
-USE_MCP_DELEGATOR_ASYNC_TASK = env.bool("USE_MCP_DELEGATOR_ASYNC_TASK", default=False)
 
 # https://api.together.xyz/
 TOGETHER_API_KEY = env.str("TOGETHER_API_KEY", default=None)
@@ -239,82 +238,3 @@ if FS_LOCAL_HOME is not None:
 
 NAVER_MAP_CLIENT_ID = env.str("NAVER_MAP_CLIENT_ID", default=None)
 NAVER_MAP_CLIENT_SECRET = env.str("NAVER_MAP_CLIENT_SECRET", default=None)
-
-
-# Celery Configuration
-# https://docs.celeryq.dev/en/stable/userguide/configuration.html
-
-CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="amqp://guest:guest@127.0.0.1//")
-CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default="rpc://")
-
-# TASK 실행 관련
-CELERY_TASK_ALWAYS_EAGER = False  # 개발환경에서 True로 설정하면 비동기 작업을 동기적으로 실행
-CELERY_TASK_EAGER_PROPAGATES = True  # eager 모드에서 예외 전파 여부
-CELERY_TASK_SOFT_TIME_LIMIT = 3540  # 소프트 타임아웃 (초) - 작업 내부에서 Graceful 종료 로직 가능
-CELERY_TASK_TIME_LIMIT = 3600  # 작업 최대 실행 시간 (초) - 강제 종료
-
-# Queue 설정
-CELERY_TASK_DEFAULT_QUEUE = "default"
-CELERY_TASK_QUEUES = {
-    "default": {
-        "exchange": "default",
-        "exchange_type": "direct",
-        "routing_key": "default",
-    },
-    "xlwings": {
-        "exchange": "xlwings",
-        "exchange_type": "direct",
-        "routing_key": "xlwings",
-        "prefetch_count": 1,
-        # "queue_arguments": {
-        #     "x-max-priority": 10,
-        #     "x-max-length": 100,  # 큐 최대 길이 제한
-        #     "x-message-ttl": 3600000,  # 1시간
-        # },
-    },
-}
-
-# Task 라우팅
-CELERY_TASK_ROUTES = {
-    "pyhub.mcptools.microsoft.excel.*": {"queue": "xlwings"},
-    "*": {"queue": "default"},
-}
-
-# 결과 백엔드 설정
-# RPC 백엔드를 쓸 경우 결과가 “reply queue” 에 저장되므로, 결과 만료는 클라이언트가 가져간 뒤 자동 삭제
-CELERY_RESULT_EXPIRES = 60 * 60 * 24  # 결과 보관 기간 (24시간)
-CELERY_RESULT_EXTENDED = True  # 확장된 작업 결과 정보 저장
-CELERY_RESULT_PERSISTENT = True  # RabbitMQ 결과 영속성 보장
-
-# 시리얼라이제이션
-CELERY_ACCEPT_CONTENT = ["json"]
-CELERY_TASK_SERIALIZER = "json"
-CELERY_RESULT_SERIALIZER = "json"
-
-# 재시도 설정
-CELERY_TASK_ACKS_LATE = True  # 작업 완료 후 승인
-CELERY_TASK_REJECT_ON_WORKER_LOST = True  # 워커 중단 시 작업 거부
-
-# 워커 설정
-CELERY_WORKER_POOL_RESTARTS = True
-CELERY_MULTIPROCESSING_CONTEXT = "spawn"  # or "forever"
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # 워커 당 프리페치 수를 1로 제한
-CELERY_WORKER_MAX_TASKS_PER_CHILD = 1  # 메모리 누수 방지를 위해 태스크 1개 실행 후 워커 재시작
-CELERY_WORKER_MAX_MEMORY_PER_CHILD = 200_000  # 메모리 200MB 초과 시 워커 재시작
-CELERY_WORKER_SEND_TASK_EVENTS = True
-CELERY_WORKER_CONCURRENCY = 1  # 동시 실행 워커 수를 1로 제한
-CELERY_TASK_TRACK_STARTED = True  # 태스크 시작 추적
-CELERY_WORKER_POOL = "threads"  # 프로세스 대신 스레드 풀 사용
-
-CELERY_TIMEZONE = TIME_ZONE
-CELERY_BROKER_CONNECTION_RETRY = True
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-CELERY_BROKER_CONNECTION_MAX_RETRIES = 5
-
-# CELERY_BEAT_SCHEDULE = {
-#     'sample-task': {
-#         'task': 'pyhub.mcptools.core.tasks.sample_task', # Example task path
-#         'schedule': 3600.0, # Run every hour
-#         'args': (16, 16),
-#     },
-# }

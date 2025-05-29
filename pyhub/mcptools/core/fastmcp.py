@@ -9,7 +9,9 @@ from django.conf import settings
 from mcp.server.fastmcp import FastMCP as OrigFastMCP
 from mcp.types import AnyFunction
 
-from pyhub.mcptools.core.celery import TaskTimeoutError
+class TaskTimeoutError(Exception):
+    """작업 타임아웃 예외"""
+    pass
 
 
 class SyncFunctionNotAllowedError(TypeError):
@@ -18,10 +20,6 @@ class SyncFunctionNotAllowedError(TypeError):
     pass
 
 
-class DelegatorNotDecoratedError(TypeError):
-    """delegator 함수에 celery_task 데코레이터가 적용되지 않은 경우의 예외"""
-
-    pass
 
 
 class FastMCP(OrigFastMCP):
@@ -59,7 +57,6 @@ class FastMCP(OrigFastMCP):
         Raises:
             TypeError: 장식자가 잘못 사용된 경우
             SyncFunctionNotAllowedError: 동기 함수가 사용된 경우
-            DelegatorNotDecoratedError: delegator 함수에 celery_task 장식자가 적용되지 않은 경우
         """
 
         if callable(name):
@@ -83,10 +80,6 @@ class FastMCP(OrigFastMCP):
 
             if delegator is not None:
 
-                if hasattr(delegator, "async_task") is False:
-                    raise DelegatorNotDecoratedError(
-                        f"Delegator function {delegator.__name__} must be decorated with @celery_task"
-                    )
 
                 # 1) docstring 복사
                 fn.__doc__ = delegator.__doc__
@@ -103,20 +96,13 @@ class FastMCP(OrigFastMCP):
                 if delegator is None:
                     return await fn(*args, **kwargs)
 
-                if settings.USE_MCP_DELEGATOR_ASYNC_TASK:
-                    # wait 함수 내에서는 timeout이 지나면 즉시 반환
-                    # 따로 강제 종료를 요청하지 않았습니다.
-                    task_result = await delegator.async_task(*args, **kwargs)
-                    return await task_result.wait(effective_timeout)
-                else:
-                    # 쓰레드 방식에서는 timeout이 되어도 함수가 끝나기 전에는 timeout 예외가 발생하지 않으므로
-                    # 멀티 프로세싱 방식으로 실행하여, timeout이 발생하면 강제 종료
-                    return execute_with_process_timeout(
-                        func=delegator,
-                        *args,
-                        timeout=effective_timeout,
-                        **kwargs,
-                    )
+                # 멀티 프로세싱 방식으로 실행하여, timeout이 발생하면 강제 종료
+                return execute_with_process_timeout(
+                    func=delegator,
+                    *args,
+                    timeout=effective_timeout,
+                    **kwargs,
+                )
 
             if delegator is not None:
                 # wrapper에 우리가 덮어쓴 메타를 다시 붙여주기
