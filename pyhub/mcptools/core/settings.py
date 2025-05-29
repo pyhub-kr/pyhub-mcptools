@@ -216,6 +216,8 @@ PERPLEXITY_SEARCH_CONTEXT_SIZE = env.str("PERPLEXITY_SEARCH_CONTEXT_SIZE", defau
 # ONLY_EXPOSE_TOOLS
 ONLY_EXPOSE_TOOLS = env.list("ONLY_EXPOSE_TOOLS", default=None)
 
+USE_PYTHON_TOOLS = env.bool("USE_PYTHON_TOOLS", default=False)
+
 #
 # filesystem
 #

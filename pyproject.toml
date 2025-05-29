@@ -51,8 +51,15 @@ music = [
 excel = [
     "xlwings",
 ]
+python = [
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "seaborn",
+    "RestrictedPython",
+]
 all = [
-    "pyhub-mcptools[music,excel,browser]",
+    "pyhub-mcptools[music,excel,browser,python]",
 ]
 dev = [
     "pytest",
@@ -89,6 +96,7 @@ Documentation = "https://pyhub-kr.github.io/pyhub-mcptools"
 "pyhub.mcptools.browser" = "pyhub.mcptools.browser.__main__:app"
 "pyhub.mcptools.email" = "pyhub.mcptools.email.__main__:app"
 "pyhub.mcptools.excel" = "pyhub.mcptools.excel.__main__:app"
+"pyhub.mcptools.python" = "pyhub.mcptools.python.__main__:app"
 "pyhub.mcptools.setup" = "pyhub.mcptools.setup.__main__:app"
 
 [project.entry-points."mkdocs.plugins"]
