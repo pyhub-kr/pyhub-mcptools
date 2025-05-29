@@ -1,12 +1,12 @@
 from pydantic import Field
 
-from pyhub.mcptools.core.celery import celery_task
+# from pyhub.mcptools.core.celery import celery_task  # Celery removed
 from pyhub.mcptools.microsoft.excel.decorators import macos_excel_request_permission
 from pyhub.mcptools.microsoft.excel.types import ExcelChartType
 from pyhub.mcptools.microsoft.excel.utils import get_range, get_sheet, json_dumps
 
 
-@celery_task(queue="xlwings")
+# @celery_task(queue="xlwings")  # Celery removed
 @macos_excel_request_permission
 def get_charts(
     book_name: str = Field(
@@ -55,7 +55,7 @@ def get_charts(
     )
 
 
-@celery_task(queue="xlwings")
+# @celery_task(queue="xlwings")  # Celery removed
 @macos_excel_request_permission
 def add_chart(
     source_sheet_range: str = Field(
@@ -154,7 +154,7 @@ def add_chart(
     return chart.name
 
 
-@celery_task(queue="xlwings")
+# @celery_task(queue="xlwings")  # Celery removed
 @macos_excel_request_permission
 def set_chart_props(
     name: str = Field(
