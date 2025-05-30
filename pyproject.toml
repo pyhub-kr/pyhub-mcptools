@@ -51,6 +51,10 @@ music = [
 excel = [
     "xlwings",
 ]
+images = [
+    "cairosvg",
+    "pillow",
+]
 python = [
     "pandas",
     "numpy",
@@ -62,7 +66,7 @@ sentiment = [
     "vaderSentiment",
 ]
 all = [
-    "pyhub-mcptools[music,excel,browser,python,sentiment]",
+    "pyhub-mcptools[music,excel,browser,images,python,sentiment]",
 ]
 dev = [
     "pytest",

@@ -3,6 +3,8 @@ from importlib.metadata import PackageNotFoundError, version
 
 import typer
 
+from django.conf import settings
+from pyhub.mcptools.core.choices import OS
 from pyhub.mcptools.core.cli import app, console
 
 logo = """
@@ -56,25 +58,44 @@ if __name__ == "__main__":
     #
     # commands
     #
-    import_module("pyhub.mcptools.apple.__main__")
-    import_module("pyhub.mcptools.microsoft.__main__")
     import_module("pyhub.mcptools.fs.__main__")
     import_module("pyhub.mcptools.maps.__main__")
-    # import_module("pyhub.mcptools.music.__main__")
     import_module("pyhub.mcptools.search.__main__")
-    import_module("pyhub.mcptools.python.__main__")
-    import_module("pyhub.mcptools.sentiment.__main__")
+
+    import_module("pyhub.mcptools.microsoft.__main__")
+
+    if OS.current_is_macos():
+        import_module("pyhub.mcptools.apple.__main__")
+
+    if settings.USE_IMAGES_TOOLS:
+        import_module("pyhub.mcptools.images.__main__")
+
+    if settings.USE_PYTHON_TOOLS:
+        import_module("pyhub.mcptools.python.__main__")
+
+    if settings.USE_SENTIMENT_TOOLS:
+        import_module("pyhub.mcptools.sentiment.__main__")
 
     #
     # Tools
     #
-    import_module("pyhub.mcptools.apple.tools")
-    import_module("pyhub.mcptools.microsoft.tools")
     import_module("pyhub.mcptools.fs.tools")
     import_module("pyhub.mcptools.maps.tools")
     # import_module("pyhub.mcptools.music.tools")
     import_module("pyhub.mcptools.search.tools")
-    import_module("pyhub.mcptools.python.tools")
-    import_module("pyhub.mcptools.sentiment.tools")
+
+    import_module("pyhub.mcptools.microsoft.tools")
+
+    if OS.current_is_macos():
+        import_module("pyhub.mcptools.apple.tools")
+
+    if settings.USE_IMAGES_TOOLS:
+        import_module("pyhub.mcptools.images.tools")
+
+    if settings.USE_PYTHON_TOOLS:
+        import_module("pyhub.mcptools.python.tools")
+
+    if settings.USE_SENTIMENT_TOOLS:
+        import_module("pyhub.mcptools.sentiment.tools")
 
     app()

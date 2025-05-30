@@ -4,7 +4,6 @@ import asyncio
 import json
 from typing import Literal
 
-from django.conf import settings
 from pydantic import Field
 
 from pyhub.mcptools import mcp
@@ -51,7 +50,7 @@ def detect_language(text: str) -> str:
         return "unknown"
 
 
-@mcp.tool(timeout=30, enabled=settings.USE_SENTIMENT_TOOLS)
+@mcp.tool(timeout=30)
 async def sentiment_analyze(
     text: str | list[str] = Field(
         description="Text or list of texts to analyze for sentiment",
