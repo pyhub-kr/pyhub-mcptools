@@ -15,10 +15,13 @@ from pyhub.mcptools.microsoft.excel.utils import (
 )
 from pyhub.mcptools.microsoft.excel.utils.tables import PivotTable
 
+# Default timeout for Excel operations
+EXCEL_DEFAULT_TIMEOUT = 60
+
 # TODO: macOS 지원 추가 : macOS에서 xlwings 활용 테이블 생성 시에 오류 발생
 
 
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=OS.current_is_windows())
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT, enabled=OS.current_is_windows())
 async def excel_convert_to_table(
     sheet_range: str = Field(
         description="Excel range to convert to table",
@@ -65,30 +68,35 @@ async def excel_convert_to_table(
 
     @macos_excel_request_permission
     def _convert_to_table():
-        # Get the range
-        range_ = get_range(
-            sheet_range=sheet_range,
-            book_name=book_name,
-            sheet_name=sheet_name,
-            expand_mode=expand_mode,
-        )
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
 
-        # Expand to table if needed
-        if expand_mode == ExcelExpandMode.TABLE.value:
-            range_ = range_.expand("table")
+        try:
+            # Get the range
+            range_ = get_range(
+                sheet_range=sheet_range,
+                book_name=book_name,
+                sheet_name=sheet_name,
+                expand_mode=expand_mode,
+            )
 
-        # Convert to table
-        sheet = range_.sheet
-        has_headers_bool = None if has_headers == "guess" else (has_headers.lower() == "true")
+            # Expand to table if needed
+            if expand_mode == ExcelExpandMode.TABLE.value:
+                range_ = range_.expand("table")
 
-        table = sheet.tables.add(
-            source_range=range_,
-            name=table_name or None,
-            has_headers=has_headers_bool,
-            table_style_name=table_style_name,
-        )
+            # Convert to table
+            sheet = range_.sheet
+            has_headers_bool = None if has_headers == "guess" else (has_headers.lower() == "true")
 
-        return f"Successfully converted range to table: {table.name}"
+            table = sheet.tables.add(
+                source_range=range_,
+                name=table_name or None,
+                has_headers=has_headers_bool,
+                table_style_name=table_style_name,
+            )
+
+            return f"Successfully converted range to table: {table.name}"
+        finally:
+            cleanup_excel_com()
 
     return await asyncio.to_thread(_convert_to_table)
 
@@ -96,7 +104,7 @@ async def excel_convert_to_table(
 # TODO: table 목록/내역 반환
 
 
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_add_pivot_table(
     source_sheet_range: str = Field(
         description="Data source range for pivot table",
@@ -166,44 +174,49 @@ async def excel_add_pivot_table(
 
     @macos_excel_request_permission
     def _add_pivot_table():
-        # Get source and destination ranges
-        source_range = get_range(
-            sheet_range=source_sheet_range,
-            book_name=source_book_name,
-            sheet_name=source_sheet_name,
-            expand_mode=expand_mode,
-        )
-        dest_range = get_range(
-            sheet_range=dest_sheet_range,
-            book_name=dest_book_name,
-            sheet_name=dest_sheet_name,
-        )
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
 
-        # Use the form for validation and creation
-        form = PivotTableCreateForm(
-            data={
-                "row_field_names": row_field_names,
-                "column_field_names": column_field_names,
-                "page_field_names": page_field_names,
-                "value_fields": value_fields,
-                "pivot_table_name": pivot_table_name,
-            },
-            source_range=source_range,
-            dest_range=dest_range,
-        )
+        try:
+            # Get source and destination ranges
+            source_range = get_range(
+                sheet_range=source_sheet_range,
+                book_name=source_book_name,
+                sheet_name=source_sheet_name,
+                expand_mode=expand_mode,
+            )
+            dest_range = get_range(
+                sheet_range=dest_sheet_range,
+                book_name=dest_book_name,
+                sheet_name=dest_sheet_name,
+            )
 
-        if not form.is_valid():
-            return f"Validation error: {form.errors}"
+            # Use the form for validation and creation
+            form = PivotTableCreateForm(
+                data={
+                    "row_field_names": row_field_names,
+                    "column_field_names": column_field_names,
+                    "page_field_names": page_field_names,
+                    "value_fields": value_fields,
+                    "pivot_table_name": pivot_table_name,
+                },
+                source_range=source_range,
+                dest_range=dest_range,
+            )
 
-        result = form.save()
-        return result
+            if not form.is_valid():
+                return f"Validation error: {form.errors}"
+
+            result = form.save()
+            return result
+        finally:
+            cleanup_excel_com()
 
     return await asyncio.to_thread(_add_pivot_table)
 
 
 # Note: excel_get_pivot_tables is now part of excel_get_info tool
 # Keeping this for backward compatibility if needed
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_get_pivot_tables(
     book_name: str = Field(
         default="",
@@ -224,13 +237,18 @@ async def excel_get_pivot_tables(
 
     @macos_excel_request_permission
     def _get_pivot_tables():
-        sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
-        return json_dumps(PivotTable.list(sheet))
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
+
+        try:
+            sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
+            return json_dumps(PivotTable.list(sheet))
+        finally:
+            cleanup_excel_com()
 
     return await asyncio.to_thread(_get_pivot_tables)
 
 
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_remove_pivot_tables(
     remove_all: bool = Field(
         default=False,
@@ -263,20 +281,25 @@ async def excel_remove_pivot_tables(
 
     @macos_excel_request_permission
     def _remove_pivot_tables():
-        sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
 
-        if remove_all:
-            result = PivotTable.remove_all(sheet)
-        elif pivot_table_names:
-            names = [name.strip() for name in pivot_table_names.split(",")]
-            results = []
-            for name in names:
-                result = PivotTable.remove(sheet, name)
-                results.append(result)
-            result = "; ".join(results)
-        else:
-            result = "Specify either remove_all=True or provide pivot_table_names"
+        try:
+            sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
 
-        return result
+            if remove_all:
+                result = PivotTable.remove_all(sheet)
+            elif pivot_table_names:
+                names = [name.strip() for name in pivot_table_names.split(",")]
+                results = []
+                for name in names:
+                    result = PivotTable.remove(sheet, name)
+                    results.append(result)
+                result = "; ".join(results)
+            else:
+                result = "Specify either remove_all=True or provide pivot_table_names"
+
+            return result
+        finally:
+            cleanup_excel_com()
 
     return await asyncio.to_thread(_remove_pivot_tables)

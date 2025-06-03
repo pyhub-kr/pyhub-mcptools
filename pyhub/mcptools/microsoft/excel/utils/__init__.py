@@ -188,7 +188,12 @@ async def applescript_run(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    stdout_bytes, stderr_bytes = await process.communicate()
+    try:
+        from django.conf import settings
+        timeout = settings.EXCEL_DEFAULT_TIMEOUT
+    except:
+        timeout = 60
+    stdout_bytes, stderr_bytes = await process.communicate(timeout=timeout)
     stdout = stdout_bytes.decode().strip()
     stderr = stderr_bytes.decode().strip()
 
@@ -205,11 +210,17 @@ def applescript_run_sync(
 ) -> str:
     rendered_script = _render_applescript(script, context, template_path)
 
+    try:
+        from django.conf import settings
+        timeout = settings.EXCEL_DEFAULT_TIMEOUT
+    except:
+        timeout = 60
+
     process = subprocess.run(
         ["osascript", "-e", rendered_script],
         capture_output=True,
         text=True,
-        timeout=settings.EXCEL_DEFAULT_TIMEOUT,
+        timeout=timeout,
     )
 
     if process.returncode != 0:
@@ -314,3 +325,27 @@ def normalize_2d_data(data: list[list[Any]]) -> list[list[Any]]:
 
 def str_to_list(s: str, delimiter: str = ",") -> list[str]:
     return [ele.strip() for ele in s.split(delimiter) if ele.strip()]
+
+
+def cleanup_excel_com():
+    """Excel COM 객체 정리 및 리소스 해제
+
+    Windows에서 COM 객체가 제대로 정리되지 않으면 Excel 프로세스가
+    메모리에 남아있을 수 있으므로 명시적으로 정리합니다.
+    """
+    import gc
+    import sys
+
+    # 강제 가비지 컬렉션 실행
+    gc.collect()
+
+    # Windows에서만 추가 COM 정리 수행
+    if sys.platform == 'win32':
+        try:
+            # xlwings 캐시된 앱 참조 제거
+            import xlwings as xw
+            # 앱 참조만 제거 (실제 Excel은 닫지 않음)
+            if hasattr(xw.apps, '_cache'):
+                xw.apps._cache.clear()
+        except Exception:
+            pass  # 정리 실패는 무시

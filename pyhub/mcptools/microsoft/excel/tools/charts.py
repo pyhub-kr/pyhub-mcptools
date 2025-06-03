@@ -12,10 +12,12 @@ from pyhub.mcptools.microsoft.excel.utils import (
     json_dumps,
 )
 
+# Default timeout for Excel operations
+EXCEL_DEFAULT_TIMEOUT = 60
 
 # Note: excel_get_charts is now part of excel_get_info tool
 # Keeping this for backward compatibility if needed
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_get_charts(
     book_name: str = Field(
         default="",
@@ -36,25 +38,30 @@ async def excel_get_charts(
 
     @macos_excel_request_permission
     def _get_charts():
-        sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
-        return json_dumps(
-            [
-                {
-                    "name": chart.name,
-                    "left": chart.left,
-                    "top": chart.top,
-                    "width": chart.width,
-                    "height": chart.height,
-                    "index": i,
-                }
-                for i, chart in enumerate(sheet.charts)
-            ]
-        )
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
+
+        try:
+            sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
+            return json_dumps(
+                [
+                    {
+                        "name": chart.name,
+                        "left": chart.left,
+                        "top": chart.top,
+                        "width": chart.width,
+                        "height": chart.height,
+                        "index": i,
+                    }
+                    for i, chart in enumerate(sheet.charts)
+                ]
+            )
+        finally:
+            cleanup_excel_com()
 
     return await asyncio.to_thread(_get_charts)
 
 
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_add_chart(
     source_sheet_range: str = Field(
         description="Excel range containing chart data",
@@ -106,41 +113,46 @@ async def excel_add_chart(
 
     @macos_excel_request_permission
     def _add_chart():
-        # Get source and destination ranges
-        source_range = get_range(
-            sheet_range=source_sheet_range,
-            book_name=source_book_name,
-            sheet_name=source_sheet_name,
-        )
-        dest_range = get_range(
-            sheet_range=dest_sheet_range,
-            book_name=dest_book_name,
-            sheet_name=dest_sheet_name,
-        )
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
 
-        # Create chart
-        dest_sheet = dest_range.sheet
-        chart = dest_sheet.charts.add(
-            left=dest_range.left,
-            top=dest_range.top,
-            width=375,  # Default width
-            height=225,  # Default height
-        )
+        try:
+            # Get source and destination ranges
+            source_range = get_range(
+                sheet_range=source_sheet_range,
+                book_name=source_book_name,
+                sheet_name=source_sheet_name,
+            )
+            dest_range = get_range(
+                sheet_range=dest_sheet_range,
+                book_name=dest_book_name,
+                sheet_name=dest_sheet_name,
+            )
 
-        # Set chart type and source data
-        chart.chart_type = chart_type
-        chart.set_source_data(source_range)
+            # Create chart
+            dest_sheet = dest_range.sheet
+            chart = dest_sheet.charts.add(
+                left=dest_range.left,
+                top=dest_range.top,
+                width=375,  # Default width
+                height=225,  # Default height
+            )
 
-        # Set name if provided
-        if name:
-            chart.name = name
+            # Set chart type and source data
+            chart.chart_type = chart_type
+            chart.set_source_data(source_range)
 
-        return chart.name
+            # Set name if provided
+            if name:
+                chart.name = name
+
+            return chart.name
+        finally:
+            cleanup_excel_com()
 
     return await asyncio.to_thread(_add_chart)
 
 
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_set_chart_props(
     name: str = Field(
         description="Name of the chart to modify",
@@ -208,44 +220,49 @@ async def excel_set_chart_props(
 
     @macos_excel_request_permission
     def _set_chart_props():
-        # Get the chart
-        sheet = get_sheet(book_name=chart_book_name, sheet_name=chart_sheet_name)
-        chart = sheet.charts[name]
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
 
-        # Update name
-        if new_name:
-            chart.name = new_name
+        try:
+            # Get the chart
+            sheet = get_sheet(book_name=chart_book_name, sheet_name=chart_sheet_name)
+            chart = sheet.charts[name]
 
-        # Update chart type
-        if new_chart_type:
-            chart.chart_type = new_chart_type
+            # Update name
+            if new_name:
+                chart.name = new_name
 
-        # Update data source
-        if source_sheet_range:
-            source_range = get_range(
-                sheet_range=source_sheet_range,
-                book_name=source_book_name,
-                sheet_name=source_sheet_name,
-            )
-            chart.set_source_data(source_range)
+            # Update chart type
+            if new_chart_type:
+                chart.chart_type = new_chart_type
 
-        # Update position/size
-        if dest_sheet_range:
-            dest_range = get_range(
-                sheet_range=dest_sheet_range,
-                book_name=dest_book_name,
-                sheet_name=dest_sheet_name,
-            )
+            # Update data source
+            if source_sheet_range:
+                source_range = get_range(
+                    sheet_range=source_sheet_range,
+                    book_name=source_book_name,
+                    sheet_name=source_sheet_name,
+                )
+                chart.set_source_data(source_range)
 
-            # Set position
-            chart.left = dest_range.left
-            chart.top = dest_range.top
+            # Update position/size
+            if dest_sheet_range:
+                dest_range = get_range(
+                    sheet_range=dest_sheet_range,
+                    book_name=dest_book_name,
+                    sheet_name=dest_sheet_name,
+                )
 
-            # Set size if range spans multiple cells
-            if dest_range.count > 1:
-                chart.width = dest_range.width
-                chart.height = dest_range.height
+                # Set position
+                chart.left = dest_range.left
+                chart.top = dest_range.top
 
-        return chart.name
+                # Set size if range spans multiple cells
+                if dest_range.count > 1:
+                    chart.width = dest_range.width
+                    chart.height = dest_range.height
+
+            return chart.name
+        finally:
+            cleanup_excel_com()
 
     return await asyncio.to_thread(_set_chart_props)

@@ -8,7 +8,6 @@ from pydantic import Field
 from pyhub.mcptools import mcp
 from pyhub.mcptools.core.choices import OS
 from pyhub.mcptools.microsoft.excel.decorators import macos_excel_request_permission
-from pyhub.mcptools.microsoft.excel.tasks import sheets as sheets_tasks
 from pyhub.mcptools.microsoft.excel.utils import (
     get_sheet,
     json_dumps,
@@ -16,25 +15,236 @@ from pyhub.mcptools.microsoft.excel.utils import (
 )
 from pyhub.mcptools.microsoft.excel.utils.tables import PivotTable
 
+# Default timeout for Excel operations
+EXCEL_DEFAULT_TIMEOUT = 60
 
-# Keep compatibility tools with delegator pattern
-@mcp.tool(delegator=sheets_tasks.get_opened_workbooks, timeout=settings.EXCEL_DEFAULT_TIMEOUT)
-async def excel_get_opened_workbooks():
-    pass
+# Converted from delegator pattern to direct implementation
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+async def excel_get_opened_workbooks() -> str:
+    """Get a list of all open workbooks and their sheets in Excel
+
+    Returns:
+        str: JSON string containing:
+            - books: List of open workbooks
+                - name: Workbook name
+                - fullname: Full path of workbook
+                - sheets: List of sheets in workbook
+                    - name: Sheet name
+                    - index: Sheet index
+                    - range: Used range address (e.g. "$A$1:$E$665")
+                    - count: Total number of cells in used range
+                    - shape: Tuple of (rows, columns) in used range
+                    - active: Whether this is the active sheet
+                - active: Whether this is the active workbook
+    """
+
+    @macos_excel_request_permission
+    def _get_opened_workbooks():
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
+
+        try:
+            return json_dumps(
+                {
+                    "books": [
+                        {
+                            "name": normalize_text(book.name),
+                            "fullname": normalize_text(book.fullname),
+                            "sheets": [
+                                {
+                                    "name": normalize_text(sheet.name),
+                                    "index": sheet.index,
+                                    "range": sheet.used_range.get_address(),
+                                    "count": sheet.used_range.count,
+                                    "shape": sheet.used_range.shape,
+                                    "active": sheet == xw.sheets.active,
+                                    "table_names": [table.name for table in sheet.tables],
+                                }
+                                for sheet in book.sheets
+                            ],
+                            "active": book == xw.books.active,
+                        }
+                        for book in xw.books
+                    ]
+                }
+            )
+        finally:
+            cleanup_excel_com()
+
+    return await asyncio.to_thread(_get_opened_workbooks)
 
 
-@mcp.tool(delegator=sheets_tasks.get_values, timeout=settings.EXCEL_DEFAULT_TIMEOUT)
-async def excel_get_values():
-    pass
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+async def excel_get_values(
+    sheet_range: str = Field(
+        default="",
+        description="""Excel range to get data. If not specified, uses the entire used range of the sheet.
+            Important: When using expand_mode, specify ONLY the starting cell (e.g., 'A1' not 'A1:B10')
+            as the range will be automatically expanded.""",
+        examples=["A1", "Sheet1!A1", "A1:C10"],
+    ),
+    book_name: str = Field(
+        default="",
+        description="Name of workbook to use. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: str = Field(
+        default="",
+        description="Name of sheet to use. Optional.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+    expand_mode: str = Field(
+        default="",
+        description="Mode for automatically expanding the selection range (table/down/right/none)",
+    ),
+    value_type: str = Field(
+        default="values",
+        description="Type of data to retrieve (values/formula2)",
+    ),
+) -> str:
+    """Read data from a specified range in an Excel workbook
+
+    Retrieves data with options for range expansion and output format.
+    Uses active workbook/sheet if not specified.
+
+    Returns:
+        str: CSV format by default. Use value_type to change output format.
+
+    Examples:
+        >>> get_values("A1:C10")  # Basic range
+        >>> get_values("A1", expand_mode="table")  # Auto-expand from A1
+        >>> get_values("Sheet1!B2:D5", value_type="json")  # JSON output
+        >>> get_values("", book_name="Sales.xlsx")  # Entire used range
+    """
+
+    @macos_excel_request_permission
+    def _get_values():
+        from pyhub.mcptools.microsoft.excel.utils import (
+            get_range,
+            convert_to_csv,
+            cleanup_excel_com,
+        )
+
+        try:
+            range_ = get_range(
+                sheet_range=sheet_range,
+                book_name=book_name,
+                sheet_name=sheet_name,
+                expand_mode=expand_mode,
+            )
+
+            values = range_.value
+
+            # Process according to value_type
+            if value_type == "formula2":
+                # Return formulas instead of values
+                values = range_.formula2
+                return json_dumps(values)
+            else:
+                # Default: VALUES - return as CSV format
+                if values is None:
+                    return ""
+                elif not isinstance(values, list):
+                    # Single cell
+                    return str(values)
+                elif values and not isinstance(values[0], list):
+                    # Single row/column
+                    return convert_to_csv([values])
+                else:
+                    # Multiple rows/columns
+                    return convert_to_csv(values)
+        finally:
+            cleanup_excel_com()
+
+    return await asyncio.to_thread(_get_values)
 
 
-@mcp.tool(delegator=sheets_tasks.set_values, timeout=settings.EXCEL_DEFAULT_TIMEOUT)
-async def excel_set_values():
-    pass
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+async def excel_set_values(
+    sheet_range: str = Field(
+        description="Excel cell range to write data to",
+        examples=["A1", "A1:D10", "B:E", "3:7", "Sheet1!A1:D10"],
+    ),
+    values: str = Field(
+        default=None,
+        description="CSV string. Values containing commas must be enclosed in double quotes (e.g. 'a,\"b,c\",d')",
+    ),
+    csv_abs_path: str = Field(
+        default="",
+        description="""Absolute path to the CSV file to read.
+            If specified, this will override any value provided in the 'values' parameter.
+            Either 'csv_abs_path' or 'values' must be provided, but not both.""",
+        examples=["/path/to/data.csv"],
+    ),
+    book_name: str = Field(
+        default="",
+        description="Name of workbook to use. Optional.",
+        examples=["Sales.xlsx", "Report2023.xlsx"],
+    ),
+    sheet_name: str = Field(
+        default="",
+        description="Name of sheet to use. Optional.",
+        examples=["Sheet1", "Sales2023"],
+    ),
+) -> str:
+    """Write data to a specified range in an Excel workbook.
+
+    Performance Tips:
+        - When setting values to multiple consecutive cells, it's more efficient to use a single call
+          with a range (e.g. "A1:B10") rather than making multiple calls for individual cells.
+        - For large datasets, using CSV format with range notation is significantly faster than
+          making separate calls for each cell.
+
+    Returns:
+        str: Success message indicating values were set.
+
+    Examples:
+        >>> set_values(sheet_range="A1", values="v1,v2,v3\\nv4,v5,v6")  # grid using CSV
+        >>> set_values(sheet_range="A1:B3", values="1,2\\n3,4\\n5,6")  # faster than 6 separate calls
+        >>> set_values(sheet_range="Sheet1!A1:C2", values="[[1,2,3],[4,5,6]]")  # using JSON array
+        >>> set_values(csv_abs_path="/path/to/data.csv", sheet_range="A1")  # import from CSV file
+    """
+
+    @macos_excel_request_permission
+    def _set_values():
+        from pathlib import Path
+        from pyhub.mcptools.microsoft.excel.utils import (
+            get_range,
+            fix_data,
+            csv_loads,
+            json_loads,
+            cleanup_excel_com,
+        )
+        from pyhub.mcptools.fs.utils import validate_path
+
+        try:
+            range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
+
+            if csv_abs_path:
+                csv_path: Path = validate_path(csv_abs_path)
+                with csv_path.open("rt", encoding="utf-8") as f:
+                    values_to_use = f.read()
+            else:
+                values_to_use = values
+
+            if values_to_use is not None:
+                if values_to_use.strip().startswith(("[", "{")):
+                    data = json_loads(values_to_use)
+                else:
+                    data = csv_loads(values_to_use)
+            else:
+                raise ValueError("Either csv_abs_path or values must be provided.")
+
+            range_.value = fix_data(sheet_range, data)
+
+            return f"Successfully set values to {range_.address}."
+        finally:
+            cleanup_excel_com()
+
+    return await asyncio.to_thread(_set_values)
 
 
 # New integrated info tool
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_get_info(
     info_type: Literal["workbooks", "charts", "pivot_tables", "special_cells"] = Field(
         description="Type of information to retrieve"
@@ -78,72 +288,92 @@ async def excel_get_info(
 
     @macos_excel_request_permission
     def _get_workbooks():
-        return json_dumps(
-            {
-                "books": [
-                    {
-                        "name": normalize_text(book.name),
-                        "fullname": normalize_text(book.fullname),
-                        "sheets": [
-                            {
-                                "name": normalize_text(sheet.name),
-                                "index": sheet.index,
-                                "range": sheet.used_range.get_address(),
-                                "count": sheet.used_range.count,
-                                "shape": sheet.used_range.shape,
-                                "active": sheet == xw.sheets.active,
-                                "table_names": [table.name for table in sheet.tables],
-                            }
-                            for sheet in book.sheets
-                        ],
-                        "active": book == xw.books.active,
-                    }
-                    for book in xw.books
-                ]
-            }
-        )
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
+
+        try:
+            return json_dumps(
+                {
+                    "books": [
+                        {
+                            "name": normalize_text(book.name),
+                            "fullname": normalize_text(book.fullname),
+                            "sheets": [
+                                {
+                                    "name": normalize_text(sheet.name),
+                                    "index": sheet.index,
+                                    "range": sheet.used_range.get_address(),
+                                    "count": sheet.used_range.count,
+                                    "shape": sheet.used_range.shape,
+                                    "active": sheet == xw.sheets.active,
+                                    "table_names": [table.name for table in sheet.tables],
+                                }
+                                for sheet in book.sheets
+                            ],
+                            "active": book == xw.books.active,
+                        }
+                        for book in xw.books
+                    ]
+                }
+            )
+        finally:
+            cleanup_excel_com()
 
     @macos_excel_request_permission
     def _get_charts():
-        sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
-        return json_dumps(
-            [
-                {
-                    "name": chart.name,
-                    "left": chart.left,
-                    "top": chart.top,
-                    "width": chart.width,
-                    "height": chart.height,
-                    "index": i,
-                }
-                for i, chart in enumerate(sheet.charts)
-            ]
-        )
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
+
+        try:
+            sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
+            return json_dumps(
+                [
+                    {
+                        "name": chart.name,
+                        "left": chart.left,
+                        "top": chart.top,
+                        "width": chart.width,
+                        "height": chart.height,
+                        "index": i,
+                    }
+                    for i, chart in enumerate(sheet.charts)
+                ]
+            )
+        finally:
+            cleanup_excel_com()
 
     @macos_excel_request_permission
     def _get_pivot_tables():
-        sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
-        return json_dumps(PivotTable.list(sheet))
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
+
+        try:
+            sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
+            return json_dumps(PivotTable.list(sheet))
+        finally:
+            cleanup_excel_com()
 
     @macos_excel_request_permission
     def _get_special_cells():
-        if not OS.current_is_windows():
-            return json_dumps({"error": "special_cells is only available on Windows"})
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
 
-        from pyhub.mcptools.microsoft.excel.types import ExcelCellType
-        from pyhub.mcptools.microsoft.excel.utils import get_range
+        try:
+            if not OS.current_is_windows():
+                return json_dumps({"error": "special_cells is only available on Windows"})
 
-        range_ = get_range(
-            sheet_range=sheet_range or "A1",
-            book_name=book_name,
-            sheet_name=sheet_name,
-            expand_mode=expand_mode,
-        )
+            from pyhub.mcptools.microsoft.excel.types import ExcelCellType
+            from pyhub.mcptools.microsoft.excel.utils import get_range
 
-        cell_type = cell_type_filter or ExcelCellType.get_none_value()
-        special_cells_range = range_.api.SpecialCells(cell_type)
+            range_ = get_range(
+                sheet_range=sheet_range or "A1",
+                book_name=book_name,
+                sheet_name=sheet_name,
+                expand_mode=expand_mode,
+            )
 
-        return json_dumps({"address": special_cells_range.Address})
+            cell_type = cell_type_filter or ExcelCellType.get_none_value()
+            special_cells_range = range_.api.SpecialCells(cell_type)
+
+            return json_dumps({"address": special_cells_range.Address})
+        finally:
+            cleanup_excel_com()
 
     # Execute the appropriate function based on info_type
     if info_type == "workbooks":
@@ -159,7 +389,7 @@ async def excel_get_info(
 
 
 # New integrated set_cell_data tool
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_set_cell_data(
     data_type: Literal["values", "formula"] = Field(description="Type of data to set"),
     sheet_range: str = Field(
@@ -211,38 +441,45 @@ async def excel_set_cell_data(
             fix_data,
             get_range,
             json_loads,
+            cleanup_excel_com,
         )
 
-        range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
+        try:
+            range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
 
-        values_to_set = data
-        if csv_abs_path:
-            csv_path: Path = validate_path(csv_abs_path)
-            with csv_path.open("rt", encoding="utf-8") as f:
-                values_to_set = f.read()
+            values_to_set = data
+            if csv_abs_path:
+                csv_path: Path = validate_path(csv_abs_path)
+                with csv_path.open("rt", encoding="utf-8") as f:
+                    values_to_set = f.read()
 
-        if values_to_set is not None:
-            if values_to_set.strip().startswith(("[", "{")):
-                parsed_data = json_loads(values_to_set)
+            if values_to_set is not None:
+                if values_to_set.strip().startswith(("[", "{")):
+                    parsed_data = json_loads(values_to_set)
+                else:
+                    parsed_data = csv_loads(values_to_set)
             else:
-                parsed_data = csv_loads(values_to_set)
-        else:
-            parsed_data = None
+                parsed_data = None
 
-        if parsed_data is not None:
-            fixed_data = fix_data(parsed_data)
-            range_.value = fixed_data
+            if parsed_data is not None:
+                fixed_data = fix_data(parsed_data)
+                range_.value = fixed_data
 
-        return "Successfully set values."
+            return "Successfully set values."
+        finally:
+            cleanup_excel_com()
 
     @macos_excel_request_permission
     def _set_formula():
-        from pyhub.mcptools.microsoft.excel.utils import get_range
+        from pyhub.mcptools.microsoft.excel.utils import get_range, cleanup_excel_com
 
-        range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
-        range_.formula2 = data
+        try:
+            range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
+            range_.formula2 = data
 
-        return "Successfully set formula."
+            return "Successfully set formula."
+        finally:
+            cleanup_excel_com()
 
     # Execute the appropriate function based on data_type
     if data_type == "values":
@@ -260,7 +497,7 @@ async def excel_set_cell_data(
 
 
 # Independent tools with direct implementation
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_find_data_ranges(
     book_name: str = Field(
         default="",
@@ -290,52 +527,57 @@ async def excel_find_data_ranges(
 
     @macos_excel_request_permission
     def _find_data_ranges():
-        sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
 
-        data_ranges = []
-        visited = set()
+        try:
+            sheet = get_sheet(book_name=book_name, sheet_name=sheet_name)
 
-        # Get all values in used range
-        used_range = sheet.used_range
-        if not used_range:
-            return json_dumps([])
+            data_ranges = []
+            visited = set()
 
-        values = used_range.value
-        if not values:
-            return json_dumps([])
+            # Get all values in used range
+            used_range = sheet.used_range
+            if not used_range:
+                return json_dumps([])
 
-        # Convert to 2D array if single cell
-        if not isinstance(values, list):
-            values = [[values]]
-        elif values and not isinstance(values[0], list):
-            values = [values]
+            values = used_range.value
+            if not values:
+                return json_dumps([])
 
-        # Scan for data blocks
-        for row_idx, row in enumerate(values):
-            for col_idx, cell_value in enumerate(row):
-                if cell_value is not None and (row_idx, col_idx) not in visited:
-                    # Found non-empty cell, expand to find full data block
-                    cell = used_range.cells[row_idx, col_idx]
-                    data_block = cell.expand("table")
+            # Convert to 2D array if single cell
+            if not isinstance(values, list):
+                values = [[values]]
+            elif values and not isinstance(values[0], list):
+                values = [values]
 
-                    # Mark all cells in this block as visited
-                    block_start_row = data_block.row - used_range.row
-                    block_start_col = data_block.column - used_range.column
-                    block_rows = data_block.rows.count
-                    block_cols = data_block.columns.count
+            # Scan for data blocks
+            for row_idx, row in enumerate(values):
+                for col_idx, cell_value in enumerate(row):
+                    if cell_value is not None and (row_idx, col_idx) not in visited:
+                        # Found non-empty cell, expand to find full data block
+                        cell = used_range.cells[row_idx, col_idx]
+                        data_block = cell.expand("table")
 
-                    for r in range(block_start_row, block_start_row + block_rows):
-                        for c in range(block_start_col, block_start_col + block_cols):
-                            visited.add((r, c))
+                        # Mark all cells in this block as visited
+                        block_start_row = data_block.row - used_range.row
+                        block_start_col = data_block.column - used_range.column
+                        block_rows = data_block.rows.count
+                        block_cols = data_block.columns.count
 
-                    data_ranges.append(data_block.get_address())
+                        for r in range(block_start_row, block_start_row + block_rows):
+                            for c in range(block_start_col, block_start_col + block_cols):
+                                visited.add((r, c))
 
-        return json_dumps(data_ranges)
+                        data_ranges.append(data_block.get_address())
+
+            return json_dumps(data_ranges)
+        finally:
+            cleanup_excel_com()
 
     return await asyncio.to_thread(_find_data_ranges)
 
 
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_set_styles(
     styles: str = Field(
         description="Style specifications in CSV format or single style string",
@@ -367,6 +609,7 @@ async def excel_set_styles(
         from pyhub.mcptools.microsoft.excel.utils import (
             csv_loads,
             get_range,
+            cleanup_excel_com,
         )
 
         def apply_styles(excel_range, style_data):
@@ -423,52 +666,55 @@ async def excel_set_styles(
 
             return book_name, sheet_name, range_spec, options
 
-        selected_ranges = []
+        try:
+            selected_ranges = []
 
-        # Detect format and process
-        if "\n" in styles or styles.startswith("book_name,"):
-            # CSV format - convert to list of dicts
-            rows = csv_loads(styles)
-            if rows and isinstance(rows[0], list):
-                # Convert list of lists to list of dicts
-                headers = rows[0]
-                dict_rows = []
-                for row in rows[1:]:
-                    row_dict = {}
-                    for i, header in enumerate(headers):
-                        if i < len(row):
-                            row_dict[header] = row[i]
-                    dict_rows.append(row_dict)
-                rows = dict_rows
+            # Detect format and process
+            if "\n" in styles or styles.startswith("book_name,"):
+                # CSV format - convert to list of dicts
+                rows = csv_loads(styles)
+                if rows and isinstance(rows[0], list):
+                    # Convert list of lists to list of dicts
+                    headers = rows[0]
+                    dict_rows = []
+                    for row in rows[1:]:
+                        row_dict = {}
+                        for i, header in enumerate(headers):
+                            if i < len(row):
+                                row_dict[header] = row[i]
+                        dict_rows.append(row_dict)
+                    rows = dict_rows
 
-            for row_data in rows:
+                for row_data in rows:
+                    excel_range = get_range(
+                        sheet_range=row_data.get("range", ""),
+                        book_name=row_data.get("book_name", ""),
+                        sheet_name=row_data.get("sheet_name", ""),
+                        expand_mode=row_data.get("expand_mode", ""),
+                    )
+                    apply_styles(excel_range, row_data)
+                    selected_ranges.append(excel_range)
+            else:
+                # Single style format
+                book_name, sheet_name, range_spec, options = parse_single_style(styles)
                 excel_range = get_range(
-                    sheet_range=row_data.get("range", ""),
-                    book_name=row_data.get("book_name", ""),
-                    sheet_name=row_data.get("sheet_name", ""),
-                    expand_mode=row_data.get("expand_mode", ""),
+                    sheet_range=range_spec,
+                    book_name=book_name,
+                    sheet_name=sheet_name,
+                    expand_mode=options.get("expand_mode", ""),
                 )
-                apply_styles(excel_range, row_data)
+                apply_styles(excel_range, options)
                 selected_ranges.append(excel_range)
-        else:
-            # Single style format
-            book_name, sheet_name, range_spec, options = parse_single_style(styles)
-            excel_range = get_range(
-                sheet_range=range_spec,
-                book_name=book_name,
-                sheet_name=sheet_name,
-                expand_mode=options.get("expand_mode", ""),
-            )
-            apply_styles(excel_range, options)
-            selected_ranges.append(excel_range)
 
-        addresses = ",".join(r.get_address() for r in selected_ranges)
-        return f"Successfully set styles to {addresses}."
+            addresses = ",".join(r.get_address() for r in selected_ranges)
+            return f"Successfully set styles to {addresses}."
+        finally:
+            cleanup_excel_com()
 
     return await asyncio.to_thread(_set_styles)
 
 
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_autofit(
     sheet_range: str = Field(
         description="Excel range to autofit",
@@ -497,22 +743,25 @@ async def excel_autofit(
 
     @macos_excel_request_permission
     def _autofit():
-        from pyhub.mcptools.microsoft.excel.utils import get_range
+        from pyhub.mcptools.microsoft.excel.utils import get_range, cleanup_excel_com
 
-        range_ = get_range(
-            sheet_range=sheet_range,
-            book_name=book_name,
-            sheet_name=sheet_name,
-            expand_mode=expand_mode,
-        )
-        range_.autofit()
+        try:
+            range_ = get_range(
+                sheet_range=sheet_range,
+                book_name=book_name,
+                sheet_name=sheet_name,
+                expand_mode=expand_mode,
+            )
+            range_.autofit()
 
-        return "Successfully autofit."
+            return "Successfully autofit."
+        finally:
+            cleanup_excel_com()
 
     return await asyncio.to_thread(_autofit)
 
 
-@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
 async def excel_add_sheet(
     name: str = Field(
         default="",
@@ -558,40 +807,45 @@ async def excel_add_sheet(
 
     @macos_excel_request_permission
     def _add_sheet():
-        # Get the workbook
-        if book_name:
-            book = xw.books[book_name]
-        else:
-            book = xw.books.active
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com
 
-        # Determine position
-        if at_start:
-            before = 0
-            after = None
-        elif at_end:
-            before = None
-            after = -1
-        elif before_sheet_name:
-            before = book.sheets[before_sheet_name]
-            after = None
-        elif after_sheet_name:
-            before = None
-            after = book.sheets[after_sheet_name]
-        else:
-            # Default: after current sheet
-            before = None
-            after = None
+        try:
+            # Get the workbook
+            if book_name:
+                book = xw.books[book_name]
+            else:
+                book = xw.books.active
 
-        # Add sheet
-        sheet = book.sheets.add(
-            name=name or None,
-            before=before,
-            after=after,
-        )
+            # Determine position
+            if at_start:
+                before = 0
+                after = None
+            elif at_end:
+                before = None
+                after = -1
+            elif before_sheet_name:
+                before = book.sheets[before_sheet_name]
+                after = None
+            elif after_sheet_name:
+                before = None
+                after = book.sheets[after_sheet_name]
+            else:
+                # Default: after current sheet
+                before = None
+                after = None
 
-        if name:
-            return f"Successfully added sheet '{sheet.name}'."
-        else:
-            return "Successfully added sheet."
+            # Add sheet
+            sheet = book.sheets.add(
+                name=name or None,
+                before=before,
+                after=after,
+            )
+
+            if name:
+                return f"Successfully added sheet '{sheet.name}'."
+            else:
+                return "Successfully added sheet."
+        finally:
+            cleanup_excel_com()
 
     return await asyncio.to_thread(_add_sheet)
