@@ -1,28 +1,29 @@
 """Apple MCP tools."""
 
-from typing import Optional, Literal
+from typing import Literal, Optional
+
+from django.conf import settings
 from pydantic import Field
 
 from pyhub.mcptools import mcp
+from pyhub.mcptools.apple import contacts, mail, messages, notes
 from pyhub.mcptools.core.choices import OS
-from pyhub.mcptools.apple import mail, messages, notes, contacts
 from pyhub.mcptools.core.email_types import Email, EmailFolderType
 from pyhub.mcptools.core.json_utils import json_dumps
 
+ENABLED_APPLE_TOOLS = OS.current_is_macos() and settings.USE_APPLE_TOOLS
 
-EXPERIMENTAL = True
 
-
-@mcp.tool(enabled=OS.current_is_macos(), experimental=EXPERIMENTAL)
+@mcp.tool(enabled=ENABLED_APPLE_TOOLS)
 async def apple_mail(
-    operation: Literal["send", "list"] = Field(
-        description="Operation to perform: send or list"
-    ),
+    operation: Literal["send", "list"] = Field(description="Operation to perform: send or list"),
     # Send operation parameters
     subject: Optional[str] = Field(default=None, description="Subject of the email"),
     message: Optional[str] = Field(default=None, description="Plain text message content"),
     from_email: Optional[str] = Field(default=None, description="Sender's email address"),
-    recipient_list: Optional[str] = Field(default=None, description="Comma-separated list of recipient email addresses"),
+    recipient_list: Optional[str] = Field(
+        default=None, description="Comma-separated list of recipient email addresses"
+    ),
     html_message: Optional[str] = Field(default=None, description="HTML message content (optional)"),
     cc_list: Optional[str] = Field(default=None, description="Comma-separated list of CC recipient email addresses"),
     bcc_list: Optional[str] = Field(default=None, description="Comma-separated list of BCC recipient email addresses"),
@@ -30,7 +31,9 @@ async def apple_mail(
     # List operation parameters
     max_hours: int = Field(default=24, description="Maximum number of hours to look back for emails"),
     query: Optional[str] = Field(default=None, description="Optional search query to filter emails"),
-    folder: str = Field(default="inbox", description="Email folder to list (inbox, sent, drafts, trash, or custom folder name)"),
+    folder: str = Field(
+        default="inbox", description="Email folder to list (inbox, sent, drafts, trash, or custom folder name)"
+    ),
 ) -> str:
     """Interact with Apple Mail app.
 
@@ -44,7 +47,9 @@ async def apple_mail(
     if operation == "send":
         # Validate required fields for send operation
         if not subject or not message or not from_email or not recipient_list:
-            return json_dumps({"error": "subject, message, from_email, and recipient_list are required for send operation"})
+            return json_dumps(
+                {"error": "subject, message, from_email, and recipient_list are required for send operation"}
+            )
 
         send_status_message = await mail.send_email(
             subject=subject,
@@ -85,7 +90,7 @@ async def apple_mail(
 
 
 # Messages Tools
-@mcp.tool(enabled=OS.current_is_macos(), experimental=EXPERIMENTAL)
+@mcp.tool(enabled=ENABLED_APPLE_TOOLS)
 async def apple_messages(
     operation: Literal["send", "schedule", "unread"] = Field(
         description="Operation to perform: send, schedule, or unread"
@@ -133,7 +138,7 @@ async def apple_messages(
 
 
 # Notes Tools
-@mcp.tool(enabled=OS.current_is_macos(), experimental=EXPERIMENTAL)
+@mcp.tool(enabled=ENABLED_APPLE_TOOLS)
 async def apple_notes(
     operation: Literal["list", "search", "create", "get", "folders"] = Field(
         description="Operation to perform: list, search, create, get, or folders"
@@ -191,7 +196,7 @@ async def apple_notes(
 
 
 # Contacts Tools
-@mcp.tool(enabled=OS.current_is_macos(), experimental=EXPERIMENTAL)
+@mcp.tool(enabled=ENABLED_APPLE_TOOLS)
 async def apple_contacts(
     operation: Literal["search", "get", "create"] = Field(description="Operation to perform: search, get, or create"),
     name: Optional[str] = Field(default=None, description="Name to search for (partial match)"),
