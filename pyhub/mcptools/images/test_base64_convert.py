@@ -75,13 +75,10 @@ class TestBase64Convert:
         assert result.data is not None
 
     @pytest.mark.asyncio
-    async def test_svg_base64_conversion(self):
-        """Test SVG base64 conversion"""
-        result = await convert_base64_image(self.svg_base64)
-
-        # Should return FastMCPImage
-        assert hasattr(result, 'data')
-        assert result.data is not None
+    async def test_svg_base64_conversion_error(self):
+        """Test SVG base64 conversion raises error"""
+        with pytest.raises(ValueError, match="SVG 형식은 지원되지 않습니다"):
+            await convert_base64_image(self.svg_base64)
 
     @pytest.mark.asyncio
     async def test_data_uri_scheme(self):

@@ -80,7 +80,7 @@ async def images_generate(
 
 @mcp.tool()
 async def images_convert(
-    image_base64_data: str = Field(description="base64 인코딩된 이미지 데이터 (SVG, PNG, JPEG, WebP, GIF 등)"),
+    image_base64_data: str = Field(description="base64 인코딩된 이미지 데이터 (PNG, JPEG, WebP, GIF, BMP, TIFF)"),
     format: Optional[str] = Field(default="PNG", description="출력 이미지 포맷 (PNG, JPEG, WEBP, BMP, TIFF 등)"),
     width: Optional[int] = Field(default=None, description="출력 이미지 너비 (픽셀)"),
     height: Optional[int] = Field(default=None, description="출력 이미지 높이 (픽셀)"),
@@ -94,7 +94,7 @@ async def images_convert(
     """base64 인코딩된 이미지 데이터를 다양한 형식으로 변환하고 처리합니다.
 
     지원 기능:
-        - 다양한 입력 형식: SVG, PNG, JPEG, WebP, GIF, BMP, TIFF
+        - 다양한 입력 형식: PNG, JPEG, WebP, GIF, BMP, TIFF
         - 자동 형식 감지 (magic bytes 기반)
         - 출력 형식 변환 (PNG, JPEG, WebP 등)
         - 이미지 크기 조정 (가로세로 비율 유지 옵션)
@@ -102,8 +102,10 @@ async def images_convert(
         - 썸네일 생성
         - data URI scheme 지원 (data:image/png;base64,...)
 
+    주의사항:
+        - SVG 형식은 지원되지 않습니다
+
     예시:
-        >>> images_convert("PD94bWwgdmVyc2lvbj0i...")  # SVG base64를 PNG로 변환
         >>> images_convert("iVBORw0KGgoAAAA...", format="JPEG")  # PNG base64를 JPEG로 변환
         >>> images_convert("data:image/png;base64,iVBORw0KGgo...", width=200)  # data URI로 크기 조정
         >>> images_convert("iVBORw0KGgoAAAA...", thumbnail_size=[100, 100])  # 썸네일 생성

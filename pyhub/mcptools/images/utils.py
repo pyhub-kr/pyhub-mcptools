@@ -67,8 +67,7 @@ async def convert_base64_image(
         FastMCPImage object containing the converted image
 
     Raises:
-        ValueError: If image data is invalid or parameters are incorrect
-        ImportError: If cairosvg is not installed for SVG processing
+        ValueError: If image data is invalid, parameters are incorrect, or SVG format is used
     """
     try:
         # Base64 디코딩
@@ -89,15 +88,7 @@ async def convert_base64_image(
 
         # SVG 처리
         if detected_format == "svg":
-            try:
-                import cairosvg
-
-                png_data = cairosvg.svg2png(bytestring=image_data)
-                img = PILImage.open(io.BytesIO(png_data))
-            except ImportError:
-                raise ImportError("SVG 변환을 위해 cairosvg 패키지가 필요합니다. pip install cairosvg")
-            except Exception as e:
-                raise ValueError(f"SVG 처리 중 오류: {e}")
+            raise ValueError("SVG 형식은 지원되지 않습니다. PNG, JPEG, WebP 등의 형식을 사용해주세요.")
         else:
             # 일반 이미지 파일 처리
             try:

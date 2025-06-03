@@ -37,15 +37,6 @@ jobs:
           architecture: ${{ matrix.architecture }}
           cache: "pip"
 
-      - name: Install system dependencies on macOS
-        if: runner.os == 'macOS'
-        run: |
-          brew install cairo
-
-      - name: Install system dependencies on Windows
-        if: runner.os == 'Windows'
-        run: |
-          choco install cairo
 
       - name: Install uv
         run: |

@@ -52,7 +52,6 @@ excel = [
     "xlwings",
 ]
 images = [
-    "cairosvg",
     "pillow",
 ]
 python = [
