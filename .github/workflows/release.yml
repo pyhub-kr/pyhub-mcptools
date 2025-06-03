@@ -9,8 +9,26 @@ permissions:
   contents: write # GitHub Releases 생성 및 아티팩트 업로드를 위해 필요
 
 jobs:
+  check-version:
+    name: Check if pre-release
+    runs-on: ubuntu-latest
+    outputs:
+      is_prerelease: ${{ steps.check.outputs.prerelease }}
+    steps:
+      - name: Check if pre-release
+        id: check
+        run: |
+          if [[ "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(a|b|rc)[0-9]+$ ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "This is a pre-release version, skipping executable builds"
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
   build-windows:
     name: Build Executable on ${{ matrix.os }}
+    needs: check-version
+    if: needs.check-version.outputs.is_prerelease == 'false'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
