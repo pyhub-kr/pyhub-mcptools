@@ -2,12 +2,13 @@ import asyncio
 from typing import Literal
 
 import xlwings as xw
+from django.conf import settings
 from pydantic import Field
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.core.choices import OS
-from pyhub.mcptools.microsoft.excel.tasks import sheets as sheets_tasks
 from pyhub.mcptools.microsoft.excel.decorators import macos_excel_request_permission
+from pyhub.mcptools.microsoft.excel.tasks import sheets as sheets_tasks
 from pyhub.mcptools.microsoft.excel.utils import (
     get_sheet,
     json_dumps,
@@ -17,23 +18,23 @@ from pyhub.mcptools.microsoft.excel.utils.tables import PivotTable
 
 
 # Keep compatibility tools with delegator pattern
-@mcp.tool(delegator=sheets_tasks.get_opened_workbooks, timeout=30)
+@mcp.tool(delegator=sheets_tasks.get_opened_workbooks, timeout=settings.EXCEL_DEFAULT_TIMEOUT)
 async def excel_get_opened_workbooks():
     pass
 
 
-@mcp.tool(delegator=sheets_tasks.get_values, timeout=20)
+@mcp.tool(delegator=sheets_tasks.get_values, timeout=settings.EXCEL_DEFAULT_TIMEOUT)
 async def excel_get_values():
     pass
 
 
-@mcp.tool(delegator=sheets_tasks.set_values, timeout=20)
+@mcp.tool(delegator=sheets_tasks.set_values, timeout=settings.EXCEL_DEFAULT_TIMEOUT)
 async def excel_set_values():
     pass
 
 
 # New integrated info tool
-@mcp.tool(timeout=30)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
 async def excel_get_info(
     info_type: Literal["workbooks", "charts", "pivot_tables", "special_cells"] = Field(
         description="Type of information to retrieve"
@@ -129,7 +130,7 @@ async def excel_get_info(
         if not OS.current_is_windows():
             return json_dumps({"error": "special_cells is only available on Windows"})
 
-        from pyhub.mcptools.microsoft.excel.types import ExcelCellType, ExcelExpandMode
+        from pyhub.mcptools.microsoft.excel.types import ExcelCellType
         from pyhub.mcptools.microsoft.excel.utils import get_range
 
         range_ = get_range(
@@ -158,11 +159,9 @@ async def excel_get_info(
 
 
 # New integrated set_cell_data tool
-@mcp.tool(timeout=20)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
 async def excel_set_cell_data(
-    data_type: Literal["values", "formula"] = Field(
-        description="Type of data to set"
-    ),
+    data_type: Literal["values", "formula"] = Field(description="Type of data to set"),
     sheet_range: str = Field(
         description="Excel cell range to set data to",
         examples=["A1", "A1:D10", "B:E", "3:7", "Sheet1!A1:D10"],
@@ -205,13 +204,14 @@ async def excel_set_cell_data(
     @macos_excel_request_permission
     def _set_values():
         from pathlib import Path
-        from pyhub.mcptools.microsoft.excel.utils import (
-            get_range,
-            csv_loads,
-            json_loads,
-            fix_data,
-        )
+
         from pyhub.mcptools.fs.utils import validate_path
+        from pyhub.mcptools.microsoft.excel.utils import (
+            csv_loads,
+            fix_data,
+            get_range,
+            json_loads,
+        )
 
         range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
 
@@ -260,7 +260,7 @@ async def excel_set_cell_data(
 
 
 # Independent tools with direct implementation
-@mcp.tool(timeout=20)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
 async def excel_find_data_ranges(
     book_name: str = Field(
         default="",
@@ -335,13 +335,13 @@ async def excel_find_data_ranges(
     return await asyncio.to_thread(_find_data_ranges)
 
 
-@mcp.tool(timeout=30)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
 async def excel_set_styles(
     styles: str = Field(
         description="Style specifications in CSV format or single style string",
         examples=[
             "A1:B2;background_color=255,255,0;font_color=0,0,255;bold=true;italic=false",
-            "book_name,sheet_name,range,background_color,...\nSales.xlsx,Sheet1,A1:B2,\"255,255,0\",...",
+            'book_name,sheet_name,range,background_color,...\nSales.xlsx,Sheet1,A1:B2,"255,255,0",...',
         ],
     ),
 ) -> str:
@@ -365,8 +365,8 @@ async def excel_set_styles(
     @macos_excel_request_permission
     def _set_styles():
         from pyhub.mcptools.microsoft.excel.utils import (
-            get_range,
             csv_loads,
+            get_range,
         )
 
         def apply_styles(excel_range, style_data):
@@ -468,7 +468,7 @@ async def excel_set_styles(
     return await asyncio.to_thread(_set_styles)
 
 
-@mcp.tool(timeout=20)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
 async def excel_autofit(
     sheet_range: str = Field(
         description="Excel range to autofit",
@@ -512,7 +512,7 @@ async def excel_autofit(
     return await asyncio.to_thread(_autofit)
 
 
-@mcp.tool(timeout=20)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT)
 async def excel_add_sheet(
     name: str = Field(
         default="",
@@ -592,6 +592,6 @@ async def excel_add_sheet(
         if name:
             return f"Successfully added sheet '{sheet.name}'."
         else:
-            return f"Successfully added sheet."
+            return "Successfully added sheet."
 
     return await asyncio.to_thread(_add_sheet)

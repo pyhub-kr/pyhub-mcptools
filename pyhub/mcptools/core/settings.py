@@ -194,6 +194,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 EXPERIMENTAL = env.bool("PYHUB_MCPTOOLS_EXPERIMENTAL", default=False)
 
+EXCEL_DEFAULT_TIMEOUT = env.int("EXCEL_DEFAULT_TIMEOUT", default=60)
+
 # https://api.together.xyz/
 TOGETHER_API_KEY = env.str("TOGETHER_API_KEY", default=None)
 

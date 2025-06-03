@@ -209,6 +209,7 @@ def applescript_run_sync(
         ["osascript", "-e", rendered_script],
         capture_output=True,
         text=True,
+        timeout=settings.EXCEL_DEFAULT_TIMEOUT,
     )
 
     if process.returncode != 0:
