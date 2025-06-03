@@ -72,7 +72,7 @@ def test_windows_kill_on_timeout(monkeypatch):
             called["kill"] = True
 
         def wait(self, timeout):
-            pass
+            raise subprocess.TimeoutExpired("dummy", timeout)
 
         def poll(self):
             return None
