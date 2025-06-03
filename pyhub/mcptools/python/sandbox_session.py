@@ -1,22 +1,22 @@
 """Python sandbox with session support."""
 
 import ast
-import sys
 import json
-import base64
-import subprocess
-import tempfile
 import os
 import pickle
+import subprocess
+import sys
+import tempfile
 import time
-from typing import Any, Dict, Optional
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 from .session_manager import SessionManager
 
 
 class SecurityError(Exception):
     """Raised when code contains security violations."""
+
     pass
 
 
@@ -30,31 +30,57 @@ class SessionAwarePythonSandbox:
         # Dangerous patterns to check
         self.dangerous_patterns = [
             # System access
-            'os.', 'sys.', 'subprocess.', 'socket.', 'shutil.',
-
+            "os.",
+            "sys.",
+            "subprocess.",
+            "socket.",
+            "shutil.",
             # File operations
-            'open(', 'file(', 'input(', 'raw_input(',
-
+            "open(",
+            "file(",
+            "input(",
+            "raw_input(",
             # Code execution
-            'eval(', 'exec(', 'compile(', '__import__(',
-
+            "eval(",
+            "exec(",
+            "compile(",
+            "__import__(",
             # Introspection that could be dangerous
-            '__class__', '__bases__', '__subclasses__', '__code__',
-            '__globals__', '__builtins__',
-
+            "__class__",
+            "__bases__",
+            "__subclasses__",
+            "__code__",
+            "__globals__",
+            "__builtins__",
             # Network
-            'urllib', 'requests', 'http.client',
-
+            "urllib",
+            "requests",
+            "http.client",
             # Process/thread
-            'threading', 'multiprocessing', 'concurrent',
+            "threading",
+            "multiprocessing",
+            "concurrent",
         ]
 
         # Allowed imports
         self.allowed_imports = {
-            'math', 'statistics', 'datetime', 'json', 'csv', 're', 'io',
-            'collections', 'pandas', 'pd', 'numpy', 'np',
-            'matplotlib', 'matplotlib.pyplot', 'plt',
-            'seaborn', 'sns'
+            "math",
+            "statistics",
+            "datetime",
+            "json",
+            "csv",
+            "re",
+            "io",
+            "collections",
+            "pandas",
+            "pd",
+            "numpy",
+            "np",
+            "matplotlib",
+            "matplotlib.pyplot",
+            "plt",
+            "seaborn",
+            "sns",
         }
 
     def _check_code_safety(self, code: str) -> None:
@@ -69,7 +95,7 @@ class SessionAwarePythonSandbox:
         try:
             tree = ast.parse(code)
         except SyntaxError as e:
-            raise SyntaxError(f"Invalid Python syntax: {e}")
+            raise SyntaxError(f"Invalid Python syntax: {e}") from e
 
         # Check for dangerous AST nodes
         for node in ast.walk(tree):
@@ -80,12 +106,12 @@ class SessionAwarePythonSandbox:
                         raise SecurityError(f"Import of '{alias.name}' is not allowed")
 
             elif isinstance(node, ast.ImportFrom):
-                module = node.module or ''
+                module = node.module or ""
                 if module not in self.allowed_imports:
                     # Check if it's a submodule of allowed module
                     allowed = False
                     for allowed_module in self.allowed_imports:
-                        if module.startswith(allowed_module + '.'):
+                        if module.startswith(allowed_module + "."):
                             allowed = True
                             break
                     if not allowed:
@@ -93,11 +119,12 @@ class SessionAwarePythonSandbox:
 
             # Check for attribute access to dangerous objects
             elif isinstance(node, ast.Attribute):
-                if node.attr in ['__class__', '__bases__', '__subclasses__', '__code__', '__globals__']:
+                if node.attr in ["__class__", "__bases__", "__subclasses__", "__code__", "__globals__"]:
                     raise SecurityError(f"Access to '{node.attr}' is not allowed")
 
-    def execute(self, code: str, session_id: Optional[str] = None,
-                reset_session: bool = False, timeout: int = 30) -> Dict[str, Any]:
+    def execute(
+        self, code: str, session_id: Optional[str] = None, reset_session: bool = False, timeout: int = 30
+    ) -> Dict[str, Any]:
         """Execute Python code with optional session state.
 
         Args:
@@ -119,7 +146,7 @@ class SessionAwarePythonSandbox:
         try:
             self._check_code_safety(code)
         except (SecurityError, SyntaxError) as e:
-            return {'error': str(e)}
+            return {"error": str(e)}
 
         # Handle session
         if session_id:
@@ -142,31 +169,26 @@ class SessionAwarePythonSandbox:
 
         try:
             # Write code
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
                 f.write(code)
                 code_file = f.name
 
             # Write session state
-            with tempfile.NamedTemporaryFile(mode='wb', suffix='.pkl', delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode="wb", suffix=".pkl", delete=False) as f:
                 pickle.dump(session_vars, f)
                 state_file = f.name
 
             # Create output state file
-            with tempfile.NamedTemporaryFile(mode='wb', suffix='.pkl', delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode="wb", suffix=".pkl", delete=False) as f:
                 output_state_file = f.name
 
             # Create the sandbox script
-            sandbox_script = self._create_sandbox_script(
-                code_file, state_file, output_state_file
-            )
+            sandbox_script = self._create_sandbox_script(code_file, state_file, output_state_file)
 
             # Run in subprocess
             try:
                 proc = subprocess.run(
-                    [sys.executable, '-c', sandbox_script],
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout
+                    [sys.executable, "-c", sandbox_script], capture_output=True, text=True, timeout=timeout
                 )
 
                 if proc.stdout:
@@ -176,62 +198,54 @@ class SessionAwarePythonSandbox:
                         # Load updated state if session is used
                         if session_id and Path(output_state_file).exists():
                             try:
-                                with open(output_state_file, 'rb') as f:
+                                with open(output_state_file, "rb") as f:
                                     new_namespace = pickle.load(f)
                                 self.session_manager.save_variables(session_id, new_namespace)
                             except Exception as e:
                                 print(f"Failed to save session state: {e}")
 
                         # Add session_id to result
-                        result['session_id'] = session_id
+                        result["session_id"] = session_id
 
                         # Save execution history
                         if session_id:
                             execution_time_ms = int((time.time() - start_time) * 1000)
                             self.session_manager.save_execution(
-                                session_id, code,
-                                result.get('output', ''),
-                                result.get('error'),
-                                execution_time_ms
+                                session_id, code, result.get("output", ""), result.get("error"), execution_time_ms
                             )
 
                         return result
 
                     except json.JSONDecodeError:
                         return {
-                            'output': proc.stdout,
-                            'error': f'Failed to parse output: {proc.stderr}',
-                            'session_id': session_id
+                            "output": proc.stdout,
+                            "error": f"Failed to parse output: {proc.stderr}",
+                            "session_id": session_id,
                         }
                 else:
-                    return {
-                        'error': proc.stderr or 'No output produced',
-                        'session_id': session_id
-                    }
+                    return {"error": proc.stderr or "No output produced", "session_id": session_id}
 
             except subprocess.TimeoutExpired:
-                return {
-                    'error': f'Code execution timed out after {timeout} seconds',
-                    'session_id': session_id
-                }
+                return {"error": f"Code execution timed out after {timeout} seconds", "session_id": session_id}
             except Exception as e:
-                return {
-                    'error': f'Execution failed: {str(e)}',
-                    'session_id': session_id
-                }
+                return {"error": f"Execution failed: {str(e)}", "session_id": session_id}
         finally:
             # Clean up temp files
             for file_path in [code_file, state_file, output_state_file]:
                 if file_path and Path(file_path).exists():
                     try:
                         os.unlink(file_path)
-                    except:
+                    except OSError:
                         pass
 
-    def _create_sandbox_script(self, code_file: str, state_file: str,
-                              output_state_file: str) -> str:
+    def _create_sandbox_script(self, code_file: str, state_file: str, output_state_file: str) -> str:
         """Create the sandbox execution script."""
-        return f'''
+        # Windows 경로 이스케이프 문제 해결: repr()를 사용하여 안전하게 이스케이프
+        code_file_repr = repr(code_file)
+        state_file_repr = repr(state_file)
+        output_state_file_repr = repr(output_state_file)
+
+        return f"""
 import sys
 import io
 import json
@@ -319,7 +333,7 @@ except ImportError:
 # Load session state
 namespace = {{}}
 try:
-    with open('{state_file}', 'rb') as f:
+    with open({state_file_repr}, 'rb') as f:
         namespace = pickle.load(f)
 except Exception:
     pass
@@ -364,7 +378,7 @@ plot_path = Path(temp_dir) / "plot.png"
 
 try:
     # Read and execute user code
-    with open('{code_file}', 'r') as f:
+    with open({code_file_repr}, 'r') as f:
         user_code = f.read()
     exec(user_code, namespace)
 
@@ -392,10 +406,10 @@ try:
         try:
             pickle.dumps(value)
             clean_namespace[key] = value
-        except:
+        except Exception:
             pass
 
-    with open('{output_state_file}', 'wb') as f:
+    with open({output_state_file_repr}, 'wb') as f:
         pickle.dump(clean_namespace, f)
 
 except Exception as e:
@@ -409,17 +423,19 @@ shutil.rmtree(temp_dir, ignore_errors=True)
 
 # Delete the code file
 try:
-    os.unlink('{code_file}')
-except:
+    os.unlink({code_file_repr})
+except OSError:
     pass
 
 # Output result as JSON
 sys.stdout = sys.__stdout__
 print(json.dumps(result))
-'''
+"""
+
 
 # Global instance for session consistency
 _sandbox_instance = None
+
 
 def get_sandbox() -> SessionAwarePythonSandbox:
     """Get or create the global sandbox instance."""
@@ -428,8 +444,10 @@ def get_sandbox() -> SessionAwarePythonSandbox:
         _sandbox_instance = SessionAwarePythonSandbox()
     return _sandbox_instance
 
-def execute_python_with_session(code: str, session_id: Optional[str] = None,
-                               reset_session: bool = False, timeout: int = 30) -> Dict[str, Any]:
+
+def execute_python_with_session(
+    code: str, session_id: Optional[str] = None, reset_session: bool = False, timeout: int = 30
+) -> Dict[str, Any]:
     """Convenience function to execute Python code with session support."""
     sandbox = get_sandbox()
     return sandbox.execute(code, session_id, reset_session, timeout)

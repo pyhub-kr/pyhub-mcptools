@@ -1,6 +1,6 @@
 [project]
 name = "pyhub-mcptools"
-version = "0.9.7a2"
+version = "0.9.7a3"
 description = "파이썬사랑방 MCP 도구"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -139,10 +139,9 @@ disallow_incomplete_defs = true
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-select = ["E", "F", "B", "I"]
-ignore = []
 
 [tool.ruff.lint]
+select = ["E", "F", "B", "I"]
 ignore = ["B008"]  # Typer 사용 시 함수 호출 기본값 허용
 
 [tool.djlint]

@@ -66,7 +66,7 @@ def test_windows_kill_on_timeout(monkeypatch):
 
         def send_signal(self, sig):
             called["send"] = True
-            raise Exception
+            raise Exception("Simulated send_signal failure")
 
         def kill(self):
             called["kill"] = True
@@ -80,7 +80,9 @@ def test_windows_kill_on_timeout(monkeypatch):
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: Proc())
     with Sidecar(["dummy"]):
         pass
-    assert called["send"] and called["kill"]
+    # send_signal 호출 여부와 kill 호출 여부를 모두 확인
+    assert called["send"] is True
+    assert called["kill"] is True
 
 
 # POSIX 전용: POSIX가 아닐 때 스킵
