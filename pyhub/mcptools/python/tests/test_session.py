@@ -3,7 +3,9 @@
 import pytest
 import json
 import tempfile
+import uuid
 from pathlib import Path
+from unittest import mock
 
 from pyhub.mcptools.python.session_manager import SessionManager
 from pyhub.mcptools.python.sandbox_session import SessionAwarePythonSandbox
@@ -115,8 +117,17 @@ class TestSessionAwareSandbox:
     """Test session-aware Python sandbox."""
 
     def setup_method(self):
-        """Set up test."""
+        """Set up test with temporary database."""
+        self.temp_db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        self.temp_db.close()
+        # Create sandbox with custom database path
         self.sandbox = SessionAwarePythonSandbox()
+        # Replace the session manager with one using our temp database
+        self.sandbox.session_manager = SessionManager(Path(self.temp_db.name))
+
+    def teardown_method(self):
+        """Clean up temporary database."""
+        Path(self.temp_db.name).unlink(missing_ok=True)
 
     def test_stateless_execution(self):
         """Test execution without session."""
@@ -127,7 +138,7 @@ class TestSessionAwareSandbox:
 
     def test_session_execution(self):
         """Test execution with session."""
-        session_id = "test_session"
+        session_id = f"test_session_{uuid.uuid4().hex[:8]}"
 
         # First execution
         result1 = self.sandbox.execute("x = 42", session_id=session_id)
@@ -141,7 +152,7 @@ class TestSessionAwareSandbox:
 
     def test_session_reset(self):
         """Test session reset."""
-        session_id = "reset_test"
+        session_id = f"reset_test_{uuid.uuid4().hex[:8]}"
 
         # Create variable
         self.sandbox.execute("x = 100", session_id=session_id)
@@ -152,7 +163,7 @@ class TestSessionAwareSandbox:
 
     def test_security_with_session(self):
         """Test security measures work with sessions."""
-        session_id = "security_test"
+        session_id = f"security_test_{uuid.uuid4().hex[:8]}"
 
         # Try dangerous operations
         dangerous_codes = [
@@ -167,95 +178,187 @@ class TestSessionAwareSandbox:
             assert 'not allowed' in result['error'] or 'Dangerous' in result['error']
 
 
+@pytest.fixture
+def isolated_session_manager():
+    """Create an isolated session manager for each test."""
+    # Reset the global sandbox instance
+    import pyhub.mcptools.python.sandbox_session as sandbox_module
+    sandbox_module._sandbox_instance = None
+
+    temp_db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+    temp_db.close()
+    manager = SessionManager(Path(temp_db.name))
+    yield manager
+    Path(temp_db.name).unlink(missing_ok=True)
+
+
 @pytest.mark.asyncio
 class TestPythonTools:
     """Test Python MCP tools with sessions."""
 
-    async def test_python_repl_with_session(self):
+    async def test_python_repl_with_session(self, isolated_session_manager):
         """Test python_repl with session support."""
-        session_id = "tool_test"
+        # Generate unique session ID to avoid conflicts
+        session_id = f"tool_test_{uuid.uuid4().hex[:8]}"
 
-        # Execute with session
-        result1 = await python_repl(
-            code="data = [1, 2, 3, 4, 5]",
-            session_id=session_id
-        )
-        data1 = json.loads(result1)
-        assert data1.get('error') is None
-        assert data1['session_id'] == session_id
+        # Patch get_sandbox to return sandbox with isolated manager
+        import pyhub.mcptools.python.sandbox_session as sandbox_module
+        original_get_sandbox = sandbox_module.get_sandbox
 
-        # Use variable from previous execution
-        result2 = await python_repl(
-            code="print(sum(data))",
-            session_id=session_id
-        )
-        data2 = json.loads(result2)
-        assert data2['output'].strip() == '15'
+        def mock_get_sandbox():
+            sandbox = SessionAwarePythonSandbox()
+            sandbox.session_manager = isolated_session_manager
+            return sandbox
 
-    async def test_list_variables(self):
-        """Test listing session variables."""
-        session_id = "list_vars_test"
+        sandbox_module.get_sandbox = mock_get_sandbox
 
-        # Create some variables
-        await python_repl(
-            code="x = 42\ny = 'test'\nz = [1, 2, 3]",
-            session_id=session_id
-        )
-
-        # List variables
-        result = await python_list_variables(session_id=session_id)
-        data = json.loads(result)
-
-        assert data['session_id'] == session_id
-        assert data['variable_count'] == 3
-
-        # Check variable names
-        var_names = [v['name'] for v in data['variables']]
-        assert 'x' in var_names
-        assert 'y' in var_names
-        assert 'z' in var_names
-
-    async def test_clear_session(self):
-        """Test clearing session."""
-        session_id = "clear_test"
-
-        # Create variables
-        await python_repl(
-            code="a = 1\nb = 2",
-            session_id=session_id
-        )
-
-        # Clear session
-        result = await python_clear_session(session_id=session_id)
-        data = json.loads(result)
-        assert data['status'] == 'cleared'
-
-        # Verify variables are gone
-        result2 = await python_repl(
-            code="print(a)",
-            session_id=session_id
-        )
-        data2 = json.loads(result2)
-        assert 'NameError' in data2.get('error', '')
-
-    async def test_list_sessions(self):
-        """Test listing all sessions."""
-        # Create a few sessions
-        for i in range(3):
-            await python_repl(
-                code=f"x = {i}",
-                session_id=f"session_{i}"
+        try:
+            # Execute with session
+            result1 = await python_repl(
+                code="data = [1, 2, 3, 4, 5]",
+                session_id=session_id,
+                reset_session=False,
+                timeout_seconds=30
             )
+            data1 = json.loads(result1)
+            assert data1.get('error') is None
+            assert data1['session_id'] == session_id
 
-        # List sessions
-        result = await python_list_sessions()
-        data = json.loads(result)
+            # Use variable from previous execution
+            result2 = await python_repl(
+                code="print(sum(data))",
+                session_id=session_id,
+                reset_session=False,
+                timeout_seconds=30
+            )
+            data2 = json.loads(result2)
+            assert data2['output'].strip() == '15'
+        finally:
+            sandbox_module.get_sandbox = original_get_sandbox
 
-        assert data['session_count'] >= 3
-        session_ids = [s['session_id'] for s in data['sessions']]
-        assert 'session_0' in session_ids
-        assert 'session_1' in session_ids
-        assert 'session_2' in session_ids
+    async def test_list_variables(self, isolated_session_manager):
+        """Test listing session variables."""
+        session_id = f"list_vars_test_{uuid.uuid4().hex[:8]}"
+
+        import pyhub.mcptools.python.sandbox_session as sandbox_module
+        original_get_sandbox = sandbox_module.get_sandbox
+
+        def mock_get_sandbox():
+            sandbox = SessionAwarePythonSandbox()
+            sandbox.session_manager = isolated_session_manager
+            return sandbox
+
+        sandbox_module.get_sandbox = mock_get_sandbox
+
+        # Patch SessionManager in tools.py
+        with mock.patch('pyhub.mcptools.python.tools.SessionManager') as MockManager:
+            MockManager.return_value = isolated_session_manager
+
+            try:
+                # Create some variables
+                await python_repl(
+                    code="x = 42\ny = 'test'\nz = [1, 2, 3]",
+                    session_id=session_id,
+                    reset_session=False,
+                    timeout_seconds=30
+                )
+
+                # List variables
+                result = await python_list_variables(session_id=session_id)
+                data = json.loads(result)
+
+                assert data['session_id'] == session_id
+                assert data['variable_count'] == 3
+
+                # Check variable names
+                var_names = [v['name'] for v in data['variables']]
+                assert 'x' in var_names
+                assert 'y' in var_names
+                assert 'z' in var_names
+            finally:
+                sandbox_module.get_sandbox = original_get_sandbox
+
+    async def test_clear_session(self, isolated_session_manager):
+        """Test clearing session."""
+        session_id = f"clear_test_{uuid.uuid4().hex[:8]}"
+
+        import pyhub.mcptools.python.sandbox_session as sandbox_module
+        original_get_sandbox = sandbox_module.get_sandbox
+
+        def mock_get_sandbox():
+            sandbox = SessionAwarePythonSandbox()
+            sandbox.session_manager = isolated_session_manager
+            return sandbox
+
+        sandbox_module.get_sandbox = mock_get_sandbox
+
+        with mock.patch('pyhub.mcptools.python.tools.SessionManager') as MockManager:
+            MockManager.return_value = isolated_session_manager
+
+            try:
+                # Create variables
+                await python_repl(
+                    code="a = 1\nb = 2",
+                    session_id=session_id,
+                    reset_session=False,
+                    timeout_seconds=30
+                )
+
+                # Clear session
+                result = await python_clear_session(session_id=session_id)
+                data = json.loads(result)
+                assert data['status'] == 'cleared'
+
+                # Verify variables are gone
+                result2 = await python_repl(
+                    code="print(a)",
+                    session_id=session_id,
+                    reset_session=False,
+                    timeout_seconds=30
+                )
+                data2 = json.loads(result2)
+                assert 'NameError' in data2.get('error', '')
+            finally:
+                sandbox_module.get_sandbox = original_get_sandbox
+
+    async def test_list_sessions(self, isolated_session_manager):
+        """Test listing all sessions."""
+        import pyhub.mcptools.python.sandbox_session as sandbox_module
+        original_get_sandbox = sandbox_module.get_sandbox
+
+        def mock_get_sandbox():
+            sandbox = SessionAwarePythonSandbox()
+            sandbox.session_manager = isolated_session_manager
+            return sandbox
+
+        sandbox_module.get_sandbox = mock_get_sandbox
+
+        with mock.patch('pyhub.mcptools.python.tools.SessionManager') as MockManager:
+            MockManager.return_value = isolated_session_manager
+
+            try:
+                # Create a few sessions with unique IDs
+                session_ids = []
+                for i in range(3):
+                    sid = f"session_{i}_{uuid.uuid4().hex[:8]}"
+                    session_ids.append(sid)
+                    await python_repl(
+                        code=f"x = {i}",
+                        session_id=sid,
+                        reset_session=False,
+                        timeout_seconds=30
+                    )
+
+                # List sessions
+                result = await python_list_sessions()
+                data = json.loads(result)
+
+                assert data['session_count'] >= 3
+                listed_ids = [s['session_id'] for s in data['sessions']]
+                for sid in session_ids:
+                    assert sid in listed_ids
+            finally:
+                sandbox_module.get_sandbox = original_get_sandbox
 
 
 if __name__ == "__main__":

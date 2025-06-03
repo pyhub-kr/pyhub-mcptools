@@ -36,8 +36,13 @@ class SessionManager:
     @contextmanager
     def _get_connection(self):
         """Context manager for database connections."""
-        conn = sqlite3.connect(str(self.db_path))
+        # Use WAL mode for better concurrency and immediate timeout
+        conn = sqlite3.connect(str(self.db_path), timeout=10.0)
         conn.row_factory = sqlite3.Row
+        # Enable WAL mode for better concurrent access
+        conn.execute("PRAGMA journal_mode=WAL")
+        # Reduce busy timeout to fail fast in tests
+        conn.execute("PRAGMA busy_timeout=5000")
         try:
             yield conn
         finally:
@@ -115,7 +120,14 @@ class SessionManager:
                 conn.commit()
             except sqlite3.IntegrityError:
                 # Session already exists, update last_accessed
-                self._update_session_access(session_id)
+                conn.execute(
+                    """UPDATE sessions
+                       SET last_accessed = CURRENT_TIMESTAMP,
+                           total_executions = total_executions + 1
+                       WHERE session_id = ?""",
+                    (session_id,)
+                )
+                conn.commit()
 
         return session_id
 

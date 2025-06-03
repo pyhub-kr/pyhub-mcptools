@@ -38,7 +38,7 @@ class FastMCP(OrigFastMCP):
         description: str | None = None,
         experimental: bool = False,
         delegator: Callable | None = None,
-        timeout: int | None = None,
+        timeout: int | float | None = None,
         enabled: bool | Callable[[], bool] = True,
     ) -> Callable[[AnyFunction], AnyFunction]:
         """MCP 도구를 등록하기 위한 데코레이터입니다.
@@ -65,12 +65,14 @@ class FastMCP(OrigFastMCP):
         # timeout 값 검증 및 조정
         effective_timeout = None
         if delegator is not None:
-            if timeout is None:
+            # timeout이 Field 객체인 경우 방지
+            timeout_value = timeout if isinstance(timeout, (int, float, type(None))) else None
+            if timeout_value is None:
                 effective_timeout = self.DEFAULT_PROCESS_TIMEOUT
-            elif timeout <= 0:
+            elif timeout_value <= 0:
                 effective_timeout = None  # 타임아웃 비활성화
             else:
-                effective_timeout = timeout
+                effective_timeout = timeout_value
 
         def decorator(fn: AnyFunction) -> AnyFunction:
             if not inspect.iscoroutinefunction(fn):

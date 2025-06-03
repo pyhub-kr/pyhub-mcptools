@@ -418,9 +418,18 @@ sys.stdout = sys.__stdout__
 print(json.dumps(result))
 '''
 
+# Global instance for session consistency
+_sandbox_instance = None
+
+def get_sandbox() -> SessionAwarePythonSandbox:
+    """Get or create the global sandbox instance."""
+    global _sandbox_instance
+    if _sandbox_instance is None:
+        _sandbox_instance = SessionAwarePythonSandbox()
+    return _sandbox_instance
 
 def execute_python_with_session(code: str, session_id: Optional[str] = None,
                                reset_session: bool = False, timeout: int = 30) -> Dict[str, Any]:
     """Convenience function to execute Python code with session support."""
-    sandbox = SessionAwarePythonSandbox()
+    sandbox = get_sandbox()
     return sandbox.execute(code, session_id, reset_session, timeout)
