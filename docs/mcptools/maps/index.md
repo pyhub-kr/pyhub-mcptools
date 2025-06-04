@@ -5,8 +5,14 @@
 [공식문서](https://www.ncloud.com/product/applicationService/maps?region=KR#pricing)에 따르면
 무료 범위가 꽤 크기에 개인이 쓰실 때에는 과금없이 편리하게 사용하실 수 있습니다.
 
-+ 지오코딩 API : 300만 요청까지 무료 (초과 건당 0.5원)
-+ Directions 5 API : 6만건 요청까지 무료 (초과 건당 5원) 
++ 지오코딩 API : {--300만 요청까지 무료 (초과 건당 0.5원)--}
++ Directions 5 API : {--6만건 요청까지 무료 (초과 건당 5원)--}
+
+!!! warning
+
+    25.07.01부터 AI NAVER API 서비스에서 지도 관련 API를 이용할 경우 무료 이용량 혜택에 제외되어 100% 유료 과금된다고 합니다.
+
+    + 대상 API(7종) : Mobile Dynamic Map, Web Dynamic Map, Static Map, **Geocoding**, Reverse Geocoding, **Directions5**, Directions15
 
 ## API 키 얻기
 
