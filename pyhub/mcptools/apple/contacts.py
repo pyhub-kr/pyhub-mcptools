@@ -335,10 +335,8 @@ class ContactsClient:
         tell application "Contacts"
             set newPerson to make new person with properties {properties_str}
 
-            {"" if not email else f'''make new email at end of emails of newPerson \\
-                with properties {{label:"work", value:"{email}"}}'''}
-            {"" if not phone else f'''make new phone at end of phones of newPerson \\
-                with properties {{label:"mobile", value:"{phone}"}}'''}
+            {"" if not email else f'make new email at end of emails of newPerson with properties {{label:"work", value:"{email}"}}'}
+            {"" if not phone else f'make new phone at end of phones of newPerson with properties {{label:"mobile", value:"{phone}"}}'}
 
             save
 

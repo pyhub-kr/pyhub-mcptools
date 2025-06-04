@@ -86,7 +86,7 @@ def render_template(template_path: Path, context: dict) -> str:
                     return parts[i]
 
             # Check for else
-            if "{%\s*else\s*%}" in full_content:
+            if r"{%\s*else\s*%}" in full_content:
                 return parts[-1]
 
             return ""
