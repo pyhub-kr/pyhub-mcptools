@@ -41,7 +41,7 @@ from pyhub.mcptools.core.utils import (
     open_with_default_editor,
     read_config_file,
 )
-from pyhub.mcptools.core.utils.process import kill_mcp_host_process
+from pyhub.mcptools.core.utils.process import is_mcp_host_running, kill_mcp_host_process
 from pyhub.mcptools.core.utils.sse import is_mcp_sse_server_alive
 from pyhub.mcptools.core.versions import PackageVersionChecker
 
@@ -1045,11 +1045,23 @@ def update(
         version_check.latest = version_check.installed
         console.print(f"[yellow]같은 버전({version_check.installed})이라도 강제 업데이트를 진행합니다.[/yellow]")
 
-    for mcp_host in McpHostChoices:
-        if mcp_host in (McpHostChoices.CLAUDE,):
-            if typer.confirm(f"{mcp_host}를(을) 강제 종료하시겠습니까?"):
-                kill_mcp_host_process(mcp_host)
-                console.print(f"[green]Killed {mcp_host} processes[/green]")
+    # Claude/Cursor가 실행 중인 경우에만 종료 확인
+    mcp_hosts_to_check = [McpHostChoices.CLAUDE]  # 필요시 Cursor 추가 가능
+
+    for mcp_host in mcp_hosts_to_check:
+        if is_mcp_host_running(mcp_host):
+            console.print(f"[yellow]{mcp_host}가 실행 중입니다.[/yellow]")
+            if not typer.confirm(f"{mcp_host}를 강제 종료하고 업데이트를 진행하시겠습니까?"):
+                console.print("[red]업데이트를 취소했습니다.[/red]")
+                console.print(f"[dim]업데이트를 진행하려면 {mcp_host}를 먼저 종료해주세요.[/dim]")
+                raise typer.Exit(0)
+
+            console.print(f"[blue]{mcp_host} 프로세스를 종료합니다...[/blue]")
+            kill_mcp_host_process(mcp_host)
+            console.print(f"[green]✓ {mcp_host} 프로세스가 종료되었습니다.[/green]")
+
+            # 프로세스 종료 후 잠시 대기
+            time.sleep(1)
 
     # 업데이트 진행 여부를 한 번 더 확인합니다.
     if not yes:
