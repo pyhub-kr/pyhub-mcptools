@@ -163,6 +163,8 @@ get_release_info() {
     # jq가 설치되어 있는지 확인
     if command -v jq >/dev/null 2>&1; then
       release_json=$(echo "$release_json" | jq '[.[] | select(.prerelease == true)] | .[0]')
+      local tag_name=$(echo "$release_json" | jq -r '.tag_name')
+      echo "🔬 Selected alpha version: $tag_name"
     else
       # jq가 없으면 첫 번째 prerelease 찾기 (간단한 방법)
       echo "⚠️  jq not found. Using basic parsing..."
@@ -192,6 +194,8 @@ get_release_info() {
 
   if [ -z "$DOWNLOAD_URL" ]; then
     echo "❌ No release asset found matching the architecture: $KEYWORD"
+    echo "Available assets:"
+    echo "$RELEASE_JSON" | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 | sed 's/^/  - /'
     exit 1
   fi
   

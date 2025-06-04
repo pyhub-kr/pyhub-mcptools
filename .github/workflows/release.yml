@@ -28,7 +28,6 @@ jobs:
   build-windows:
     name: Build Executable on ${{ matrix.os }}
     needs: check-version
-    if: needs.check-version.outputs.is_prerelease == 'false'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

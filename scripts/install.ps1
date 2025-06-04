@@ -164,6 +164,8 @@ function Get-Release
                 Write-Error "No alpha releases found"
                 exit 1
             }
+            
+            Write-Host "🔬 Selected alpha version: $($release.tag_name)"
         }
         elseif ($Version)
         {
@@ -212,6 +214,8 @@ function Download-Asset
     if ($null -eq $asset)
     {
         Write-Error "No release asset found matching the keyword: $script:keyword"
+        Write-Host "Available assets:"
+        $Release.assets | ForEach-Object { Write-Host "  - $($_.name)" }
         exit 1
     }
 
