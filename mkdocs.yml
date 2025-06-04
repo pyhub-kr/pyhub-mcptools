@@ -114,7 +114,6 @@ nav:
           - mcptools/search/index.md
           - mcptools/search/perplexity.md
       - mcptools/maps/index.md
-      - mcptools/apple/index.md
   - 활용 레시피:
       - recipes/index.md
       - 엑셀 레시피:
