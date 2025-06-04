@@ -50,6 +50,9 @@ music = [
 ]
 excel = [
     "xlwings",
+    "openpyxl",
+    "xlrd",
+    "xlwt",
 ]
 images = [
     "pillow",

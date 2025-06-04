@@ -1,16 +1,9 @@
-import asyncio
-import base64
-import os
-from datetime import UTC, datetime
-from fnmatch import fnmatch
-from pathlib import Path
-
-import aiofiles
 from django.conf import settings
 from pydantic import Field
 
 from pyhub.mcptools import mcp
-from pyhub.mcptools.fs.utils import EditOperation, apply_file_edits, validate_path
+from pyhub.mcptools.fs import core
+from pyhub.mcptools.fs.utils import EditOperation
 
 
 def _get_enabled_fs_tools():
@@ -37,15 +30,7 @@ async def fs__read_file(
         ValueError: If path is outside allowed directories or file cannot be read
     """
 
-    valid_path = validate_path(path)
-
-    try:
-        async with aiofiles.open(valid_path, "r", encoding="utf-8") as f:
-            return await f.read()
-    except UnicodeDecodeError as e:
-        raise ValueError(f"File {path} is not a valid text file") from e
-    except IOError as e:
-        raise ValueError(f"Error reading file {path}: {str(e)}") from e
+    return await core.read_file(path)
 
 
 @mcp.tool(enabled=lambda: _get_enabled_fs_tools())
@@ -72,15 +57,15 @@ async def fs__read_multiple_files(
         data3.txt: Error - File not found
     """
 
+    file_data = await core.read_multiple_files(paths)
+
+    # Format results for backward compatibility
     results = []
-    for file_path in paths:
-        try:
-            valid_path = validate_path(file_path)
-            async with aiofiles.open(valid_path, "rb") as f:  # 바이너리 모드로 읽기
-                content = base64.b64encode(await f.read()).decode("utf-8")
-            results.append(f"{file_path}: {content}")
-        except (ValueError, IOError) as e:
-            results.append(f"{file_path}: Error - {str(e)}")
+    for data in file_data:
+        if "error" in data:
+            results.append(f"{data['path']}: Error - {data['error']}")
+        else:
+            results.append(f"{data['path']}: {data['content']}")
 
     return "\n".join(results)
 
@@ -118,29 +103,12 @@ async def fs__write_file(
         ValueError: If path is outside allowed directories or if write operation fails
     """
 
-    valid_path = validate_path(path)
-
-    parent_dir = valid_path.parent
-    if parent_dir.exists() is False:
-        parent_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        if text_content:
-            async with aiofiles.open(valid_path, "wt", encoding=text_encoding) as f:
-                await f.write(text_content)
-        elif base64_content:
-            try:
-                binary_content = base64.b64decode(base64_content)
-                async with aiofiles.open(valid_path, "wb") as f:
-                    await f.write(binary_content)
-            except Exception as e:
-                raise ValueError(f"Invalid base64 content: {str(e)}") from e
-        else:
-            raise ValueError("No content to write")
-
-        return f"Successfully wrote to {valid_path}"
-    except IOError as e:
-        raise ValueError(f"Error writing to file {path}: {str(e)}") from e
+    if text_content:
+        return await core.write_file(path, text_content, encoding=text_encoding)
+    elif base64_content:
+        return await core.write_file_base64(path, base64_content)
+    else:
+        raise ValueError("No content to write")
 
 
 @mcp.tool(enabled=lambda: _get_enabled_fs_tools())
@@ -182,12 +150,10 @@ async def fs__edit_file(
         ValueError: If path is outside allowed directories or if edits cannot be applied
     """
 
-    valid_path = validate_path(path)
-
     # Convert dict edits to EditOperation objects
     edit_operations = [EditOperation(old_text=edit["old_text"], new_text=edit["new_text"]) for edit in edits]
 
-    return await apply_file_edits(valid_path, edit_operations, dry_run)
+    return await core.edit_file(path, edit_operations, dry_run)
 
 
 @mcp.tool(enabled=lambda: _get_enabled_fs_tools())
@@ -209,13 +175,7 @@ async def fs__create_directory(
         ValueError: If path is outside allowed directories or if directory cannot be created
     """
 
-    valid_path = validate_path(path)
-
-    try:
-        valid_path.mkdir(parents=True, exist_ok=True)
-        return f"Successfully created directory {path}"
-    except IOError as e:
-        raise ValueError(f"Error creating directory {path}: {str(e)}") from e
+    return await core.create_directory(path)
 
 
 @mcp.tool(enabled=lambda: _get_enabled_fs_tools())
@@ -247,37 +207,15 @@ async def fs__list_directory(
         ValueError: If path is outside allowed directories or if directory cannot be read
     """
 
-    valid_path = validate_path(path)
+    listing = await core.list_directory(path, recursive, max_depth)
 
-    try:
-        if not recursive:
-            # 기존의 단순 리스팅 로직
-            entries: list[str] = []
-            for entry in valid_path.iterdir():
-                prefix = "[DIR]" if entry.is_dir() else "[FILE]"
-                entries.append(f"{prefix} {entry.name}")
-            return "\n".join(sorted(entries))
+    # Format results for backward compatibility
+    entries = []
+    for item in listing:
+        prefix = "[DIR]" if item["type"] == "directory" else "[FILE]"
+        entries.append(f"{prefix} {item['path']}")
 
-        # 재귀적 flat 리스트 포맷
-        entries = []
-        for entry in valid_path.rglob("*"):
-            try:
-                # max_depth 체크
-                if max_depth > 0:
-                    relative_path = entry.relative_to(valid_path)
-                    if len(relative_path.parts) > max_depth:
-                        continue
-
-                prefix = "[DIR]" if entry.is_dir() else "[FILE]"
-                relative_path = entry.relative_to(valid_path)
-                entries.append(f"{prefix} {relative_path}")
-            except ValueError:
-                continue
-
-        return "\n".join(sorted(entries))
-
-    except IOError as e:
-        raise ValueError(f"Error listing directory {path}: {str(e)}") from e
+    return "\n".join(entries)
 
 
 @mcp.tool(enabled=lambda: _get_enabled_fs_tools())
@@ -310,30 +248,7 @@ async def fs__move_file(
         ValueError: If paths are outside allowed directories or if move operation fails
     """
 
-    valid_source = validate_path(source)
-    valid_dest = validate_path(destination)
-
-    try:
-        # Check if source exists and is a file
-        if not valid_source.exists():
-            raise ValueError(f"Source does not exist: {source}")
-        if not valid_source.is_file():
-            raise ValueError(f"Source must be a file: {source}")
-
-        # If destination is a directory, use source filename
-        if valid_dest.exists() and valid_dest.is_dir():
-            valid_dest = valid_dest / valid_source.name
-        elif valid_dest.exists():
-            raise ValueError(f"Destination already exists: {valid_dest}")
-
-        # Create parent directory of destination if it doesn't exist
-        if valid_dest.parent:  # Skip if path is in current directory
-            valid_dest.parent.mkdir(parents=True, exist_ok=True)
-
-        valid_source.rename(valid_dest)
-        return f"Successfully moved {source} to {valid_dest}"
-    except IOError as e:
-        raise ValueError(f"Error moving {source} to {valid_dest}: {str(e)}") from e
+    return await core.move_file(source, destination)
 
 
 @mcp.tool(enabled=lambda: _get_enabled_fs_tools())
@@ -367,50 +282,15 @@ async def fs__find_files(
         ValueError: If path is outside allowed directories or if search fails
     """
 
-    valid_path = validate_path(path)
-    exclude_patterns: list[str] = list(map(lambda s: s.strip(), exclude_patterns.split(",")))
-    results = []
+    # Parse exclude patterns from string
+    exclude_list = [s.strip() for s in exclude_patterns.split(",") if s.strip()] if exclude_patterns else []
 
-    try:
-        # os.walk를 asyncio.to_thread로 감싸서 비동기로 처리
-        for root, _, files in await asyncio.to_thread(os.walk, valid_path):
-            root_path = Path(root)
-            try:
-                relative_root = root_path.relative_to(valid_path)
-                current_depth = len(relative_root.parts)
+    results = await core.find_files(path, name_pattern, exclude_list, max_depth)
 
-                if max_depth > 0 and current_depth > max_depth:
-                    continue
+    if not results:
+        return "No matches found"
 
-                for file in files:
-                    file_path = root_path / file
-                    try:
-                        validate_path(file_path)
-                        relative_path = file_path.relative_to(valid_path)
-
-                        should_exclude = any(
-                            fnmatch(str(relative_path), exclude_pattern) for exclude_pattern in exclude_patterns
-                        )
-                        if should_exclude:
-                            continue
-
-                        if name_pattern and not fnmatch(file, name_pattern):
-                            continue
-
-                        results.append(str(file_path))
-                    except ValueError:
-                        continue
-
-            except ValueError:
-                continue
-
-        if not results:
-            return "No matches found"
-
-        return "\n".join(sorted(results))
-
-    except IOError as e:
-        raise ValueError(f"Error searching in {path}: {str(e)}") from e
+    return "\n".join(results)
 
 
 @mcp.tool(enabled=lambda: _get_enabled_fs_tools())
@@ -440,32 +320,19 @@ async def fs__get_file_info(
         ValueError: If path is outside allowed directories or if info cannot be retrieved
     """
 
-    valid_path = validate_path(path)
+    info = await core.get_file_info(path)
 
-    try:
-        # os.stat을 asyncio.to_thread로 감싸서 비동기로 처리
-        stats = await asyncio.to_thread(os.stat, valid_path)
+    # Format results for backward compatibility
+    formatted_info = {
+        "size": f"{info['size']:,} bytes",
+        "created": info["created"].strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "modified": info["modified"].strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "accessed": info["accessed"].strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "type": info["type"],
+        "permissions": info["permissions"],
+    }
 
-        created = datetime.fromtimestamp(stats.st_ctime, UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-        modified = datetime.fromtimestamp(stats.st_mtime, UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-        accessed = datetime.fromtimestamp(stats.st_atime, UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-
-        type_ = "directory" if valid_path.is_dir() else "file"
-        permissions = oct(stats.st_mode)[-3:]
-
-        info = {
-            "size": f"{stats.st_size:,} bytes",
-            "created": created,
-            "modified": modified,
-            "accessed": accessed,
-            "type": type_,
-            "permissions": permissions,
-        }
-
-        return "\n".join(f"{key}: {value}" for key, value in info.items())
-
-    except IOError as e:
-        raise ValueError(f"Error getting info for {path}: {str(e)}") from e
+    return "\n".join(f"{key}: {value}" for key, value in formatted_info.items())
 
 
 @mcp.tool(enabled=lambda: _get_enabled_fs_tools())

@@ -25,7 +25,7 @@ def _get_enabled_excel_tools():
 # Converted from delegator pattern to direct implementation
 @mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_get_opened_workbooks() -> str:
-    """Get a list of all open workbooks and their sheets in Excel
+    """Get a list of all open workbooks and their sheets using Microsoft Excel application
 
     Returns:
         str: JSON string containing:
@@ -105,7 +105,7 @@ async def excel_get_values(
         description="Type of data to retrieve (values/formula2)",
     ),
 ) -> str:
-    """Read data from a specified range in an Excel workbook
+    """Read data from a specified range in an Excel workbook using Microsoft Excel application
 
     Retrieves data with options for range expansion and output format.
     Uses active workbook/sheet if not specified.
@@ -190,7 +190,7 @@ async def excel_set_values(
         examples=["Sheet1", "Sales2023"],
     ),
 ) -> str:
-    """Write data to a specified range in an Excel workbook.
+    """Write data to a specified range in an Excel workbook using Microsoft Excel application
 
     Performance Tips:
         - When setting values to multiple consecutive cells, it's more efficient to use a single call
@@ -279,7 +279,7 @@ async def excel_get_info(
         description="Cell type filter for special_cells (xlCellTypeConstants=2, xlCellTypeFormulas=4, etc.)",
     ),
 ) -> str:
-    """Get various information from Excel workbooks and sheets.
+    """Get various information from Excel workbooks and sheets using Microsoft Excel application
 
     Operations:
     - workbooks: List all open workbooks and their sheets
@@ -422,7 +422,7 @@ async def excel_set_cell_data(
         examples=["/path/to/data.csv"],
     ),
 ) -> str:
-    """Set values or formulas in Excel cells.
+    """Set values or formulas in Excel cells using Microsoft Excel application
 
     Operations:
     - values: Set cell values from CSV/JSON string or CSV file
@@ -515,7 +515,7 @@ async def excel_find_data_ranges(
         examples=["Sheet1", "Sales2023"],
     ),
 ) -> str:
-    """Detects and returns all distinct data block ranges in an Excel worksheet.
+    """Detects and returns all distinct data block ranges in an Excel worksheet using Microsoft Excel application
 
     Scans worksheet to find contiguous blocks of non-empty cells.
     Uses active workbook/sheet if not specified.
@@ -592,7 +592,7 @@ async def excel_set_styles(
         ],
     ),
 ) -> str:
-    """Apply formatting styles to Excel cells.
+    """Apply formatting styles to Excel cells using Microsoft Excel application
 
     Supports two input formats:
     1. Single style: "range;option1=value1;option2=value2"
@@ -740,7 +740,7 @@ async def excel_autofit(
         description="Mode for automatically expanding the selection range (table/down/right/none)",
     ),
 ) -> str:
-    """Automatically adjusts column widths to fit the content in the specified Excel range.
+    """Automatically adjusts column widths to fit the content in the specified Excel range using Microsoft Excel application
 
     Returns:
         str: Success message
@@ -797,7 +797,7 @@ async def excel_add_sheet(
         examples=["Sheet1"],
     ),
 ) -> str:
-    """Add a new sheet to an Excel workbook.
+    """Add a new sheet to an Excel workbook using Microsoft Excel application
 
     Position options (in priority order):
     1. at_start: First position

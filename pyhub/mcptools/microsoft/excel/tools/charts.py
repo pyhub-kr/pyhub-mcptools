@@ -34,7 +34,7 @@ async def excel_get_charts(
         examples=["Sheet1", "Sales2023"],
     ),
 ) -> str:
-    """Get all charts in the specified Excel sheet.
+    """Get all charts in the specified Excel sheet using Microsoft Excel application.
 
     Returns:
         str: JSON list with chart properties: name, position, size, index
@@ -106,7 +106,7 @@ async def excel_add_chart(
         examples=["SalesChart", "TrendLine2023"],
     ),
 ) -> str:
-    """Add a chart to an Excel sheet.
+    """Add a chart to an Excel sheet using Microsoft Excel application.
 
     Creates a chart using data from source range and places it at destination.
     Supports creating charts across different sheets or workbooks.
@@ -213,7 +213,7 @@ async def excel_set_chart_props(
         examples=["Charts"],
     ),
 ) -> str:
-    """Modify properties of an existing chart.
+    """Modify properties of an existing chart using Microsoft Excel application.
 
     Can change name, type, data source, position, and size.
     All modifications are optional - only specified properties will be changed.

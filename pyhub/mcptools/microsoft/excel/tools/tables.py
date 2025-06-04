@@ -61,7 +61,7 @@ async def excel_convert_to_table(
         examples=["TableStyleLight1", "TableStyleMedium2", "TableStyleDark1"],
     ),
 ) -> str:
-    """Convert an Excel range to a formatted table (Windows only).
+    """Convert an Excel range to a formatted table using Microsoft Excel application (Windows only).
 
     Tables provide structured references, automatic formatting, and filtering.
     Note: This feature is currently only available on Windows due to xlwings limitations.
@@ -166,7 +166,7 @@ async def excel_add_pivot_table(
         examples=["SalesSummary", "RegionalAnalysis"],
     ),
 ) -> str:
-    """Create a pivot table from source data.
+    """Create a pivot table from source data using Microsoft Excel application.
 
     Pivot tables summarize and analyze data with flexible row/column/value configurations.
     Value fields format: 'FieldName:AggregateFunction' separated by pipes (|)
@@ -233,7 +233,7 @@ async def excel_get_pivot_tables(
         examples=["Sheet1", "Sales2023"],
     ),
 ) -> str:
-    """List all pivot tables in the specified sheet.
+    """List all pivot tables in the specified sheet using Microsoft Excel application.
 
     Returns:
         str: JSON list of pivot table information
@@ -274,7 +274,7 @@ async def excel_remove_pivot_tables(
         examples=["Sheet1", "Sales2023"],
     ),
 ) -> str:
-    """Remove pivot tables from a sheet.
+    """Remove pivot tables from a sheet using Microsoft Excel application.
 
     Either remove all pivot tables or specific ones by name.
     Must specify either remove_all=True or provide pivot_table_names.

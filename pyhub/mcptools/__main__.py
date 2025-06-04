@@ -64,6 +64,7 @@ if __name__ == "__main__":
     #
     # commands
     #
+    import_module("pyhub.mcptools.files.__main__")
     import_module("pyhub.mcptools.fs.__main__")
     import_module("pyhub.mcptools.maps.__main__")
     import_module("pyhub.mcptools.search.__main__")
@@ -85,6 +86,7 @@ if __name__ == "__main__":
     #
     # Tools
     #
+    import_module("pyhub.mcptools.files.tools")
     import_module("pyhub.mcptools.fs.tools")
     import_module("pyhub.mcptools.maps.tools")
     # import_module("pyhub.mcptools.music.tools")
