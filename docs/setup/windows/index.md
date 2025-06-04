@@ -41,20 +41,25 @@
     **최신 알파 버전 설치:**
     ```powershell
     # 파워쉘 코어 7
-    & { iwr 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' | iex } -Alpha
+    iwr 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' -OutFile install.ps1; .\install.ps1 -Alpha; rm install.ps1
 
     # 윈도우 기본 파워쉘
-    & { iwr -UseBasicParsing 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' | iex } -Alpha
+    iwr -UseBasicParsing 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' -OutFile install.ps1; .\install.ps1 -Alpha; rm install.ps1
     ```
 
     **특정 버전 설치:**
     ```powershell
     # 파워쉘 코어 7
-    & { iwr 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' | iex } -Version "v0.9.6"
+    iwr 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' -OutFile install.ps1; .\install.ps1 -Version "v0.9.6"; rm install.ps1
 
     # 윈도우 기본 파워쉘
-    & { iwr -UseBasicParsing 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' | iex } -Version "v0.9.6"
+    iwr -UseBasicParsing 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' -OutFile install.ps1; .\install.ps1 -Version "v0.9.6"; rm install.ps1
     ```
+
+    !!! tip "원라이너 방식의 한계"
+        PowerShell에서 원격 스크립트를 실행할 때 파라미터 전달에 제한이 있어,
+        임시 파일로 다운로드 후 실행하는 방식을 사용합니다.
+        스크립트 실행 후 자동으로 삭제됩니다.
 
 디폴트 경로로 `c:\mcptools\pyhub.mcptools\` 폴더에 아래와 같이 `pyhub.mcptools.exe` 파일과 `_internal` 폴더가 확인되시면
 설치 성공입니다. 이어서 다음 단계 "2. 실행파일 차단풀기" 를 진행해주세요.
