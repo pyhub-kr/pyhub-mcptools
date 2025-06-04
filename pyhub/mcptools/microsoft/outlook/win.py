@@ -3,16 +3,17 @@ import datetime
 import logging
 import os
 import time
-from typing import Optional, Generator, Union
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import Generator, Optional, Union
 
 import pythoncom
 import pywintypes
 import win32com.client
-from pyhub.mcptools.microsoft.outlook.base import OutlookItemType, OutlookFolderType, OutlookBodyFormat
+
 from pyhub.mcptools.core.email_types import Email, EmailAttachment, EmailFolderType
 from pyhub.mcptools.core.email_utils import parse_email_list
+from pyhub.mcptools.microsoft.outlook.base import OutlookBodyFormat, OutlookFolderType, OutlookItemType
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,19 @@ def outlook_connection(timeout: int = 30) -> Generator[OutlookConnection, None, 
         RuntimeError: Outlook 연결 실패
         ConnectionError: MAPI 연결 실패
     """
-    pythoncom.CoInitialize()
+    # COM 초기화 확인 (이미 초기화되었을 수 있음)
+    try:
+        # 현재 스레드가 이미 COM 초기화되었는지 확인
+        # run_with_com_if_windows에서 이미 초기화했을 수 있음
+        pythoncom.CoGetInterfaceAndReleaseStream(
+            pythoncom.CoMarshalInterThreadInterfaceInStream(pythoncom.IID_IDispatch, None), pythoncom.IID_IDispatch
+        )
+        com_initialized = False
+    except Exception:
+        # COM이 초기화되지 않았으면 초기화
+        pythoncom.CoInitialize()
+        com_initialized = True
+
     application = None
 
     try:
@@ -80,9 +93,9 @@ def outlook_connection(timeout: int = 30) -> Generator[OutlookConnection, None, 
                 if attempt == 2:
                     error_code = e.args[0] if e.args else None
                     if error_code == -2147221005:  # 0x800401F3
-                        raise RuntimeError("Outlook이 설치되지 않았거나 접근할 수 없습니다")
+                        raise RuntimeError("Outlook이 설치되지 않았거나 접근할 수 없습니다") from e
                     else:
-                        raise RuntimeError(f"Outlook COM 오류: {e}")
+                        raise RuntimeError(f"Outlook COM 오류: {e}") from e
                 time.sleep(1)
 
         # MAPI 연결
@@ -91,24 +104,26 @@ def outlook_connection(timeout: int = 30) -> Generator[OutlookConnection, None, 
         # 연결 확인 (폴더 접근 테스트)
         try:
             _ = outlook.GetDefaultFolder(OutlookFolderType.olFolderInbox)
-        except pywintypes.com_error:
-            raise ConnectionError("Outlook MAPI 연결 실패")
+        except pywintypes.com_error as e:
+            raise ConnectionError("Outlook MAPI 연결 실패") from e
 
         yield OutlookConnection(application=application, outlook=outlook)
 
     except (pywintypes.com_error, AttributeError) as e:
         if isinstance(e, AttributeError):
             logger.error("Outlook이 설치되어 있지 않습니다.")
-            raise RuntimeError("Outlook이 설치되어 있지 않습니다")
+            raise RuntimeError("Outlook이 설치되어 있지 않습니다") from e
         raise
     finally:
         # COM 리소스 정리
         if application:
             try:
                 del application
-            except:
+            except Exception:
                 pass
-        pythoncom.CoUninitialize()
+        # 이 함수에서 COM을 초기화했을 때만 정리
+        if com_initialized:
+            pythoncom.CoUninitialize()
 
 
 def get_folders(connection: Optional[OutlookConnection] = None) -> list[OutlookFolderInfo]:
@@ -206,7 +221,7 @@ def get_emails(
                 f'"urn:schemas:httpmail:subject" LIKE "%{query}%"',
             ]
 
-            filter_term = f"@SQL=" + " OR ".join(sql_conditions)
+            filter_term = "@SQL=" + " OR ".join(sql_conditions)
             folder_items.Restrict(filter_term)
             logger.info("Query: %s", filter_term)
 
@@ -219,7 +234,7 @@ def get_emails(
                     # convert to naive datetime for comparison
                     received_at = received_at.replace(tzinfo=None)
                     if received_at >= threshold_at:
-                        subject = getattr(message, "Subject")
+                        subject = message.Subject
                         sender_name = getattr(message, "SenderName", "")
                         sender_email = getattr(message, "SenderEmailAddress", "")
                         to = getattr(message, "To", "")
@@ -254,7 +269,7 @@ def get_email(
 ) -> Email:
     def process_email(_conn: OutlookConnection) -> Email:
         message = _conn.outlook.GetItemFromID(identifier)
-        subject = getattr(message, "Subject")
+        subject = message.Subject
         sender_name = getattr(message, "SenderName", "")
         sender_email = getattr(message, "SenderEmailAddress", "")
         to = getattr(message, "To", "")
@@ -347,8 +362,10 @@ def send_email(
         from_email (str): 발신자 이메일 주소
         recipient_list (Union[str, list[str]]): 수신자 이메일 주소 (쉼표로 구분된 문자열 또는 목록)
         html_message (Optional[str], optional): HTML 형식의 이메일 본문. Defaults to None.
-        cc_list (Optional[Union[str, list[str]]], optional): 참조 수신자 이메일 주소 (쉼표로 구분된 문자열 또는 목록). Defaults to None.
-        bcc_list (Optional[Union[str, list[str]]], optional): 숨은 참조 수신자 이메일 주소 (쉼표로 구분된 문자열 또는 목록). Defaults to None.
+        cc_list (Optional[Union[str, list[str]]], optional): 참조 수신자 이메일 주소
+            (쉼표로 구분된 문자열 또는 목록). Defaults to None.
+        bcc_list (Optional[Union[str, list[str]]], optional): 숨은 참조 수신자 이메일 주소
+            (쉼표로 구분된 문자열 또는 목록). Defaults to None.
         connection (Optional[OutlookConnection], optional): Outlook 연결 객체. Defaults to None.
         force_sync (bool, optional): 강제 동기화 여부. Defaults to True.
         compose_only (bool, optional): True일 경우 작성 창만 열고 발송하지 않음. Defaults to False.
@@ -456,7 +473,7 @@ def send_email(
         except pywintypes.com_error as e:
             error_code = e.args[0] if e.args else None
             logger.error("이메일 발송 실패: %s (코드: %s)", e, error_code)
-            raise RuntimeError(f"이메일 발송 실패: {e}")
+            raise RuntimeError(f"이메일 발송 실패: {e}") from e
 
         return "Email sent successfully via Outlook."
 

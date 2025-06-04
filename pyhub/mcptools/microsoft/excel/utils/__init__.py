@@ -190,8 +190,9 @@ async def applescript_run(
     )
     try:
         from django.conf import settings
+
         timeout = settings.EXCEL_DEFAULT_TIMEOUT
-    except:
+    except ImportError:
         timeout = 60
     stdout_bytes, stderr_bytes = await process.communicate(timeout=timeout)
     stdout = stdout_bytes.decode().strip()
@@ -212,8 +213,9 @@ def applescript_run_sync(
 
     try:
         from django.conf import settings
+
         timeout = settings.EXCEL_DEFAULT_TIMEOUT
-    except:
+    except ImportError:
         timeout = 60
 
     process = subprocess.run(
@@ -340,12 +342,13 @@ def cleanup_excel_com():
     gc.collect()
 
     # Windows에서만 추가 COM 정리 수행
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         try:
             # xlwings 캐시된 앱 참조 제거
             import xlwings as xw
+
             # 앱 참조만 제거 (실제 Excel은 닫지 않음)
-            if hasattr(xw.apps, '_cache'):
+            if hasattr(xw.apps, "_cache"):
                 xw.apps._cache.clear()
         except Exception:
             pass  # 정리 실패는 무시

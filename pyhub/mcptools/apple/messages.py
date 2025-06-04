@@ -1,17 +1,12 @@
 """Apple Messages integration."""
 
-from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta, timezone
-import time
-import json
+from datetime import datetime
+from typing import Any, Dict
 
 from pyhub.mcptools.apple.utils import (
     applescript_run,
     escape_applescript_string,
-    parse_applescript_list,
-    parse_applescript_record,
     format_phone_number,
-    activate_app,
 )
 
 
@@ -23,12 +18,7 @@ class MessagesClient:
     Only sending messages, scheduling (via Reminders), and checking unread count are available.
     """
 
-    async def send_message(
-        self,
-        phone_number: str,
-        message: str,
-        service: str = "iMessage"
-    ) -> Dict[str, Any]:
+    async def send_message(self, phone_number: str, message: str, service: str = "iMessage") -> Dict[str, Any]:
         """Send a message via Messages app.
 
         Args:
@@ -42,41 +32,32 @@ class MessagesClient:
         formatted_phone = format_phone_number(phone_number)
         escaped_message = escape_applescript_string(message)
 
-        script = f'''
+        script = f"""
         tell application "Messages"
             set targetService to 1st account whose service type = {service}
             set targetBuddy to participant "{formatted_phone}" of targetService
             send "{escaped_message}" to targetBuddy
             return "SUCCESS"
         end tell
-        '''
+        """
 
         try:
-            result = await applescript_run(script)
+            await applescript_run(script)
             return {
                 "status": "success",
                 "phone_number": phone_number,
                 "message": message,
                 "service": service,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e),
-                "phone_number": phone_number
-            }
+            return {"status": "error", "error": str(e), "phone_number": phone_number}
 
     # Note: read_messages functionality is not implemented due to macOS privacy restrictions.
     # Apple's Messages app does not allow AppleScript access to message content or chat history
     # for security reasons. Only sending messages and checking unread count are supported.
 
-    async def schedule_message(
-        self,
-        phone_number: str,
-        message: str,
-        scheduled_time: str
-    ) -> Dict[str, Any]:
+    async def schedule_message(self, phone_number: str, message: str, scheduled_time: str) -> Dict[str, Any]:
         """Schedule a message for future delivery.
 
         Note: This creates a reminder to send the message, as Messages app
@@ -92,7 +73,7 @@ class MessagesClient:
         """
         # Parse the scheduled time
         try:
-            dt = datetime.fromisoformat(scheduled_time.replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(scheduled_time.replace("Z", "+00:00"))
             # Keep the original datetime with timezone info
             # This preserves the user's intended time regardless of system timezone
 
@@ -111,17 +92,14 @@ class MessagesClient:
                 time_str = dt.strftime("%Y-%m-%d %H:%M")
 
         except Exception as e:
-            return {
-                "status": "error",
-                "error": f"Invalid scheduled_time format. Use ISO format. Error: {str(e)}"
-            }
+            return {"status": "error", "error": f"Invalid scheduled_time format. Use ISO format. Error: {str(e)}"}
 
         escaped_message = escape_applescript_string(message)
         reminder_title = f"Send message to {phone_number}"
         reminder_body = f"Message: {escaped_message}\nScheduled for: {time_str}"
 
         # Create reminder with explicit date components
-        script = f'''
+        script = f"""
         tell application "Reminders"
             -- Create date with explicit components
             set reminderDate to current date
@@ -132,30 +110,34 @@ class MessagesClient:
             set minutes of reminderDate to {minute}
             set seconds of reminderDate to 0
 
-            set newReminder to make new reminder with properties {{name:"{escape_applescript_string(reminder_title)}", body:"{escape_applescript_string(reminder_body)}", remind me date:reminderDate}}
+            set newReminder to make new reminder with properties \\
+                {{name:"{escape_applescript_string(reminder_title)}", \\
+                 body:"{escape_applescript_string(reminder_body)}", \\
+                 remind me date:reminderDate}}
             return "SUCCESS"
         end tell
-        '''
+        """
 
         try:
-            result = await applescript_run(script)
+            await applescript_run(script)
             return {
                 "status": "scheduled",
                 "phone_number": phone_number,
                 "message": message,
                 "scheduled_time": scheduled_time,
                 "reminder_created": True,
-                "warning": "Due to timezone handling differences between macOS and iOS Reminders app, the scheduled time may appear differently on each device. Please verify the reminder time in your Reminders app before the scheduled time."
+                "warning": (
+                    "Due to timezone handling differences between macOS and iOS Reminders app, "
+                    "the scheduled time may appear differently on each device. "
+                    "Please verify the reminder time in your Reminders app before the scheduled time."
+                ),
             }
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
 
     async def get_unread_count(self) -> int:
         """Get count of unread messages."""
-        script = '''
+        script = """
         tell application "Messages"
             set unreadCount to 0
             try
@@ -174,12 +156,12 @@ class MessagesClient:
             end try
             return unreadCount
         end tell
-        '''
+        """
 
         result = await applescript_run(script)
         try:
             return int(result.strip())
-        except:
+        except (ValueError, AttributeError):
             return 0
 
 

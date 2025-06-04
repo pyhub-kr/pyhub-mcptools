@@ -1,6 +1,6 @@
 """Apple Contacts integration."""
 
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from pyhub.mcptools.apple.utils import (
     applescript_run,
@@ -13,11 +13,7 @@ class ContactsClient:
     """Client for interacting with Apple Contacts app."""
 
     async def search_contacts(
-        self,
-        name: Optional[str] = None,
-        email: Optional[str] = None,
-        phone: Optional[str] = None,
-        limit: int = 20
+        self, name: Optional[str] = None, email: Optional[str] = None, phone: Optional[str] = None, limit: int = 20
     ) -> List[Dict[str, Any]]:
         """Search contacts by name, email, or phone.
 
@@ -39,7 +35,7 @@ class ContactsClient:
             conditions.append(f'(emailList contains "{escape_applescript_string(email)}")')
         if phone:
             # Remove non-digits for phone comparison
-            phone_digits = ''.join(filter(str.isdigit, phone))
+            phone_digits = "".join(filter(str.isdigit, phone))
             conditions.append(f'(phoneList contains "{phone_digits}")')
 
         if not conditions:
@@ -48,7 +44,7 @@ class ContactsClient:
         else:
             search_filter = " or ".join(conditions)
 
-        script = f'''
+        script = f"""
         tell application "Contacts"
             set outputList to {{}}
             set contactCount to 0
@@ -151,7 +147,7 @@ class ContactsClient:
             set AppleScript's text item delimiters to ""
             return txt
         end joinList
-        '''
+        """
 
         result = await applescript_run(script)
         contacts = []
@@ -181,7 +177,7 @@ class ContactsClient:
         Returns:
             Contact dictionary or None if not found
         """
-        script = f'''
+        script = f"""
         tell application "Contacts"
             try
                 set thePerson to person id "{contact_id}"
@@ -284,7 +280,7 @@ class ContactsClient:
                 return "NOT_FOUND"
             end try
         end tell
-        '''
+        """
 
         result = await applescript_run(script)
 
@@ -309,7 +305,7 @@ class ContactsClient:
         email: Optional[str] = None,
         phone: Optional[str] = None,
         organization: Optional[str] = None,
-        note: Optional[str] = None
+        note: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create a new contact.
 
@@ -335,18 +331,20 @@ class ContactsClient:
 
         properties_str = "{" + ", ".join(properties) + "}"
 
-        script = f'''
+        script = f"""
         tell application "Contacts"
             set newPerson to make new person with properties {properties_str}
 
-            {"" if not email else f'make new email at end of emails of newPerson with properties {{label:"work", value:"{email}"}}'}
-            {"" if not phone else f'make new phone at end of phones of newPerson with properties {{label:"mobile", value:"{phone}"}}'}
+            {"" if not email else f'''make new email at end of emails of newPerson \\
+                with properties {{label:"work", value:"{email}"}}'''}
+            {"" if not phone else f'''make new phone at end of phones of newPerson \\
+                with properties {{label:"mobile", value:"{phone}"}}'''}
 
             save
 
             return "ID:::" & (id of newPerson as string)
         end tell
-        '''
+        """
 
         try:
             result = await applescript_run(script)
@@ -359,21 +357,15 @@ class ContactsClient:
                 "last_name": last_name,
                 "email": email,
                 "phone": phone,
-                "organization": organization
+                "organization": organization,
             }
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
 
 
 # Convenience functions
 async def search_contacts(
-    name: Optional[str] = None,
-    email: Optional[str] = None,
-    phone: Optional[str] = None,
-    limit: int = 20
+    name: Optional[str] = None, email: Optional[str] = None, phone: Optional[str] = None, limit: int = 20
 ) -> List[Dict[str, Any]]:
     """Search contacts by name, email, or phone."""
     client = ContactsClient()
@@ -392,7 +384,7 @@ async def create_contact(
     email: Optional[str] = None,
     phone: Optional[str] = None,
     organization: Optional[str] = None,
-    note: Optional[str] = None
+    note: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Create a new contact."""
     client = ContactsClient()

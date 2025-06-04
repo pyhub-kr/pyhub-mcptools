@@ -15,13 +15,17 @@ from pyhub.mcptools.microsoft.excel.utils import (
 )
 from pyhub.mcptools.microsoft.excel.utils.tables import PivotTable
 
-# Default timeout for Excel operations
-EXCEL_DEFAULT_TIMEOUT = 60
+
+def _get_enabled_excel_tools():
+    """Lazy evaluation of Excel tools enablement."""
+    # Docker 환경에서 Excel 도구 비활성화
+    return settings.USE_EXCEL_TOOLS and not settings.IS_DOCKER_CONTAINER
+
 
 # TODO: macOS 지원 추가 : macOS에서 xlwings 활용 테이블 생성 시에 오류 발생
 
 
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT, enabled=OS.current_is_windows())
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=OS.current_is_windows())
 async def excel_convert_to_table(
     sheet_range: str = Field(
         description="Excel range to convert to table",
@@ -104,7 +108,7 @@ async def excel_convert_to_table(
 # TODO: table 목록/내역 반환
 
 
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_add_pivot_table(
     source_sheet_range: str = Field(
         description="Data source range for pivot table",
@@ -216,7 +220,7 @@ async def excel_add_pivot_table(
 
 # Note: excel_get_pivot_tables is now part of excel_get_info tool
 # Keeping this for backward compatibility if needed
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_get_pivot_tables(
     book_name: str = Field(
         default="",
@@ -248,7 +252,7 @@ async def excel_get_pivot_tables(
     return await asyncio.to_thread(_get_pivot_tables)
 
 
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_remove_pivot_tables(
     remove_all: bool = Field(
         default=False,

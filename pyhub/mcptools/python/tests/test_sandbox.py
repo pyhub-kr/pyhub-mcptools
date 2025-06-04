@@ -1,7 +1,8 @@
 """Test script for Python sandbox."""
 
-from pyhub.mcptools.python.sandbox_subprocess import execute_python
 import json
+
+from pyhub.mcptools.python.sandbox_subprocess import execute_python
 
 
 def test_basic_execution():
@@ -61,8 +62,8 @@ plt.axvline(x=0, color='k', linewidth=0.5)
 """
     result = execute_python(code)
     print("\nVisualization result keys:", list(result.keys()))
-    if 'image' in result:
-        print("Image generated successfully (base64 length:", len(result['image']), ")")
+    if "image" in result:
+        print("Image generated successfully (base64 length:", len(result["image"]), ")")
 
 
 def test_security():
@@ -161,10 +162,10 @@ print(df.groupby('category')['value'].agg(['mean', 'std', 'min', 'max']))
 """
     result = execute_python(code, timeout=30)
     print("\nComplex analysis result keys:", list(result.keys()))
-    if 'output' in result:
-        print("Output preview:", result['output'][:200], "...")
-    if 'image' in result:
-        print("Complex visualization generated (base64 length:", len(result['image']), ")")
+    if "output" in result:
+        print("Output preview:", result["output"][:200], "...")
+    if "image" in result:
+        print("Complex visualization generated (base64 length:", len(result["image"]), ")")
 
 
 if __name__ == "__main__":

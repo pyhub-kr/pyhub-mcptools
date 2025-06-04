@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  pyhub-mcptools:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pyhub-mcptools:latest
+    container_name: pyhub-mcptools
+    restart: unless-stopped
+
+    # 포트 매핑
+    ports:
+      - "8000:8000"
+
+    # 환경변수
+    environment:
+      # API Keys (외부에서 설정)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+
+      # MCP 설정
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+      # 데이터베이스 설정
+      - SKIP_DATABASE_TESTS=true
+
+      # 실험적 기능
+      - EXPERIMENTAL=${EXPERIMENTAL:-false}
+
+      # 파일시스템 접근 (보안상 제한)
+      - FS_LOCAL_HOME=/app/data
+
+    # 볼륨 마운트
+    volumes:
+      # 데이터 영속성
+      - ./docker/data:/app/data
+      # 설정 파일
+      - ./docker/config:/app/config
+      # 로그
+      - ./docker/logs:/app/logs
+
+    # 헬스체크
+    healthcheck:
+      test: ["CMD", "python", "-c", "import pyhub.mcptools; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # 리소스 제한
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.1'
+
+  # Redis (세션 관리용 - 선택사항)
+  redis:
+    image: redis:7-alpine
+    container_name: pyhub-mcptools-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  redis-data:
+    driver: local

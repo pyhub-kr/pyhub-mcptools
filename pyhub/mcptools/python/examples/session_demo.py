@@ -2,11 +2,12 @@
 
 import asyncio
 import json
+
 from pyhub.mcptools.python.tools import (
-    python_repl,
-    python_list_variables,
-    python_list_sessions,
     python_clear_session,
+    python_list_sessions,
+    python_list_variables,
+    python_repl,
 )
 
 
@@ -39,7 +40,7 @@ print("Data created successfully!")
 print(f"Average age: {mean_age}")
 print(f"Average score: {mean_score}")
 """,
-        session_id=session_id
+        session_id=session_id,
     )
 
     data = json.loads(result)
@@ -59,7 +60,7 @@ df['grade'] = df['score'].apply(lambda x: 'A' if x >= 90 else 'B' if x >= 80 els
 print("\\nUpdated DataFrame:")
 print(df)
 """,
-        session_id=session_id
+        session_id=session_id,
     )
 
     data = json.loads(result)
@@ -71,7 +72,7 @@ print(df)
     data = json.loads(result)
 
     print(f"Session has {data['variable_count']} variables:")
-    for var in data['variables']:
+    for var in data["variables"]:
         print(f"  - {var['name']} ({var['type']}): {var['size_bytes']} bytes")
     print()
 
@@ -95,11 +96,11 @@ for i, (name, score) in enumerate(zip(df['name'], df['score'])):
 
 plt.tight_layout()
 """,
-        session_id=session_id
+        session_id=session_id,
     )
 
     data = json.loads(result)
-    if data.get('image'):
+    if data.get("image"):
         print("Visualization created successfully (base64 image available)")
     print()
 
@@ -107,20 +108,19 @@ plt.tight_layout()
     print("5. Working with multiple sessions:")
 
     # Create another session
-    await python_repl(
-        code="x = 100\ny = 200\nprint(f'Session 2: x={x}, y={y}')",
-        session_id="demo_session_2"
-    )
+    await python_repl(code="x = 100\ny = 200\nprint(f'Session 2: x={x}, y={y}')", session_id="demo_session_2")
 
     # List all sessions
     result = await python_list_sessions()
     data = json.loads(result)
 
     print(f"Active sessions: {data['session_count']}")
-    for session in data['sessions']:
-        print(f"  - {session['session_id']}: "
-              f"{session['variable_count']} vars, "
-              f"{session['total_executions']} executions")
+    for session in data["sessions"]:
+        print(
+            f"  - {session['session_id']}: "
+            f"{session['variable_count']} vars, "
+            f"{session['total_executions']} executions"
+        )
     print()
 
     # 6. Session persistence
@@ -132,7 +132,7 @@ print(f"DataFrame shape: {df.shape}")
 print(f"Mean age (from earlier): {mean_age}")
 print(f"Students with grade A: {list(df[df['grade'] == 'A']['name'].values)}")
 """,
-        session_id=session_id
+        session_id=session_id,
     )
 
     data = json.loads(result)

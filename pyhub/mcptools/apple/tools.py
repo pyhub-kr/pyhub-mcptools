@@ -11,10 +11,13 @@ from pyhub.mcptools.core.choices import OS
 from pyhub.mcptools.core.email_types import Email, EmailFolderType
 from pyhub.mcptools.core.json_utils import json_dumps
 
-ENABLED_APPLE_TOOLS = OS.current_is_macos() and settings.USE_APPLE_TOOLS
+
+def _get_enabled_apple_tools():
+    """Lazy evaluation of Apple tools enablement."""
+    return OS.current_is_macos() and settings.USE_APPLE_TOOLS
 
 
-@mcp.tool(enabled=ENABLED_APPLE_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_apple_tools())
 async def apple_mail(
     operation: Literal["send", "list"] = Field(description="Operation to perform: send or list"),
     # Send operation parameters
@@ -90,7 +93,7 @@ async def apple_mail(
 
 
 # Messages Tools
-@mcp.tool(enabled=ENABLED_APPLE_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_apple_tools())
 async def apple_messages(
     operation: Literal["send", "schedule", "unread"] = Field(
         description="Operation to perform: send, schedule, or unread"
@@ -138,7 +141,7 @@ async def apple_messages(
 
 
 # Notes Tools
-@mcp.tool(enabled=ENABLED_APPLE_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_apple_tools())
 async def apple_notes(
     operation: Literal["list", "search", "create", "get", "folders"] = Field(
         description="Operation to perform: list, search, create, get, or folders"
@@ -196,7 +199,7 @@ async def apple_notes(
 
 
 # Contacts Tools
-@mcp.tool(enabled=ENABLED_APPLE_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_apple_tools())
 async def apple_contacts(
     operation: Literal["search", "get", "create"] = Field(description="Operation to perform: search, get, or create"),
     name: Optional[str] = Field(default=None, description="Name to search for (partial match)"),

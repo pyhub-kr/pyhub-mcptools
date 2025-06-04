@@ -2,7 +2,7 @@ import json
 from typing import Optional
 
 from django.conf import settings
-from firecrawl import AsyncFirecrawlApp, ScrapeOptions, JsonConfig
+from firecrawl import AsyncFirecrawlApp, JsonConfig, ScrapeOptions
 from pydantic import Field
 
 from pyhub.mcptools import mcp
@@ -41,10 +41,12 @@ class ScrollDirectionChoices(PyHubTextChoices):
     DOWN = "down"
 
 
-ENABLED_FIRECRAWL_TOOLS = settings.FIRECRAWL_API_KEY is not None
+def _get_enabled_firecrawl_tools():
+    """Lazy evaluation of Firecrawl tools enablement."""
+    return settings.FIRECRAWL_API_KEY is not None
 
 
-@mcp.tool(enabled=ENABLED_FIRECRAWL_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_firecrawl_tools())
 async def search__firecrawl(
     url: str = Field(
         description="The URL to scrape",

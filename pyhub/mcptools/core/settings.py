@@ -8,6 +8,7 @@ from platformdirs import (
     user_log_path,
 )
 
+from pyhub.mcptools.core.docker import is_docker_container
 from pyhub.mcptools.core.utils import (
     get_current_language_code,
     get_current_timezone,
@@ -16,6 +17,10 @@ from pyhub.mcptools.core.utils import (
 )
 
 env = Env()
+
+
+# Docker 컨테이너 환경 여부
+IS_DOCKER_CONTAINER = is_docker_container()
 
 
 APP_NAME, APP_AUTHOR = "pyhub.mcptools", "pyhub"
@@ -195,6 +200,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 EXPERIMENTAL = env.bool("PYHUB_MCPTOOLS_EXPERIMENTAL", default=False)
 
 EXCEL_DEFAULT_TIMEOUT = env.int("EXCEL_DEFAULT_TIMEOUT", default=60)
+USE_EXCEL_TOOLS = env.bool("USE_EXCEL_TOOLS", default=True)
+USE_OUTLOOK_TOOLS = env.bool("USE_OUTLOOK_TOOLS", default=False)
 
 # https://api.together.xyz/
 TOGETHER_API_KEY = env.str("TOGETHER_API_KEY", default=None)

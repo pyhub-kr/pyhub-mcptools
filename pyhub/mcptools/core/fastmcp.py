@@ -9,8 +9,10 @@ from django.conf import settings
 from mcp.server.fastmcp import FastMCP as OrigFastMCP
 from mcp.types import AnyFunction
 
+
 class TaskTimeoutError(Exception):
     """작업 타임아웃 예외"""
+
     pass
 
 
@@ -18,8 +20,6 @@ class SyncFunctionNotAllowedError(TypeError):
     """동기 함수가 사용된 경우의 예외"""
 
     pass
-
-
 
 
 class FastMCP(OrigFastMCP):
@@ -82,7 +82,6 @@ class FastMCP(OrigFastMCP):
 
             if delegator is not None:
 
-
                 # 1) docstring 복사
                 fn.__doc__ = delegator.__doc__
 
@@ -100,7 +99,7 @@ class FastMCP(OrigFastMCP):
 
                 # 멀티 프로세싱 방식으로 실행하여, timeout이 발생하면 강제 종료
                 return execute_with_process_timeout(
-                    func=delegator,
+                    delegator,
                     *args,
                     timeout=effective_timeout,
                     **kwargs,
@@ -185,5 +184,5 @@ async def execute_with_timeout(func, *args, timeout: float = None, **kwargs):
     try:
         # asyncio.to_thread → Python 3.9+ 권장
         return await asyncio.wait_for(asyncio.to_thread(func, *args, **kwargs), timeout)
-    except asyncio.TimeoutError:
-        raise TaskTimeoutError(f"{func.__name__} timed out after {timeout} seconds")
+    except asyncio.TimeoutError as e:
+        raise TaskTimeoutError(f"{func.__name__} timed out after {timeout} seconds") from e

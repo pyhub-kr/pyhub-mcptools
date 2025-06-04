@@ -2,8 +2,8 @@ from importlib import import_module
 from importlib.metadata import PackageNotFoundError, version
 
 import typer
-
 from django.conf import settings
+
 from pyhub.mcptools.core.choices import OS
 from pyhub.mcptools.core.cli import app, console
 
@@ -48,12 +48,18 @@ def main(
 if __name__ == "__main__":
     # 아래 freeze_support 를 수행하지 않으면,
     # PyInstaller로 패키징된 실행 파일을 실행할 때, multiprocessing 모듈이 포크(fork) 모드로 실행되려다 실패
-    # PyInstaller가 만든 바이너리는 subprocess가 스스로 다시 실행될 때 sys.argv에 자동으로 --multiprocessing-fork를 붙이는데,
+    # PyInstaller가 만든 바이너리는 subprocess가 스스로 다시 실행될 때
+    # sys.argv에 자동으로 --multiprocessing-fork를 붙이는데,
     # 당신의 CLI 코드가 그것을 인식하지 못하고 에러를 냅니다.
 
     import multiprocessing
 
     multiprocessing.freeze_support()
+
+    # Initialize Django before importing any modules that use it
+    from pyhub.mcptools.core.init import init_django_and_mcp
+
+    init_django_and_mcp()
 
     #
     # commands

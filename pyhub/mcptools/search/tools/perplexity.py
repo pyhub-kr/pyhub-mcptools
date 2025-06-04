@@ -17,10 +17,12 @@ class RecencyChoices(PyHubTextChoices):
     MONTH = "month"
 
 
-ENABLED_PERPLEXITY_TOOLS = settings.PERPLEXITY_API_KEY is not None
+def _get_enabled_perplexity_tools():
+    """Lazy evaluation of Perplexity tools enablement."""
+    return settings.PERPLEXITY_API_KEY is not None
 
 
-@mcp.tool(enabled=ENABLED_PERPLEXITY_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_perplexity_tools())
 async def search__perplexity(
     query: str = Field(
         description="""The search query to be processed by Perplexity AI.

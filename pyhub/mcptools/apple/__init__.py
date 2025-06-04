@@ -1,5 +1,5 @@
 """Apple integration tools for MCP."""
 
-from . import mail, messages, notes, contacts
+from . import contacts, mail, messages, notes
 
 __all__ = ["mail", "messages", "notes", "contacts"]

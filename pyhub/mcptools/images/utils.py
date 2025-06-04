@@ -21,7 +21,7 @@ def detect_image_format(data: bytes) -> str:
         text = data.decode("utf-8", errors="ignore").strip()
         if text.startswith("<?xml") and "<svg" in text or text.startswith("<svg"):
             return "svg"
-    except:
+    except (UnicodeDecodeError, AttributeError):
         pass
 
     # Binary format detection using magic bytes
@@ -81,7 +81,7 @@ async def convert_base64_image(
 
             image_data = base64.b64decode(base64_part)
         except Exception as e:
-            raise ValueError(f"Base64 디코딩 실패: {e}")
+            raise ValueError(f"Base64 디코딩 실패: {e}") from e
 
         # 이미지 형식 자동 감지
         detected_format = detect_image_format(image_data)
@@ -94,7 +94,7 @@ async def convert_base64_image(
             try:
                 img = PILImage.open(io.BytesIO(image_data))
             except Exception as e:
-                raise ValueError(f"이미지 파일 처리 중 오류: {e}")
+                raise ValueError(f"이미지 파일 처리 중 오류: {e}") from e
 
         # RGBA 모드로 변환 (투명도 지원)
         if img.mode != "RGBA":
@@ -167,4 +167,4 @@ async def convert_base64_image(
         return FastMCPImage(data=buffer.getvalue(), format=format.lower())
 
     except Exception as e:
-        raise ValueError(f"이미지 변환 중 오류가 발생했습니다: {e}")
+        raise ValueError(f"이미지 변환 중 오류가 발생했습니다: {e}") from e

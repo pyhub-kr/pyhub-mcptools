@@ -1,14 +1,13 @@
 """Session management for Python REPL with SQLite backend."""
 
-import sqlite3
-import pickle
-import json
-import uuid
-from pathlib import Path
-from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List, Tuple
-from contextlib import contextmanager
 import logging
+import pickle
+import sqlite3
+import uuid
+from contextlib import contextmanager
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from django.conf import settings
 
@@ -51,7 +50,8 @@ class SessionManager:
     def _init_database(self):
         """Initialize database schema."""
         with self._get_connection() as conn:
-            conn.executescript("""
+            conn.executescript(
+                """
                 -- Sessions table
                 CREATE TABLE IF NOT EXISTS sessions (
                     session_id TEXT PRIMARY KEY,
@@ -96,7 +96,8 @@ class SessionManager:
 
                 CREATE INDEX IF NOT EXISTS idx_history_session
                 ON execution_history(session_id, executed_at);
-            """)
+            """
+            )
             conn.commit()
 
     def create_session(self, session_id: Optional[str] = None) -> str:
@@ -113,10 +114,7 @@ class SessionManager:
 
         with self._get_connection() as conn:
             try:
-                conn.execute(
-                    "INSERT INTO sessions (session_id) VALUES (?)",
-                    (session_id,)
-                )
+                conn.execute("INSERT INTO sessions (session_id) VALUES (?)", (session_id,))
                 conn.commit()
             except sqlite3.IntegrityError:
                 # Session already exists, update last_accessed
@@ -125,7 +123,7 @@ class SessionManager:
                        SET last_accessed = CURRENT_TIMESTAMP,
                            total_executions = total_executions + 1
                        WHERE session_id = ?""",
-                    (session_id,)
+                    (session_id,),
                 )
                 conn.commit()
 
@@ -139,7 +137,7 @@ class SessionManager:
                    SET last_accessed = CURRENT_TIMESTAMP,
                        total_executions = total_executions + 1
                    WHERE session_id = ?""",
-                (session_id,)
+                (session_id,),
             )
             conn.commit()
 
@@ -155,11 +153,11 @@ class SessionManager:
 
         for name, value in namespace.items():
             # Skip private variables and builtins
-            if name.startswith('_') or name == '__builtins__':
+            if name.startswith("_") or name == "__builtins__":
                 continue
 
             # Skip modules
-            if hasattr(value, '__module__') and hasattr(value, '__name__'):
+            if hasattr(value, "__module__") and hasattr(value, "__name__"):
                 continue
 
             try:
@@ -172,13 +170,7 @@ class SessionManager:
                     logger.warning(f"Variable '{name}' too large ({size} bytes), skipping")
                     continue
 
-                variables_to_save.append((
-                    session_id,
-                    name,
-                    type(value).__name__,
-                    pickled,
-                    size
-                ))
+                variables_to_save.append((session_id, name, type(value).__name__, pickled, size))
             except (pickle.PicklingError, TypeError) as e:
                 logger.debug(f"Cannot pickle variable '{name}': {e}")
                 continue
@@ -193,7 +185,7 @@ class SessionManager:
                 """INSERT OR REPLACE INTO session_variables
                    (session_id, variable_name, variable_type, pickled_value, size_bytes)
                    VALUES (?, ?, ?, ?, ?)""",
-                variables_to_save
+                variables_to_save,
             )
             conn.commit()
 
@@ -215,13 +207,13 @@ class SessionManager:
                 """SELECT variable_name, pickled_value
                    FROM session_variables
                    WHERE session_id = ?""",
-                (session_id,)
+                (session_id,),
             )
 
             for row in cursor:
                 try:
-                    value = pickle.loads(row['pickled_value'])
-                    namespace[row['variable_name']] = value
+                    value = pickle.loads(row["pickled_value"])
+                    namespace[row["variable_name"]] = value
                 except (pickle.UnpicklingError, ImportError) as e:
                     logger.warning(f"Cannot unpickle variable '{row['variable_name']}': {e}")
 
@@ -260,15 +252,17 @@ class SessionManager:
 
             sessions = []
             for row in cursor:
-                sessions.append({
-                    'session_id': row['session_id'],
-                    'created_at': row['created_at'],
-                    'last_accessed': row['last_accessed'],
-                    'total_executions': row['total_executions'],
-                    'is_active': bool(row['is_active']),
-                    'variable_count': row['variable_count'],
-                    'total_size_bytes': row['total_size']
-                })
+                sessions.append(
+                    {
+                        "session_id": row["session_id"],
+                        "created_at": row["created_at"],
+                        "last_accessed": row["last_accessed"],
+                        "total_executions": row["total_executions"],
+                        "is_active": bool(row["is_active"]),
+                        "variable_count": row["variable_count"],
+                        "total_size_bytes": row["total_size"],
+                    }
+                )
 
         return sessions
 
@@ -287,17 +281,19 @@ class SessionManager:
                    FROM session_variables
                    WHERE session_id = ?
                    ORDER BY variable_name""",
-                (session_id,)
+                (session_id,),
             )
 
             variables = []
             for row in cursor:
-                variables.append({
-                    'name': row['variable_name'],
-                    'type': row['variable_type'],
-                    'size_bytes': row['size_bytes'],
-                    'updated_at': row['updated_at']
-                })
+                variables.append(
+                    {
+                        "name": row["variable_name"],
+                        "type": row["variable_type"],
+                        "size_bytes": row["size_bytes"],
+                        "updated_at": row["updated_at"],
+                    }
+                )
 
         return variables
 
@@ -308,10 +304,7 @@ class SessionManager:
             session_id: Session ID
         """
         with self._get_connection() as conn:
-            conn.execute(
-                "DELETE FROM session_variables WHERE session_id = ?",
-                (session_id,)
-            )
+            conn.execute("DELETE FROM session_variables WHERE session_id = ?", (session_id,))
             conn.commit()
 
         self._update_session_access(session_id)
@@ -323,14 +316,10 @@ class SessionManager:
             session_id: Session ID
         """
         with self._get_connection() as conn:
-            conn.execute(
-                "DELETE FROM sessions WHERE session_id = ?",
-                (session_id,)
-            )
+            conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
             conn.commit()
 
-    def save_execution(self, session_id: str, code: str, output: str,
-                      error: Optional[str], execution_time_ms: int):
+    def save_execution(self, session_id: str, code: str, output: str, error: Optional[str], execution_time_ms: int):
         """Save execution history.
 
         Args:
@@ -345,7 +334,7 @@ class SessionManager:
                 """INSERT INTO execution_history
                    (session_id, code, output, error, execution_time_ms)
                    VALUES (?, ?, ?, ?, ?)""",
-                (session_id, code, output, error, execution_time_ms)
+                (session_id, code, output, error, execution_time_ms),
             )
             conn.commit()
 
@@ -362,15 +351,12 @@ class SessionManager:
                 """UPDATE sessions
                    SET is_active = FALSE
                    WHERE last_accessed < ? AND is_active = TRUE""",
-                (cutoff_date.isoformat(),)
+                (cutoff_date.isoformat(),),
             )
 
             # Delete very old sessions (30 days)
             very_old_cutoff = datetime.now() - timedelta(days=30)
-            conn.execute(
-                "DELETE FROM sessions WHERE last_accessed < ?",
-                (very_old_cutoff.isoformat(),)
-            )
+            conn.execute("DELETE FROM sessions WHERE last_accessed < ?", (very_old_cutoff.isoformat(),))
 
             conn.commit()
 
@@ -385,6 +371,6 @@ class SessionManager:
         """
         sessions = self.list_sessions(active_only=False)
         for session in sessions:
-            if session['session_id'] == session_id:
+            if session["session_id"] == session_id:
                 return session
         return None

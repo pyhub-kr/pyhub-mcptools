@@ -1,7 +1,8 @@
 """Common utilities for Apple integrations."""
 
-from typing import Optional, Dict, Any
 import re
+from typing import Dict, Optional
+
 from pyhub.mcptools.microsoft.excel.utils import applescript_run
 
 
@@ -33,7 +34,9 @@ def parse_applescript_record(output: str, field_delimiter: str = "|||", kv_delim
     return result
 
 
-def build_date_filter_script(days_back: Optional[int] = None, start_date: Optional[str] = None, end_date: Optional[str] = None) -> str:
+def build_date_filter_script(
+    days_back: Optional[int] = None, start_date: Optional[str] = None, end_date: Optional[str] = None
+) -> str:
     """Build AppleScript date filter conditions."""
     if days_back:
         return f"set thresholdDate to (current date) - ({days_back} * days)"
@@ -50,12 +53,12 @@ def build_date_filter_script(days_back: Optional[int] = None, start_date: Option
 
 async def check_app_running(app_name: str) -> bool:
     """Check if an application is running."""
-    script = f'''
+    script = f"""
     tell application "System Events"
         set appRunning to (name of processes) contains "{app_name}"
     end tell
     return appRunning
-    '''
+    """
     result = await applescript_run(script)
     return result.strip().lower() == "true"
 
@@ -69,10 +72,10 @@ async def activate_app(app_name: str) -> None:
 def format_phone_number(phone: str) -> str:
     """Format phone number for Messages app."""
     # Remove all non-digit characters
-    digits = re.sub(r'\D', '', phone)
+    digits = re.sub(r"\D", "", phone)
 
     # Add country code if missing (assuming US)
     if len(digits) == 10:
-        digits = '1' + digits
+        digits = "1" + digits
 
     return digits

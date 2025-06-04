@@ -1,10 +1,10 @@
 """Apple Mail integration."""
 
-from typing import Optional, Union
 import email
 from email import policy
+from typing import Optional, Union
 
-from pyhub.mcptools.core.email_types import EmailFolderType, Email
+from pyhub.mcptools.core.email_types import Email, EmailFolderType
 from pyhub.mcptools.core.email_utils import parse_email_list
 from pyhub.mcptools.microsoft.excel.utils import applescript_run
 
@@ -55,7 +55,8 @@ class AppleMailClient:
                 repeat with theMessage in theMessages
                     try
                         set subjectRaw to subject of theMessage as string
-                        set subjectLower to do shell script "echo " & quoted form of subjectRaw & " | tr '[:upper:]' '[:lower:]'"
+                        set subjectLower to do shell script "echo " & quoted form of subjectRaw & \\
+                            " | tr '[:upper:]' '[:lower:]'"
 
                         {f'if subjectLower contains "{query.lower()}" then' if query else 'if true then'}
                             set messageDate to date received of theMessage
@@ -298,7 +299,10 @@ async def send_email(
     script = f"""
     tell application "Mail"
         -- Create new message with specific account
-        set newMessage to make new outgoing message with properties {{subject:"{escape_applescript(subject)}", content:"{escape_applescript(body_text)}", visible:{visible_prop}}}
+        set newMessage to make new outgoing message with properties \\
+            {{subject:"{escape_applescript(subject)}", \\
+             content:"{escape_applescript(body_text)}", \\
+             visible:{visible_prop}}}
 
         -- Add recipients
         tell newMessage
@@ -308,13 +312,13 @@ async def send_email(
             -- Add CC recipients
             {cc_recipients_script}
 
-            -- Add BCC recipients  
+            -- Add BCC recipients
             {bcc_recipients_script}
         end tell
 
         {"-- Just display the compose window" if compose_only else "-- Send the message"}
         {"activate" if compose_only else "send newMessage"}
-        
+
         return "SUCCESS"
     end tell
     """

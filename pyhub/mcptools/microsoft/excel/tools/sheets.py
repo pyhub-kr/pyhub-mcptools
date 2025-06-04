@@ -15,11 +15,15 @@ from pyhub.mcptools.microsoft.excel.utils import (
 )
 from pyhub.mcptools.microsoft.excel.utils.tables import PivotTable
 
-# Default timeout for Excel operations
-EXCEL_DEFAULT_TIMEOUT = 60
+
+def _get_enabled_excel_tools():
+    """Lazy evaluation of Excel tools enablement."""
+    # Docker 환경에서 Excel 도구 비활성화
+    return settings.USE_EXCEL_TOOLS and not settings.IS_DOCKER_CONTAINER
+
 
 # Converted from delegator pattern to direct implementation
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_get_opened_workbooks() -> str:
     """Get a list of all open workbooks and their sheets in Excel
 
@@ -73,7 +77,7 @@ async def excel_get_opened_workbooks() -> str:
     return await asyncio.to_thread(_get_opened_workbooks)
 
 
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_get_values(
     sheet_range: str = Field(
         default="",
@@ -119,9 +123,9 @@ async def excel_get_values(
     @macos_excel_request_permission
     def _get_values():
         from pyhub.mcptools.microsoft.excel.utils import (
-            get_range,
-            convert_to_csv,
             cleanup_excel_com,
+            convert_to_csv,
+            get_range,
         )
 
         try:
@@ -158,7 +162,7 @@ async def excel_get_values(
     return await asyncio.to_thread(_get_values)
 
 
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_set_values(
     sheet_range: str = Field(
         description="Excel cell range to write data to",
@@ -207,14 +211,15 @@ async def excel_set_values(
     @macos_excel_request_permission
     def _set_values():
         from pathlib import Path
-        from pyhub.mcptools.microsoft.excel.utils import (
-            get_range,
-            fix_data,
-            csv_loads,
-            json_loads,
-            cleanup_excel_com,
-        )
+
         from pyhub.mcptools.fs.utils import validate_path
+        from pyhub.mcptools.microsoft.excel.utils import (
+            cleanup_excel_com,
+            csv_loads,
+            fix_data,
+            get_range,
+            json_loads,
+        )
 
         try:
             range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
@@ -244,7 +249,7 @@ async def excel_set_values(
 
 
 # New integrated info tool
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_get_info(
     info_type: Literal["workbooks", "charts", "pivot_tables", "special_cells"] = Field(
         description="Type of information to retrieve"
@@ -389,7 +394,7 @@ async def excel_get_info(
 
 
 # New integrated set_cell_data tool
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_set_cell_data(
     data_type: Literal["values", "formula"] = Field(description="Type of data to set"),
     sheet_range: str = Field(
@@ -437,11 +442,11 @@ async def excel_set_cell_data(
 
         from pyhub.mcptools.fs.utils import validate_path
         from pyhub.mcptools.microsoft.excel.utils import (
+            cleanup_excel_com,
             csv_loads,
             fix_data,
             get_range,
             json_loads,
-            cleanup_excel_com,
         )
 
         try:
@@ -471,7 +476,7 @@ async def excel_set_cell_data(
 
     @macos_excel_request_permission
     def _set_formula():
-        from pyhub.mcptools.microsoft.excel.utils import get_range, cleanup_excel_com
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com, get_range
 
         try:
             range_ = get_range(sheet_range=sheet_range, book_name=book_name, sheet_name=sheet_name)
@@ -497,7 +502,7 @@ async def excel_set_cell_data(
 
 
 # Independent tools with direct implementation
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_find_data_ranges(
     book_name: str = Field(
         default="",
@@ -577,7 +582,7 @@ async def excel_find_data_ranges(
     return await asyncio.to_thread(_find_data_ranges)
 
 
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_set_styles(
     styles: str = Field(
         description="Style specifications in CSV format or single style string",
@@ -607,9 +612,9 @@ async def excel_set_styles(
     @macos_excel_request_permission
     def _set_styles():
         from pyhub.mcptools.microsoft.excel.utils import (
+            cleanup_excel_com,
             csv_loads,
             get_range,
-            cleanup_excel_com,
         )
 
         def apply_styles(excel_range, style_data):
@@ -714,7 +719,7 @@ async def excel_set_styles(
     return await asyncio.to_thread(_set_styles)
 
 
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_autofit(
     sheet_range: str = Field(
         description="Excel range to autofit",
@@ -743,7 +748,7 @@ async def excel_autofit(
 
     @macos_excel_request_permission
     def _autofit():
-        from pyhub.mcptools.microsoft.excel.utils import get_range, cleanup_excel_com
+        from pyhub.mcptools.microsoft.excel.utils import cleanup_excel_com, get_range
 
         try:
             range_ = get_range(
@@ -761,7 +766,7 @@ async def excel_autofit(
     return await asyncio.to_thread(_autofit)
 
 
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_add_sheet(
     name: str = Field(
         default="",

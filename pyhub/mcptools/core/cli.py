@@ -739,7 +739,7 @@ def setup_remove(
     try:
         del mcp_servers[config_name]
     except KeyError as e:
-        raise ClickException(f"{config_name} 설정을 찾을 수 없ㅅ브니다.")
+        raise ClickException(f"{config_name} 설정을 찾을 수 없습니다.") from e
 
     config_data["mcpServers"] = mcp_servers
 
@@ -957,7 +957,10 @@ def setup_restore(
 #         if env_input.isdigit():
 #             idx = int(env_input)
 #             if idx < 1 or idx > len(env_vars):
-#                 console.print(f"[red]유효하지 않은 번호입니다. 1에서 {len(env_vars)} 사이의 번호를 입력해주세요.[/red]")
+#                 console.print(
+#                     f"[red]유효하지 않은 번호입니다. "
+#                     f"1에서 {len(env_vars)} 사이의 번호를 입력해주세요.[/red]"
+#                 )
 #                 raise typer.Exit(1)
 #             env_name = list(env_vars.keys())[idx - 1]
 #         else:

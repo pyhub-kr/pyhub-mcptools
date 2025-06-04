@@ -1,7 +1,9 @@
 """Test sentiment analysis functionality."""
 
-import pytest
 import json
+
+import pytest
+
 from pyhub.mcptools.sentiment.analyzers import KoreanSentimentAnalyzer
 from pyhub.mcptools.sentiment.tools import sentiment_analyze
 

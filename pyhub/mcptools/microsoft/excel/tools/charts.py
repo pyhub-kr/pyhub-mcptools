@@ -12,12 +12,16 @@ from pyhub.mcptools.microsoft.excel.utils import (
     json_dumps,
 )
 
-# Default timeout for Excel operations
-EXCEL_DEFAULT_TIMEOUT = 60
+
+def _get_enabled_excel_tools():
+    """Lazy evaluation of Excel tools enablement."""
+    # Docker 환경에서 Excel 도구 비활성화
+    return settings.USE_EXCEL_TOOLS and not settings.IS_DOCKER_CONTAINER
+
 
 # Note: excel_get_charts is now part of excel_get_info tool
 # Keeping this for backward compatibility if needed
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_get_charts(
     book_name: str = Field(
         default="",
@@ -61,7 +65,7 @@ async def excel_get_charts(
     return await asyncio.to_thread(_get_charts)
 
 
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_add_chart(
     source_sheet_range: str = Field(
         description="Excel range containing chart data",
@@ -152,7 +156,7 @@ async def excel_add_chart(
     return await asyncio.to_thread(_add_chart)
 
 
-@mcp.tool(timeout=EXCEL_DEFAULT_TIMEOUT)
+@mcp.tool(timeout=settings.EXCEL_DEFAULT_TIMEOUT, enabled=lambda: _get_enabled_excel_tools())
 async def excel_set_chart_props(
     name: str = Field(
         description="Name of the chart to modify",

@@ -1,18 +1,18 @@
 """Python sandbox implementation using subprocess for better isolation."""
 
 import ast
-import sys
 import json
-import base64
-import subprocess
-import tempfile
 import os
-from typing import Any, Dict, Optional
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
+from typing import Any, Dict
 
 
 class SecurityError(Exception):
     """Raised when code contains security violations."""
+
     pass
 
 
@@ -23,31 +23,57 @@ class PythonSandbox:
         # Dangerous patterns to check
         self.dangerous_patterns = [
             # System access
-            'os.', 'sys.', 'subprocess.', 'socket.', 'shutil.',
-
+            "os.",
+            "sys.",
+            "subprocess.",
+            "socket.",
+            "shutil.",
             # File operations
-            'open(', 'file(', 'input(', 'raw_input(',
-
+            "open(",
+            "file(",
+            "input(",
+            "raw_input(",
             # Code execution
-            'eval(', 'exec(', 'compile(', '__import__(',
-
+            "eval(",
+            "exec(",
+            "compile(",
+            "__import__(",
             # Introspection that could be dangerous
-            '__class__', '__bases__', '__subclasses__', '__code__',
-            '__globals__', '__builtins__',
-
+            "__class__",
+            "__bases__",
+            "__subclasses__",
+            "__code__",
+            "__globals__",
+            "__builtins__",
             # Network
-            'urllib', 'requests', 'http.client',
-
+            "urllib",
+            "requests",
+            "http.client",
             # Process/thread
-            'threading', 'multiprocessing', 'concurrent',
+            "threading",
+            "multiprocessing",
+            "concurrent",
         ]
 
         # Allowed imports
         self.allowed_imports = {
-            'math', 'statistics', 'datetime', 'json', 'csv', 're', 'io',
-            'collections', 'pandas', 'pd', 'numpy', 'np',
-            'matplotlib', 'matplotlib.pyplot', 'plt',
-            'seaborn', 'sns'
+            "math",
+            "statistics",
+            "datetime",
+            "json",
+            "csv",
+            "re",
+            "io",
+            "collections",
+            "pandas",
+            "pd",
+            "numpy",
+            "np",
+            "matplotlib",
+            "matplotlib.pyplot",
+            "plt",
+            "seaborn",
+            "sns",
         }
 
     def _check_code_safety(self, code: str) -> None:
@@ -62,7 +88,7 @@ class PythonSandbox:
         try:
             tree = ast.parse(code)
         except SyntaxError as e:
-            raise SyntaxError(f"Invalid Python syntax: {e}")
+            raise SyntaxError(f"Invalid Python syntax: {e}") from e
 
         # Check for dangerous AST nodes
         for node in ast.walk(tree):
@@ -73,12 +99,12 @@ class PythonSandbox:
                         raise SecurityError(f"Import of '{alias.name}' is not allowed")
 
             elif isinstance(node, ast.ImportFrom):
-                module = node.module or ''
+                module = node.module or ""
                 if module not in self.allowed_imports:
                     # Check if it's a submodule of allowed module
                     allowed = False
                     for allowed_module in self.allowed_imports:
-                        if module.startswith(allowed_module + '.'):
+                        if module.startswith(allowed_module + "."):
                             allowed = True
                             break
                     if not allowed:
@@ -86,7 +112,7 @@ class PythonSandbox:
 
             # Check for attribute access to dangerous objects
             elif isinstance(node, ast.Attribute):
-                if node.attr in ['__class__', '__bases__', '__subclasses__', '__code__', '__globals__']:
+                if node.attr in ["__class__", "__bases__", "__subclasses__", "__code__", "__globals__"]:
                     raise SecurityError(f"Access to '{node.attr}' is not allowed")
 
     def execute(self, code: str, timeout: int = 30) -> Dict[str, Any]:
@@ -106,17 +132,17 @@ class PythonSandbox:
         try:
             self._check_code_safety(code)
         except (SecurityError, SyntaxError) as e:
-            return {'error': str(e)}
+            return {"error": str(e)}
 
         # Write code to temp file to avoid escaping issues
         code_file = None
         try:
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
                 f.write(code)
                 code_file = f.name
 
             # Create the sandbox script
-            sandbox_script = f'''
+            sandbox_script = f"""
 import sys
 import io
 import json
@@ -247,38 +273,32 @@ except:
 # Output result as JSON
 sys.stdout = sys.__stdout__
 print(json.dumps(result))
-'''
+"""
 
             # Run in subprocess
             try:
                 proc = subprocess.run(
-                    [sys.executable, '-c', sandbox_script],
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout
+                    [sys.executable, "-c", sandbox_script], capture_output=True, text=True, timeout=timeout
                 )
 
                 if proc.stdout:
                     try:
                         return json.loads(proc.stdout)
                     except json.JSONDecodeError:
-                        return {
-                            'output': proc.stdout,
-                            'error': f'Failed to parse output: {proc.stderr}'
-                        }
+                        return {"output": proc.stdout, "error": f"Failed to parse output: {proc.stderr}"}
                 else:
-                    return {'error': proc.stderr or 'No output produced'}
+                    return {"error": proc.stderr or "No output produced"}
 
             except subprocess.TimeoutExpired:
-                return {'error': f'Code execution timed out after {timeout} seconds'}
+                return {"error": f"Code execution timed out after {timeout} seconds"}
             except Exception as e:
-                return {'error': f'Execution failed: {str(e)}'}
+                return {"error": f"Execution failed: {str(e)}"}
         finally:
             # Clean up the temp file if it still exists
             if code_file and Path(code_file).exists():
                 try:
                     os.unlink(code_file)
-                except:
+                except OSError:
                     pass
 
 

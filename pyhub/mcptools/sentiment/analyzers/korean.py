@@ -1,9 +1,9 @@
 """Korean sentiment analyzer using dictionary-based approach."""
 
 import json
-import os
-from typing import Dict, List, Tuple
 from pathlib import Path
+from typing import Dict, Tuple
+
 from .base import BaseSentimentAnalyzer
 
 

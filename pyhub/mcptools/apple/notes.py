@@ -1,7 +1,7 @@
 """Apple Notes integration."""
 
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from pyhub.mcptools.apple.utils import (
     applescript_run,
@@ -13,11 +13,7 @@ from pyhub.mcptools.apple.utils import (
 class NotesClient:
     """Client for interacting with Apple Notes app."""
 
-    async def list_notes(
-        self,
-        folder_name: Optional[str] = None,
-        limit: int = 20
-    ) -> List[Dict[str, Any]]:
+    async def list_notes(self, folder_name: Optional[str] = None, limit: int = 20) -> List[Dict[str, Any]]:
         """List notes from Apple Notes.
 
         Args:
@@ -29,7 +25,7 @@ class NotesClient:
         """
         folder_filter = f'of folder "{folder_name}"' if folder_name else ""
 
-        script = f'''
+        script = f"""
         tell application "Notes"
             set outputList to {{}}
             set noteCount to 0
@@ -61,7 +57,7 @@ class NotesClient:
             set AppleScript's text item delimiters to ""
             return txt
         end joinList
-        '''
+        """
 
         result = await applescript_run(script)
         notes = []
@@ -76,10 +72,7 @@ class NotesClient:
         return notes
 
     async def search_notes(
-        self,
-        search_text: str,
-        folder_name: Optional[str] = None,
-        limit: int = 20
+        self, search_text: str, folder_name: Optional[str] = None, limit: int = 20
     ) -> List[Dict[str, Any]]:
         """Search notes by text content.
 
@@ -94,7 +87,7 @@ class NotesClient:
         folder_filter = f'of folder "{folder_name}"' if folder_name else ""
         search_lower = search_text.lower()
 
-        script = f'''
+        script = f"""
         tell application "Notes"
             set outputList to {{}}
             set noteCount to 0
@@ -143,7 +136,7 @@ class NotesClient:
             set AppleScript's text item delimiters to ""
             return txt
         end joinList
-        '''
+        """
 
         result = await applescript_run(script)
         notes = []
@@ -157,12 +150,7 @@ class NotesClient:
 
         return notes
 
-    async def create_note(
-        self,
-        title: str,
-        body: str,
-        folder_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def create_note(self, title: str, body: str, folder_name: Optional[str] = None) -> Dict[str, Any]:
         """Create a new note.
 
         Args:
@@ -181,12 +169,13 @@ class NotesClient:
         else:
             folder_ref = 'folder "Notes"'
 
-        script = f'''
+        script = f"""
         tell application "Notes"
-            set newNote to make new note at {folder_ref} with properties {{name:"{escaped_title}", body:"{escaped_body}"}}
+            set newNote to make new note at {folder_ref} with properties \\
+                {{name:"{escaped_title}", body:"{escaped_body}"}}
             return "ID:::" & (id of newNote as string) & "|||Name:::" & (name of newNote as string)
         end tell
-        '''
+        """
 
         try:
             result = await applescript_run(script)
@@ -198,13 +187,10 @@ class NotesClient:
                 "title": title,
                 "body": body,
                 "folder": folder_name or "default",
-                "created_at": datetime.now().isoformat()
+                "created_at": datetime.now().isoformat(),
             }
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
 
     async def get_note(self, note_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific note by ID.
@@ -215,7 +201,7 @@ class NotesClient:
         Returns:
             Note dictionary or None if not found
         """
-        script = f'''
+        script = f"""
         tell application "Notes"
             try
                 set theNote to note id "{note_id}"
@@ -234,7 +220,7 @@ class NotesClient:
                 return "NOT_FOUND"
             end try
         end tell
-        '''
+        """
 
         result = await applescript_run(script)
 
@@ -249,7 +235,7 @@ class NotesClient:
         Returns:
             List of folder names
         """
-        script = '''
+        script = """
         tell application "Notes"
             set folderNames to {}
             repeat with theFolder in folders
@@ -264,7 +250,7 @@ class NotesClient:
             set AppleScript's text item delimiters to ""
             return txt
         end joinList
-        '''
+        """
 
         result = await applescript_run(script)
 
@@ -281,21 +267,13 @@ async def list_notes(folder_name: Optional[str] = None, limit: int = 20) -> List
     return await client.list_notes(folder_name, limit)
 
 
-async def search_notes(
-    search_text: str,
-    folder_name: Optional[str] = None,
-    limit: int = 20
-) -> List[Dict[str, Any]]:
+async def search_notes(search_text: str, folder_name: Optional[str] = None, limit: int = 20) -> List[Dict[str, Any]]:
     """Search notes by text content."""
     client = NotesClient()
     return await client.search_notes(search_text, folder_name, limit)
 
 
-async def create_note(
-    title: str,
-    body: str,
-    folder_name: Optional[str] = None
-) -> Dict[str, Any]:
+async def create_note(title: str, body: str, folder_name: Optional[str] = None) -> Dict[str, Any]:
     """Create a new note."""
     client = NotesClient()
     return await client.create_note(title, body, folder_name)

@@ -6,10 +6,10 @@ from typing import Literal, Optional
 from pydantic import Field
 
 from pyhub.mcptools import mcp
-from pyhub.mcptools.python.sandbox_subprocess import execute_python
-from pyhub.mcptools.python.sandbox_session import execute_python_with_session
-from pyhub.mcptools.python.session_manager import SessionManager
 from pyhub.mcptools.core.json_utils import json_dumps
+from pyhub.mcptools.python.sandbox_session import execute_python_with_session
+from pyhub.mcptools.python.sandbox_subprocess import execute_python
+from pyhub.mcptools.python.session_manager import SessionManager
 
 
 @mcp.tool(timeout=60)
@@ -109,7 +109,7 @@ async def python_repl(
             code=code,
             session_id=session_id,
             reset_session=reset_session,
-            timeout=timeout_seconds
+            timeout=timeout_seconds,
         )
     else:
         result = await asyncio.to_thread(execute_python, code=code, timeout=timeout_seconds)
@@ -161,7 +161,7 @@ async def python_analyze_data(
     # Load data
     if data.strip().startswith("[") or data.strip().startswith("{"):
         # JSON data
-        code_parts.append(f"import json")
+        code_parts.append("import json")
         code_parts.append(f"data = json.loads('''{data}''')")
         code_parts.append("df = pd.DataFrame(data)")
     else:
@@ -218,7 +218,7 @@ async def python_analyze_data(
             code_parts.append("    plt.tight_layout()")
 
         elif plot_type == "scatter" and cols and len(cols) >= 2:
-            code_parts.append(f"plt.figure(figsize=(10, 6))")
+            code_parts.append("plt.figure(figsize=(10, 6))")
             code_parts.append(f"plt.scatter(df['{cols[0]}'], df['{cols[1]}')")
             code_parts.append(f"plt.xlabel('{cols[0]}')")
             code_parts.append(f"plt.ylabel('{cols[1]}')")
@@ -275,22 +275,22 @@ async def python_list_variables(
     # Get session info
     session_info = session_manager.get_session_info(session_id)
     if not session_info:
-        return json_dumps({
-            'error': f'Session {session_id} not found'
-        })
+        return json_dumps({"error": f"Session {session_id} not found"})
 
     # Get variables
     variables = session_manager.get_session_variables(session_id)
 
-    return json_dumps({
-        'session_id': session_id,
-        'created_at': session_info['created_at'],
-        'last_accessed': session_info['last_accessed'],
-        'total_executions': session_info['total_executions'],
-        'variable_count': len(variables),
-        'total_size_bytes': session_info['total_size_bytes'],
-        'variables': variables
-    })
+    return json_dumps(
+        {
+            "session_id": session_id,
+            "created_at": session_info["created_at"],
+            "last_accessed": session_info["last_accessed"],
+            "total_executions": session_info["total_executions"],
+            "variable_count": len(variables),
+            "total_size_bytes": session_info["total_size_bytes"],
+            "variables": variables,
+        }
+    )
 
 
 @mcp.tool(timeout=10)
@@ -311,18 +311,14 @@ async def python_clear_session(
     # Check if session exists
     session_info = session_manager.get_session_info(session_id)
     if not session_info:
-        return json_dumps({
-            'error': f'Session {session_id} not found'
-        })
+        return json_dumps({"error": f"Session {session_id} not found"})
 
     # Clear session
     session_manager.clear_session(session_id)
 
-    return json_dumps({
-        'session_id': session_id,
-        'status': 'cleared',
-        'message': 'All variables have been removed from the session'
-    })
+    return json_dumps(
+        {"session_id": session_id, "status": "cleared", "message": "All variables have been removed from the session"}
+    )
 
 
 @mcp.tool(timeout=10)
@@ -351,10 +347,7 @@ async def python_list_sessions() -> str:
     except Exception as e:
         print(f"Failed to cleanup old sessions: {e}")
 
-    return json_dumps({
-        'session_count': len(sessions),
-        'sessions': sessions
-    })
+    return json_dumps({"session_count": len(sessions), "sessions": sessions})
 
 
 @mcp.tool(timeout=10)
@@ -376,15 +369,11 @@ async def python_delete_session(
     # Check if session exists
     session_info = session_manager.get_session_info(session_id)
     if not session_info:
-        return json_dumps({
-            'error': f'Session {session_id} not found'
-        })
+        return json_dumps({"error": f"Session {session_id} not found"})
 
     # Delete session
     session_manager.delete_session(session_id)
 
-    return json_dumps({
-        'session_id': session_id,
-        'status': 'deleted',
-        'message': 'Session has been permanently deleted'
-    })
+    return json_dumps(
+        {"session_id": session_id, "status": "deleted", "message": "Session has been permanently deleted"}
+    )

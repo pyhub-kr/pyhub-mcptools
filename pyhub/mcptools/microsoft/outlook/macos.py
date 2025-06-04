@@ -1,17 +1,13 @@
-import base64
 import csv
 import datetime
 import logging
-import os
+import re
+from contextlib import contextmanager
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
-from typing import Optional, Generator, Any, Union
-from contextlib import contextmanager
+from typing import Any, Generator, Optional, Union
 
-import re
-
-from pyhub.mcptools.microsoft.outlook.base import OutlookItemType, OutlookFolderType
 from pyhub.mcptools.core.email_types import Email, EmailAttachment, EmailFolderType
 from pyhub.mcptools.core.email_utils import parse_email_list
 from pyhub.mcptools.microsoft.excel.utils import applescript_run_sync
@@ -434,7 +430,10 @@ def send_email(
         result = applescript_run_sync(script)
         if "SUCCESS" in result:
             if compose_only:
-                return "Email compose window opened successfully in Outlook. The email is ready for review and manual sending."
+                return (
+                    "Email compose window opened successfully in Outlook. "
+                    "The email is ready for review and manual sending."
+                )
             else:
                 return "Email sent successfully via Outlook."
         else:

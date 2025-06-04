@@ -64,9 +64,3 @@ class McpHostChoices(TextChoices):
     CLAUDE = "claude"
     CURSOR = "cursor"
     WINDSURF = "windsurf"
-
-
-
-
-
-

@@ -18,7 +18,7 @@ async def test_sentiment_analyze_single_english():
         ("NOT good at all!", "negative"),  # Test negation
     ]
 
-    for text, expected_sentiment in texts:
+    for text, _ in texts:
         result = await sentiment_analyze(text, "en")
         data = json.loads(result)
         assert data["sentiment"] in ["positive", "negative", "neutral"]

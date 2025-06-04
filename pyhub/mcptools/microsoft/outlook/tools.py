@@ -2,21 +2,27 @@
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, TypeVar, Optional, Literal
+from typing import Callable, Literal, Optional, TypeVar
+
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from pydantic import Field
 
 from pyhub.mcptools import mcp
 from pyhub.mcptools.core.choices import OS
-from pyhub.mcptools.microsoft import outlook as outlook_module
 from pyhub.mcptools.core.email_types import Email, EmailFolderType
 from pyhub.mcptools.core.json_utils import json_dumps
-
-
-EXPERIMENTAL = True
+from pyhub.mcptools.microsoft import outlook as outlook_module
 
 # Windows COM 작업용 스레드 풀 (단일 스레드로 제한)
 _com_thread_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="COM-Thread")
+
+
+def _get_enabled_outlook_tools():
+    """Lazy evaluation of Outlook tools enablement."""
+    # Docker 환경에서 Outlook 도구 비활성화
+    return settings.USE_OUTLOOK_TOOLS and not settings.IS_DOCKER_CONTAINER
+
 
 T = TypeVar("T")
 
@@ -44,7 +50,7 @@ async def run_with_com_if_windows(func: Callable[..., T], *args, **kwargs) -> T:
         return await sync_to_async(func)(*args, **kwargs)
 
 
-@mcp.tool(experimental=EXPERIMENTAL)
+@mcp.tool(enabled=lambda: _get_enabled_outlook_tools())
 async def outlook(
     operation: Literal["list", "get", "send"] = Field(description="Operation to perform: list, get, or send"),
     # List operation parameters

@@ -1,7 +1,7 @@
 """Base sentiment analyzer class."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 
 class BaseSentimentAnalyzer(ABC):

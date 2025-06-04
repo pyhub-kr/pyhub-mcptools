@@ -78,7 +78,7 @@ function Set-InstallPath
             $script:extractBasePath = if ( [string]::IsNullOrWhiteSpace($userPath))
             {
                 $script:defaultExtractBasePath
-            }
+            rk}
             else
             {
                 $userPath

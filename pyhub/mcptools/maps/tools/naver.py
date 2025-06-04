@@ -14,15 +14,21 @@ from pyhub.mcptools.maps.types import (
     NaverMapRouteOptions,
 )
 
-ENABLED_MAPS_NAVER_TOOLS = settings.NAVER_MAP_CLIENT_ID and settings.NAVER_MAP_CLIENT_SECRET
 
-NAVER_MAP_HEADERS = {
-    "X-NCP-APIGW-API-KEY-ID": settings.NAVER_MAP_CLIENT_ID,
-    "X-NCP-APIGW-API-KEY": settings.NAVER_MAP_CLIENT_SECRET,
-}
+def _get_enabled_maps_naver_tools():
+    """Lazy evaluation of Naver Maps tools enablement."""
+    return settings.NAVER_MAP_CLIENT_ID and settings.NAVER_MAP_CLIENT_SECRET
 
 
-@mcp.tool(enabled=ENABLED_MAPS_NAVER_TOOLS)
+def _get_naver_map_headers():
+    """Lazy evaluation of Naver Map headers."""
+    return {
+        "X-NCP-APIGW-API-KEY-ID": settings.NAVER_MAP_CLIENT_ID,
+        "X-NCP-APIGW-API-KEY": settings.NAVER_MAP_CLIENT_SECRET,
+    }
+
+
+@mcp.tool(enabled=lambda: _get_enabled_maps_naver_tools())
 async def maps__naver_geocode(
     query: str = Field(
         ...,
@@ -82,7 +88,7 @@ async def maps__naver_geocode(
         params["coordinate"] = coordinate
 
     async with httpx.AsyncClient() as client:
-        res = await client.get(api_url, headers=NAVER_MAP_HEADERS, params=params)
+        res = await client.get(api_url, headers=_get_naver_map_headers(), params=params)
         obj = res.json()
 
         if len(obj["addresses"]) > 0:
@@ -108,7 +114,7 @@ async def maps__naver_geocode(
         )
 
 
-@mcp.tool(enabled=ENABLED_MAPS_NAVER_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_maps_naver_tools())
 async def maps__naver_route(
     start_lnglat: str = Field(
         ...,
@@ -188,5 +194,5 @@ async def maps__naver_route(
         params["waypoints"] = "|".join(waypoints)
 
     async with httpx.AsyncClient() as client:
-        res = await client.get(api_url, headers=NAVER_MAP_HEADERS, params=params)
+        res = await client.get(api_url, headers=_get_naver_map_headers(), params=params)
         return res.text

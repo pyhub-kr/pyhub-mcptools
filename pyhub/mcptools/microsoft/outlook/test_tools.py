@@ -1,12 +1,13 @@
 """Tests for unified Outlook tool."""
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime
+from unittest.mock import AsyncMock, patch
 
-from pyhub.mcptools.microsoft.outlook.tools import outlook
-from pyhub.mcptools.core.email_types import Email, EmailFolderType
+import pytest
+
 import pyhub.mcptools.microsoft.outlook as outlook_module
+from pyhub.mcptools.core.email_types import Email, EmailFolderType
+from pyhub.mcptools.microsoft.outlook.tools import outlook
 
 
 @pytest.fixture
@@ -40,12 +41,7 @@ class TestUnifiedOutlookTool:
         with patch("pyhub.mcptools.microsoft.outlook.tools.run_with_com_if_windows") as mock_run:
             mock_run.return_value = sample_email_list
 
-            result = await outlook(
-                operation="list",
-                max_hours=24,
-                query="test",
-                folder="inbox"
-            )
+            result = await outlook(operation="list", max_hours=24, query="test", folder="inbox")
 
             # Verify the function was called with correct parameters
             mock_run.assert_called_once()
@@ -68,11 +64,7 @@ class TestUnifiedOutlookTool:
         with patch("pyhub.mcptools.microsoft.outlook.tools.run_with_com_if_windows") as mock_run:
             mock_run.return_value = sample_email_list
 
-            result = await outlook(
-                operation="list",
-                max_hours=48,
-                folder="Important"
-            )
+            await outlook(operation="list", max_hours=48, folder="Important")
 
             # Verify custom folder name was passed
             mock_run.assert_called_once()
@@ -85,10 +77,7 @@ class TestUnifiedOutlookTool:
         with patch("pyhub.mcptools.microsoft.outlook.tools.run_with_com_if_windows") as mock_run:
             mock_run.return_value = sample_email
 
-            result = await outlook(
-                operation="get",
-                identifier="123456"
-            )
+            result = await outlook(operation="get", identifier="123456")
 
             # Verify the function was called with correct identifier
             mock_run.assert_called_once()
@@ -128,7 +117,7 @@ class TestUnifiedOutlookTool:
                 html_message="<p>HTML content</p>",
                 cc_list="cc@example.com",
                 bcc_list="bcc@example.com",
-                compose_only=False
+                compose_only=False,
             )
 
             # Verify the function was called with correct parameters
@@ -156,7 +145,7 @@ class TestUnifiedOutlookTool:
                 message="Test Message",
                 from_email="sender@example.com",
                 recipient_list="recipient@example.com",
-                compose_only=True
+                compose_only=True,
             )
 
             # Verify compose_only was passed correctly
@@ -174,7 +163,7 @@ class TestUnifiedOutlookTool:
 
             result = await outlook(
                 operation="send",
-                subject="Test Subject"
+                subject="Test Subject",
                 # Missing message, from_email, and recipient_list
             )
 
@@ -202,10 +191,7 @@ class TestUnifiedOutlookTool:
                 # Mock the executor result
                 mock_loop.run_in_executor.return_value = []
 
-                result = await outlook(
-                    operation="list",
-                    folder="inbox"
-                )
+                await outlook(operation="list", folder="inbox")
 
                 # Verify that run_in_executor was called for Windows
                 mock_loop.run_in_executor.assert_called_once()
@@ -220,12 +206,7 @@ class TestUnifiedOutlookTool:
                 async_func = AsyncMock(return_value=sample_email_list)
                 mock_sync_to_async.return_value = async_func
 
-                result = await outlook(
-                    operation="list",
-                    folder="inbox"
-                )
+                await outlook(operation="list", folder="inbox")
 
                 # Verify sync_to_async was used for non-Windows
                 mock_sync_to_async.assert_called_once()
-
-

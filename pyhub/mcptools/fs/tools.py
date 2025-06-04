@@ -12,10 +12,13 @@ from pydantic import Field
 from pyhub.mcptools import mcp
 from pyhub.mcptools.fs.utils import EditOperation, apply_file_edits, validate_path
 
-ENABLED_FS_TOOLS = settings.FS_LOCAL_HOME is not None
+
+def _get_enabled_fs_tools():
+    """Lazy evaluation of FS tools enablement."""
+    return settings.FS_LOCAL_HOME is not None
 
 
-@mcp.tool(enabled=ENABLED_FS_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_fs_tools())
 async def fs__read_file(
     path: str = Field(
         description="Path to the file to read",
@@ -45,7 +48,7 @@ async def fs__read_file(
         raise ValueError(f"Error reading file {path}: {str(e)}") from e
 
 
-@mcp.tool(enabled=ENABLED_FS_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_fs_tools())
 async def fs__read_multiple_files(
     paths: list[str] = Field(
         description="List of file paths to read",
@@ -82,7 +85,7 @@ async def fs__read_multiple_files(
     return "\n".join(results)
 
 
-@mcp.tool(enabled=ENABLED_FS_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_fs_tools())
 async def fs__write_file(
     path: str = Field(
         description="Path where to write the file",
@@ -140,7 +143,7 @@ async def fs__write_file(
         raise ValueError(f"Error writing to file {path}: {str(e)}") from e
 
 
-@mcp.tool(enabled=ENABLED_FS_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_fs_tools())
 async def fs__edit_file(
     path: str = Field(
         description="Path to the file to edit",
@@ -187,7 +190,7 @@ async def fs__edit_file(
     return await apply_file_edits(valid_path, edit_operations, dry_run)
 
 
-@mcp.tool(enabled=ENABLED_FS_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_fs_tools())
 async def fs__create_directory(
     path: str = Field(
         description="Path of the directory to create",
@@ -215,7 +218,7 @@ async def fs__create_directory(
         raise ValueError(f"Error creating directory {path}: {str(e)}") from e
 
 
-@mcp.tool(enabled=ENABLED_FS_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_fs_tools())
 async def fs__list_directory(
     path: str = Field(
         description="Path of the directory to list",
@@ -277,7 +280,7 @@ async def fs__list_directory(
         raise ValueError(f"Error listing directory {path}: {str(e)}") from e
 
 
-@mcp.tool(enabled=ENABLED_FS_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_fs_tools())
 async def fs__move_file(
     source: str = Field(
         description="Source path of file or directory to move",
@@ -333,7 +336,7 @@ async def fs__move_file(
         raise ValueError(f"Error moving {source} to {valid_dest}: {str(e)}") from e
 
 
-@mcp.tool(enabled=ENABLED_FS_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_fs_tools())
 async def fs__find_files(
     path: str = Field(
         description="Base directory path to start search from",
@@ -410,7 +413,7 @@ async def fs__find_files(
         raise ValueError(f"Error searching in {path}: {str(e)}") from e
 
 
-@mcp.tool(enabled=ENABLED_FS_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_fs_tools())
 async def fs__get_file_info(
     path: str = Field(
         description="Path to the file or directory to get info about",
@@ -465,7 +468,7 @@ async def fs__get_file_info(
         raise ValueError(f"Error getting info for {path}: {str(e)}") from e
 
 
-@mcp.tool(enabled=ENABLED_FS_TOOLS)
+@mcp.tool(enabled=lambda: _get_enabled_fs_tools())
 async def fs__list_allowed_directories() -> str:
     """
     Returns the list of directories that this server is allowed to access.
