@@ -8,7 +8,9 @@ param(
     [switch]$NoPrompt, # Auto install without user prompts
     [switch]$AddToPath, # Add installation directory to PATH
     [switch]$ForceOverwrite, # <-- 추가
-    [string]$Token                   # GitHub API token
+    [string]$Token,                   # GitHub API token
+    [switch]$Alpha, # Install latest alpha version
+    [string]$Version # Install specific version
 )
 
 # Function to display progress bar
@@ -109,16 +111,32 @@ function Set-InstallPath
     return $script:extractPath
 }
 
-# Function to get latest release information
-function Get-LatestRelease
+# Function to get release information
+function Get-Release
 {
-    $releaseApiUrl = "https://api.github.com/repos/$Owner/$Repo/releases/latest"  # GitHub API URL
     $headers = @{ "User-Agent" = "PowerShell" }  # API request headers
-
+    
     # Add auth header if token provided
     if ($Token)
     {
         $headers.Authorization = "Bearer $Token"
+    }
+    
+    # Determine API URL based on parameters
+    if ($Version)
+    {
+        Write-Host "📦 Fetching release information for version: $Version..."
+        $releaseApiUrl = "https://api.github.com/repos/$Owner/$Repo/releases/tags/$Version"
+    }
+    elseif ($Alpha)
+    {
+        Write-Host "🔬 Fetching latest alpha release information..."
+        $releaseApiUrl = "https://api.github.com/repos/$Owner/$Repo/releases"
+    }
+    else
+    {
+        Write-Host "📦 Fetching latest stable release information..."
+        $releaseApiUrl = "https://api.github.com/repos/$Owner/$Repo/releases/latest"
     }
 
     try
@@ -133,12 +151,50 @@ function Get-LatestRelease
             exit 1
         }
 
-        $release = $response.Content | ConvertFrom-Json
+        $releases = $response.Content | ConvertFrom-Json
+        
+        # Handle alpha release selection
+        if ($Alpha -and -not $Version)
+        {
+            # Filter for prerelease and get the first (latest) one
+            $release = $releases | Where-Object { $_.prerelease -eq $true } | Select-Object -First 1
+            
+            if (-not $release)
+            {
+                Write-Error "No alpha releases found"
+                exit 1
+            }
+        }
+        elseif ($Version)
+        {
+            # Single release returned for specific version
+            $release = $releases
+            
+            # Check if version not found
+            if ($release.message -eq "Not Found")
+            {
+                Write-Error "Version $Version not found"
+                exit 1
+            }
+        }
+        else
+        {
+            # Latest stable release
+            $release = $releases
+        }
+        
         return $release
     }
     catch
     {
-        Write-Error "Failed to fetch release information: $_"
+        if ($_.Exception.Response.StatusCode -eq 404)
+        {
+            Write-Error "Release not found: $Version"
+        }
+        else
+        {
+            Write-Error "Failed to fetch release information: $_"
+        }
         exit 1
     }
 }
@@ -340,7 +396,7 @@ function Install-PyHubMCPTools
     # 3. Get latest release info
     $currentStep++
     Show-Progress -Step $currentStep -TotalSteps $totalSteps -Message "Fetching latest release information"
-    $releaseInfo = Get-LatestRelease
+    $releaseInfo = Get-Release
 
     # 4. Download and verify checksum
     $currentStep++

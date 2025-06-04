@@ -36,6 +36,26 @@
 
     ![](./assets/00-installer-using-pwsh.png)
 
+!!! info "알파/특정 버전 설치"
+
+    **최신 알파 버전 설치:**
+    ```powershell
+    # 파워쉘 코어 7
+    & { iwr 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' | iex } -Alpha
+
+    # 윈도우 기본 파워쉘
+    & { iwr -UseBasicParsing 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' | iex } -Alpha
+    ```
+
+    **특정 버전 설치:**
+    ```powershell
+    # 파워쉘 코어 7
+    & { iwr 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' | iex } -Version "v0.9.6"
+
+    # 윈도우 기본 파워쉘
+    & { iwr -UseBasicParsing 'https://raw.githubusercontent.com/pyhub-kr/pyhub-mcptools/refs/heads/main/scripts/install.ps1' | iex } -Version "v0.9.6"
+    ```
+
 디폴트 경로로 `c:\mcptools\pyhub.mcptools\` 폴더에 아래와 같이 `pyhub.mcptools.exe` 파일과 `_internal` 폴더가 확인되시면
 설치 성공입니다. 이어서 다음 단계 "2. 실행파일 차단풀기" 를 진행해주세요.
 
@@ -46,7 +66,7 @@
     윈도우 기본 파워쉘 (버전 5)보다 최신 버전의 [파워쉘 코어 v7](https://aka.ms/PSWindows)을 추천드립니다.
     UI도 미려해지고 사용성도 좋아요. 👍
 
-    요즘 윈도우에는 기본에 `winget` 팩키지 매니저가 설치되어있습니다. 다음 명령 한 번에 설치됩니다. 
+    요즘 윈도우에는 기본에 `winget` 팩키지 매니저가 설치되어있습니다. 다음 명령 한 번에 설치됩니다.
 
     ```
     winget install --id Microsoft.PowerShell --source winget
@@ -108,7 +128,7 @@
 cd \
 ```
 
-다음 명령으로 `mcptools\pyhub.mcptools\` 경로로 이동합니다. 
+다음 명령으로 `mcptools\pyhub.mcptools\` 경로로 이동합니다.
 
 ```
 cd mcptools\pyhub.mcptools\
@@ -128,13 +148,13 @@ cd mcptools\pyhub.mcptools\
 .\pyhub.mcptools.exe tools-list -v 3
 ```
 
-Claude와 같은 MCP 클라이언트 프로그램에서는 위 Tools 설명을 기반으로, 어떤 Tool을 호출할 것인지를 결정합니다. 
+Claude와 같은 MCP 클라이언트 프로그램에서는 위 Tools 설명을 기반으로, 어떤 Tool을 호출할 것인지를 결정합니다.
 
 !!! note
 
-    `c:\mcptools\` 경로명에서 역슬래시(`\`) 글자와 원화 글자는 폰트에 따라 다르게 보여질 뿐, 같은 글자입니다. 
+    `c:\mcptools\` 경로명에서 역슬래시(`\`) 글자와 원화 글자는 폰트에 따라 다르게 보여질 뿐, 같은 글자입니다.
 
-### 4. MCP 도구를 통해 엑셀 읽어보기 
+### 4. MCP 도구를 통해 엑셀 읽어보기
 
 Claude 에서 AI가 알아서 MCP 도구를 호출할 테지만, 지원하는 엑셀 도구와의 인터페이스를 이해하기 위해 MCP 도구를 직접 실행해봅시다.
 "파이썬사랑방 MCP 도구"에서는 MCP 도구 직접 실행을 지원합니다. 간편하게 MCP 도구 동작을 확인하실 수 있습니다. 😉 다른 MCP 도구들은
@@ -240,8 +260,8 @@ JSON 파일 편집없이 한 번에 설정을 추가하실 수 있기 때문에 
 
 ![](./assets/13-setup-print.png)
 
-이제 `.\pyhub.mcptools.exe setup-add` 명령만 실행하시면 한 번에 `pyhub.mcptools` 에 대한 MCP 서버 설정이 자동으로 추가되고, 
-다시 `.\pyhub.mcptools.exe setup-print` 명령을 실행해보시면 아래와 같이 설정이 적용되었음을 확인하실 수 있습니다. 
+이제 `.\pyhub.mcptools.exe setup-add` 명령만 실행하시면 한 번에 `pyhub.mcptools` 에 대한 MCP 서버 설정이 자동으로 추가되고,
+다시 `.\pyhub.mcptools.exe setup-print` 명령을 실행해보시면 아래와 같이 설정이 적용되었음을 확인하실 수 있습니다.
 
 ![](./assets/14-setup-add.png)
 
@@ -285,7 +305,7 @@ Claude Desktop 내부에서 MCP 서버를 새롭게 띄웁니다.
 ### 8. 최신 버전으로 업데이트하기
 
 `.\pyhub.mcptools.exe --version` 명령을 통해 현재 버전을 확인하실 수 있고,
-`.\pyhub.mcptools.exe check-update` 명령을 통해 새버전 유무를 확인하실 수 있습니다. 
+`.\pyhub.mcptools.exe check-update` 명령을 통해 새버전 유무를 확인하실 수 있습니다.
 
 ![](./assets/19-check-update.png)
 
@@ -324,7 +344,7 @@ Claude Desktop을 다시 실행해주시면 업데이트 끝입니다.
 !!! note
     Claude Desktop에 이미 MCP 도구가 등록되어 있다면 `setup-add` 명령을 다시 실행할 필요가 없습니다.
 
-### Excel 작업 시 "com.error -2147352530 unknown name" 오류 
+### Excel 작업 시 "com.error -2147352530 unknown name" 오류
 
 이 오류는 주로 Excel 파일이 보호된 보기 상태이거나 편집이 제한된 상태일 때 발생합니다.
 

@@ -15,6 +15,8 @@ DEFAULT_EXTRACT_BASE="$HOME/mcptools"
 
 FORCE_OVERWRITE=0
 INSTALL_NAME=""
+USE_ALPHA=0
+SPECIFIC_VERSION=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -24,6 +26,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --install-name)
       INSTALL_NAME="$2"
+      shift 2
+      ;;
+    --alpha)
+      USE_ALPHA=1
+      shift
+      ;;
+    --version)
+      SPECIFIC_VERSION="$2"
       shift 2
       ;;
     *)
@@ -131,8 +141,50 @@ setup_path() {
 
 # 릴리스 정보 가져오기 함수
 get_release_info() {
-  echo "🔍 Fetching latest release information..."
-  RELEASE_JSON=$(curl -s "https://api.github.com/repos/$OWNER/$REPO/releases/latest")
+  local api_url
+  local release_json
+  
+  # URL 결정: 특정 버전 > 알파 > 최신 stable
+  if [ -n "$SPECIFIC_VERSION" ]; then
+    echo "🔍 Fetching release information for version: $SPECIFIC_VERSION..."
+    api_url="https://api.github.com/repos/$OWNER/$REPO/releases/tags/$SPECIFIC_VERSION"
+  elif [ "$USE_ALPHA" -eq 1 ]; then
+    echo "🔍 Fetching latest alpha release information..."
+    api_url="https://api.github.com/repos/$OWNER/$REPO/releases"
+  else
+    echo "🔍 Fetching latest stable release information..."
+    api_url="https://api.github.com/repos/$OWNER/$REPO/releases/latest"
+  fi
+  
+  release_json=$(curl -s "$api_url")
+  
+  # 알파 버전인 경우, prerelease=true 중 최신 선택
+  if [ "$USE_ALPHA" -eq 1 ] && [ -z "$SPECIFIC_VERSION" ]; then
+    # jq가 설치되어 있는지 확인
+    if command -v jq >/dev/null 2>&1; then
+      release_json=$(echo "$release_json" | jq '[.[] | select(.prerelease == true)] | .[0]')
+    else
+      # jq가 없으면 첫 번째 prerelease 찾기 (간단한 방법)
+      echo "⚠️  jq not found. Using basic parsing..."
+      # 첫 번째 prerelease 릴리스 추출 (완벽하지 않지만 대부분 작동)
+      release_json=$(echo "$release_json" | awk 'BEGIN{RS="},{";ORS="},{"} /"prerelease":true/{print; exit}' | sed 's/^\[{/{/' | sed 's/}$/}/')
+    fi
+    
+    if [ -z "$release_json" ] || [ "$release_json" = "null" ]; then
+      echo "❌ No alpha releases found"
+      exit 1
+    fi
+  fi
+  
+  # 특정 버전 요청 시 404 체크
+  if [ -n "$SPECIFIC_VERSION" ]; then
+    if echo "$release_json" | grep -q '"message".*"Not Found"'; then
+      echo "❌ Version $SPECIFIC_VERSION not found"
+      exit 1
+    fi
+  fi
+  
+  RELEASE_JSON="$release_json"
   
   # 키워드에 맞는 zip 파일 링크 찾기
   DOWNLOAD_URL=$(echo "$RELEASE_JSON" | grep "browser_download_url" | grep "pyhub.mcptools-$KEYWORD" | cut -d '"' -f 4 | grep "\.zip$" )
