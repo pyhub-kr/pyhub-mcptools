@@ -9,26 +9,31 @@ import sys
 USE_COM = os.environ.get('EXCEL_USE_COM', 'false').lower() == 'true'
 
 if USE_COM and sys.platform == 'win32':
-    # Use COM implementation
-    from .excel import (
-        ExcelApp as App,
-        ExcelError,
-        Workbook,
-        Sheet,
-        Range,
-        Table
-    )
-    from .utils import (
-        get_app,
-        get_sheet,
-        get_range,
-        json_dumps,
-        normalize_text,
-        cleanup_excel_com,
-        fix_data,
-        get_workbooks_data
-    )
+    try:
+        # Use COM implementation
+        from .excel import (
+            ExcelApp as App,
+            ExcelError,
+            Workbook,
+            Sheet,
+            Range,
+            Table
+        )
+        from .utils import (
+            get_app,
+            get_sheet,
+            get_range,
+            json_dumps,
+            normalize_text,
+            cleanup_excel_com,
+            fix_data,
+            get_workbooks_data
+        )
+    except ImportError:
+        # Fall back to xlwings if COM import fails
+        USE_COM = False
 
+if USE_COM and sys.platform == 'win32':
     # Create module-level app instance
     def apps():
         """Get Excel application (compatibility with xlwings)"""

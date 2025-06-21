@@ -11,18 +11,36 @@ from unittest.mock import Mock, patch
 # Skip all tests if not on Windows
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="COM only available on Windows")
 
+# Additional check for Excel availability
+def excel_available():
+    """Check if Excel COM is available"""
+    if sys.platform != "win32":
+        return False
+    try:
+        import win32com.client
+        excel = win32com.client.Dispatch("Excel.Application")
+        excel.Quit()
+        return True
+    except:
+        return False
+
+# Import COM modules only on Windows
 if sys.platform == "win32":
-    from pyhub.mcptools.microsoft.excel.com.decorators import (
-        com_retry, ensure_com_thread, validate_com_object,
-        com_error_handler, release_com_object
-    )
-    from pyhub.mcptools.microsoft.excel.com.pool import ExcelPool, get_excel_pool
-    from pyhub.mcptools.microsoft.excel.com.thread_safety import (
-        ensure_com_initialized, cleanup_thread_com,
-        get_thread_state, register_excel_app
-    )
-    import win32com.client
-    import pythoncom
+    try:
+        from pyhub.mcptools.microsoft.excel.com.decorators import (
+            com_retry, ensure_com_thread, validate_com_object,
+            com_error_handler, release_com_object
+        )
+        from pyhub.mcptools.microsoft.excel.com.pool import ExcelPool, get_excel_pool
+        from pyhub.mcptools.microsoft.excel.com.thread_safety import (
+            ensure_com_initialized, cleanup_thread_com,
+            get_thread_state, register_excel_app
+        )
+        import win32com.client
+        import pythoncom
+    except ImportError:
+        # If imports fail, tests will be skipped anyway
+        pass
 
 
 class TestCOMDecorators:
@@ -99,14 +117,15 @@ class TestExcelPool:
 
     def test_pool_creation(self):
         """Test creating Excel pool"""
-        pool = ExcelPool(min_size=1, max_size=3)
-        assert pool.min_size == 1
+        pool = ExcelPool(min_size=0, max_size=3)  # min_size=0 to avoid creating instance
+        assert pool.min_size == 0
         assert pool.max_size == 3
         pool.shutdown()
 
+    @pytest.mark.skipif(not excel_available(), reason="Excel not available")
     def test_get_instance(self):
         """Test getting instance from pool"""
-        pool = ExcelPool(min_size=1, max_size=3)
+        pool = ExcelPool(min_size=0, max_size=3)  # min_size=0 to avoid creating instance
 
         try:
             with pool.get_instance() as excel:
@@ -117,9 +136,10 @@ class TestExcelPool:
         finally:
             pool.shutdown()
 
+    @pytest.mark.skipif(not excel_available(), reason="Excel not available")
     def test_pool_reuse(self):
         """Test that pool reuses instances"""
-        pool = ExcelPool(min_size=1, max_size=3)
+        pool = ExcelPool(min_size=0, max_size=3)
 
         try:
             # Get instance and release it
@@ -136,7 +156,7 @@ class TestExcelPool:
 
     def test_pool_max_limit(self):
         """Test pool respects max size"""
-        pool = ExcelPool(min_size=1, max_size=2)
+        pool = ExcelPool(min_size=0, max_size=2)
 
         try:
             instances = []
@@ -208,6 +228,7 @@ class TestThreadSafety:
         finally:
             cleanup_thread_com()
 
+    @pytest.mark.skipif(not excel_available(), reason="Excel not available")
     def test_concurrent_excel_operations(self):
         """Test concurrent Excel operations in multiple threads"""
         results = []
@@ -269,6 +290,7 @@ class TestThreadSafety:
 class TestCOMStabilityIntegration:
     """Integration tests for COM stability improvements"""
 
+    @pytest.mark.skipif(not excel_available(), reason="Excel not available")
     def test_recovery_from_disconnected_excel(self):
         """Test recovery when Excel is disconnected"""
         from pyhub.mcptools.microsoft.excel.com.excel import ExcelApp
@@ -294,9 +316,10 @@ class TestCOMStabilityIntegration:
         except:
             pass
 
+    @pytest.mark.skipif(not excel_available(), reason="Excel not available")
     def test_pool_with_com_errors(self):
         """Test pool handles COM errors gracefully"""
-        pool = ExcelPool(min_size=1, max_size=3, max_errors=2)
+        pool = ExcelPool(min_size=0, max_size=3, max_errors=2)
 
         try:
             with pool.get_instance() as excel:
@@ -310,6 +333,7 @@ class TestCOMStabilityIntegration:
         finally:
             pool.shutdown()
 
+    @pytest.mark.skipif(not excel_available(), reason="Excel not available")
     def test_thread_cleanup_on_error(self):
         """Test thread cleanup works even with errors"""
         def worker_with_error():

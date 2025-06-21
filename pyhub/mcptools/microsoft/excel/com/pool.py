@@ -85,8 +85,9 @@ class ExcelPool:
         )
         self._maintenance_thread.start()
 
-        # Pre-create minimum instances
-        self._ensure_min_instances()
+        # Pre-create minimum instances only if min_size > 0
+        if self.min_size > 0:
+            self._ensure_min_instances()
 
     @ensure_com_thread
     def _create_instance(self) -> Optional[ExcelInstance]:
