@@ -71,6 +71,9 @@ if __name__ == "__main__":
 
     import_module("pyhub.mcptools.microsoft.__main__")
 
+    if settings.USE_GOOGLE_SHEETS:
+        import_module("pyhub.mcptools.google.__main__")
+
     if OS.current_is_macos():
         import_module("pyhub.mcptools.apple.__main__")
 
@@ -93,6 +96,9 @@ if __name__ == "__main__":
     import_module("pyhub.mcptools.search.tools")
 
     import_module("pyhub.mcptools.microsoft.tools")
+
+    if settings.USE_GOOGLE_SHEETS:
+        import_module("pyhub.mcptools.google.tools")
 
     if OS.current_is_macos():
         import_module("pyhub.mcptools.apple.tools")

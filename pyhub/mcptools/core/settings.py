@@ -265,3 +265,22 @@ if FS_LOCAL_HOME is not None:
 
 NAVER_MAP_CLIENT_ID = env.str("NAVER_MAP_CLIENT_ID", default=None)
 NAVER_MAP_CLIENT_SECRET = env.str("NAVER_MAP_CLIENT_SECRET", default=None)
+
+
+#
+# Google Sheets
+#
+
+# Google Sheets 도구 활성화 여부
+USE_GOOGLE_SHEETS = env.bool("USE_GOOGLE_SHEETS", default=False)
+
+# 사용자 정의 OAuth 클라이언트 시크릿 경로 (선택사항)
+# 설정하지 않으면 패키지에 포함된 공용 OAuth 앱 사용
+GOOGLE_CLIENT_SECRET_PATH = env.str("GOOGLE_CLIENT_SECRET_PATH", default=None)
+
+# Google Sheets API 설정
+GOOGLE_SHEETS_DEFAULT_TIMEOUT = env.int("GOOGLE_SHEETS_DEFAULT_TIMEOUT", default=30)
+GOOGLE_SHEETS_BATCH_SIZE = env.int("GOOGLE_SHEETS_BATCH_SIZE", default=1000)
+GOOGLE_SHEETS_RATE_LIMIT = env.int("GOOGLE_SHEETS_RATE_LIMIT", default=300)  # per minute
+GOOGLE_SHEETS_MAX_RETRIES = env.int("GOOGLE_SHEETS_MAX_RETRIES", default=5)
+GOOGLE_SHEETS_MAX_BACKOFF = env.int("GOOGLE_SHEETS_MAX_BACKOFF", default=64)  # seconds

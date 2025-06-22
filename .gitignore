@@ -138,3 +138,6 @@ uv.lock
 
 /*.md
 
+# Google credentials
+google_client_secret.json
+**/google_client_secret.json

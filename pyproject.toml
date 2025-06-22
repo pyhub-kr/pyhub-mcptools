@@ -67,8 +67,15 @@ python = [
 sentiment = [
     "vaderSentiment",
 ]
+gsheets = [
+    "gspread>=6.0.0",
+    "gspread-asyncio>=2.0.0",
+    "google-auth>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "google-auth-httplib2>=0.2.0",
+]
 all = [
-    "pyhub-mcptools[music,excel,browser,images,python,sentiment]",
+    "pyhub-mcptools[music,excel,browser,images,python,sentiment,gsheets]",
 ]
 dev = [
     "pytest",
