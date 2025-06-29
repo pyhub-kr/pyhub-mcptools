@@ -17,8 +17,8 @@ if project_root not in sys.path:
 
 
 # Django 설정
-def pytest_configure():
-    """pytest 실행 시 Django 설정"""
+def pytest_configure(config):
+    """pytest 실행 시 Django 설정 및 마커 등록"""
     import django
     from django.conf import settings
 
@@ -42,6 +42,52 @@ def pytest_configure():
             },
         )
         django.setup()
+
+    # Google 테스트 마커 등록
+    config.addinivalue_line(
+        "markers",
+        "requires_google_credentials: mark test as requiring Google OAuth credentials"
+    )
+    config.addinivalue_line(
+        "markers",
+        "integration: mark test as integration test requiring external services"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Google credentials가 없으면 integration 테스트 스킵"""
+    from pyhub.mcptools.google.auth.base import has_valid_google_credentials
+
+    # Google credentials 체크
+    has_sheets_creds = has_valid_google_credentials("sheets")
+    has_gmail_creds = has_valid_google_credentials("gmail")
+
+    # CI 환경 감지 (일반적인 CI 환경 변수들)
+    is_ci = any([
+        os.getenv("CI"),
+        os.getenv("GITHUB_ACTIONS"),
+        os.getenv("TRAVIS"),
+        os.getenv("JENKINS_URL"),
+        os.getenv("BUILDKITE"),
+    ])
+
+    for item in items:
+        # integration 마커가 있는 테스트들 처리
+        if "integration" in item.keywords:
+            # CI 환경이거나 credentials가 없으면 스킵
+            skip_reason = None
+
+            if is_ci:
+                skip_reason = "Skipping integration tests in CI environment"
+            elif "sheets" in str(item.fspath) and not has_sheets_creds:
+                skip_reason = "No valid Google Sheets credentials available"
+            elif "gmail" in str(item.fspath) and not has_gmail_creds:
+                skip_reason = "No valid Google Gmail credentials available"
+            elif not (has_sheets_creds or has_gmail_creds):
+                skip_reason = "No valid Google credentials available"
+
+            if skip_reason:
+                item.add_marker(pytest.mark.skip(reason=skip_reason))
 
 
 @pytest.fixture(scope="session")

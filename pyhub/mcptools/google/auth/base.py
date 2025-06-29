@@ -124,3 +124,19 @@ class GoogleAuthBase:
                 "token_path": str(self.token_path),
                 "client_secret_path": "Not found",
             }
+
+
+def has_valid_google_credentials(service: str = "sheets") -> bool:
+    """Google 서비스의 유효한 credentials 존재 여부 확인
+
+    Args:
+        service: Google 서비스명 ('sheets', 'gmail', 'combined')
+
+    Returns:
+        bool: 유효한 credentials가 있으면 True
+    """
+    try:
+        auth = GoogleAuthBase(service=service)
+        return auth.is_authenticated()
+    except Exception:
+        return False
