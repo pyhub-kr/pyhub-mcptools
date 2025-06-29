@@ -1,0 +1,461 @@
+#!/usr/bin/env python
+"""Test script for Google Sheets MCP tools.
+
+This script tests basic functionality of Google Sheets tools including:
+- Listing spreadsheets
+- Searching spreadsheets
+- Creating new spreadsheets
+- Reading/writing data
+- Batch operations
+- Chunked operations
+- Error handling
+
+Usage:
+    export USE_GOOGLE_SHEETS=1
+    export GOOGLE_CLIENT_SECRET_PATH=./google_client_secret.json
+    python -m tests.test_google_sheets_tools
+"""
+
+import asyncio
+import json
+import logging
+import os
+import sys
+from datetime import datetime
+
+# Add parent directory to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from pyhub.mcptools.google.sheets.tools.sheets import (
+    gsheet_add_sheet,
+    gsheet_clear_values_from_range,
+    gsheet_create_spreadsheet,
+    gsheet_delete_sheet,
+    gsheet_get_spreadsheet_info,
+    gsheet_get_values_from_range,
+    gsheet_list_spreadsheets,
+    gsheet_rename_sheet,
+    gsheet_search_by_name,
+    gsheet_set_values_to_range,
+    gsheet_set_values_to_range_with_csv,
+)
+
+# Import batch operations if available
+try:
+    from pyhub.mcptools.google.sheets.tools.sheets_batch import (
+        gsheet_batch_clear,
+        gsheet_batch_copy,
+        gsheet_batch_read,
+        gsheet_batch_write,
+    )
+
+    BATCH_TOOLS_AVAILABLE = True
+except ImportError:
+    BATCH_TOOLS_AVAILABLE = False
+    print("Batch tools not available")
+
+# Import chunked operations if available
+try:
+    from pyhub.mcptools.google.sheets.tools.sheets_chunked import (
+        gsheet_read_chunked,
+        gsheet_write_chunked,
+    )
+
+    CHUNKED_TOOLS_AVAILABLE = True
+except ImportError:
+    CHUNKED_TOOLS_AVAILABLE = False
+    print("Chunked tools not available")
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+
+class GoogleSheetsToolsTester:
+    """Test class for Google Sheets tools."""
+
+    def __init__(self):
+        self.test_spreadsheet_id = None
+        self.test_spreadsheet_name = f"Test Sheet - {datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self.results = {"passed": [], "failed": [], "errors": []}
+
+    def log_result(self, test_name: str, success: bool, message: str = ""):
+        """Log test result."""
+        if success:
+            self.results["passed"].append(test_name)
+            logger.info(f"✅ PASSED: {test_name}")
+        else:
+            self.results["failed"].append(test_name)
+            logger.error(f"❌ FAILED: {test_name} - {message}")
+
+    def log_error(self, test_name: str, error: Exception):
+        """Log test error."""
+        self.results["errors"].append((test_name, str(error)))
+        logger.error(f"❌ ERROR in {test_name}: {type(error).__name__}: {error}")
+
+    async def test_list_spreadsheets(self):
+        """Test listing spreadsheets."""
+        test_name = "list_spreadsheets"
+        try:
+            result = await gsheet_list_spreadsheets()
+            data = json.loads(result)
+
+            if "spreadsheets" in data:
+                count = len(data["spreadsheets"])
+                logger.info(f"Found {count} spreadsheets")
+                self.log_result(test_name, True)
+            else:
+                self.log_result(test_name, False, "No spreadsheets key in response")
+        except Exception as e:
+            self.log_error(test_name, e)
+
+    async def test_search_spreadsheets(self):
+        """Test searching spreadsheets."""
+        test_name = "search_spreadsheets"
+        try:
+            # Search for test spreadsheets
+            result = await gsheet_search_by_name(search_term="Test Sheet", exact_match=False)
+            data = json.loads(result)
+
+            if "matches" in data:
+                count = len(data["matches"])
+                logger.info(f"Found {count} matching spreadsheets")
+                self.log_result(test_name, True)
+            else:
+                self.log_result(test_name, False, "No matches key in response")
+        except Exception as e:
+            self.log_error(test_name, e)
+
+    async def test_create_spreadsheet(self):
+        """Test creating a new spreadsheet."""
+        test_name = "create_spreadsheet"
+        try:
+            result = await gsheet_create_spreadsheet(name=self.test_spreadsheet_name)
+            data = json.loads(result)
+
+            if "id" in data and "url" in data:
+                self.test_spreadsheet_id = data["id"]
+                logger.info(f"Created spreadsheet: {data['name']} (ID: {data['id']})")
+                logger.info(f"URL: {data['url']}")
+                self.log_result(test_name, True)
+            else:
+                self.log_result(test_name, False, "Missing id or url in response")
+        except Exception as e:
+            self.log_error(test_name, e)
+
+    async def test_get_spreadsheet_info(self):
+        """Test getting spreadsheet information."""
+        test_name = "get_spreadsheet_info"
+        if not self.test_spreadsheet_id:
+            self.log_result(test_name, False, "No test spreadsheet created")
+            return
+
+        try:
+            result = await gsheet_get_spreadsheet_info(spreadsheet_id=self.test_spreadsheet_id)
+            data = json.loads(result)
+
+            if "sheets" in data and len(data["sheets"]) > 0:
+                logger.info(f"Spreadsheet has {len(data['sheets'])} sheets")
+                self.log_result(test_name, True)
+            else:
+                self.log_result(test_name, False, "No sheets in spreadsheet")
+        except Exception as e:
+            self.log_error(test_name, e)
+
+    async def test_write_and_read_data(self):
+        """Test writing and reading data."""
+        test_name = "write_and_read_data"
+        if not self.test_spreadsheet_id:
+            self.log_result(test_name, False, "No test spreadsheet created")
+            return
+
+        try:
+            # First get the actual sheet name
+            info_result = await gsheet_get_spreadsheet_info(spreadsheet_id=self.test_spreadsheet_id)
+            info_data = json.loads(info_result)
+            sheet_name = info_data["sheets"][0]["name"]
+
+            # Prepare test data
+            test_data = [
+                ["Name", "Age", "City"],
+                ["Alice", "30", "New York"],
+                ["Bob", "25", "London"],
+                ["Charlie", "35", "Tokyo"],
+            ]
+
+            # Write data
+            write_result = await gsheet_set_values_to_range(
+                spreadsheet_id=self.test_spreadsheet_id, sheet_range=f"{sheet_name}!A1:C4", values=test_data
+            )
+            write_data = json.loads(write_result)
+
+            if write_data.get("updatedCells", 0) > 0:
+                logger.info(f"Wrote {write_data['updatedCells']} cells")
+
+                # Read data back
+                read_result = await gsheet_get_values_from_range(
+                    spreadsheet_id=self.test_spreadsheet_id, sheet_range=f"{sheet_name}!A1:C4"
+                )
+                read_data = json.loads(read_result)
+
+                if read_data.get("values") == test_data:
+                    self.log_result(test_name, True)
+                else:
+                    self.log_result(test_name, False, "Read data doesn't match written data")
+            else:
+                self.log_result(test_name, False, "No cells updated")
+        except Exception as e:
+            self.log_error(test_name, e)
+
+    async def test_csv_write(self):
+        """Test writing CSV data."""
+        test_name = "csv_write"
+        if not self.test_spreadsheet_id:
+            self.log_result(test_name, False, "No test spreadsheet created")
+            return
+
+        try:
+            # Get the actual sheet name
+            info_result = await gsheet_get_spreadsheet_info(spreadsheet_id=self.test_spreadsheet_id)
+            info_data = json.loads(info_result)
+            sheet_name = info_data["sheets"][0]["name"]
+
+            csv_data = "Product,Price,Stock\nLaptop,999,10\nMouse,29,50\nKeyboard,79,30"
+
+            result = await gsheet_set_values_to_range_with_csv(
+                spreadsheet_id=self.test_spreadsheet_id, sheet_range=f"{sheet_name}!E1", csv_data=csv_data
+            )
+            data = json.loads(result)
+
+            if data.get("updatedCells", 0) > 0:
+                logger.info(f"Wrote {data['updatedCells']} cells from CSV")
+                self.log_result(test_name, True)
+            else:
+                self.log_result(test_name, False, "No cells updated from CSV")
+        except Exception as e:
+            self.log_error(test_name, e)
+
+    async def test_expand_mode(self):
+        """Test expand mode for reading data."""
+        test_name = "expand_mode"
+        if not self.test_spreadsheet_id:
+            self.log_result(test_name, False, "No test spreadsheet created")
+            return
+
+        try:
+            # Get the actual sheet name
+            info_result = await gsheet_get_spreadsheet_info(spreadsheet_id=self.test_spreadsheet_id)
+            info_data = json.loads(info_result)
+            sheet_name = info_data["sheets"][0]["name"]
+
+            # Read with table expand mode
+            result = await gsheet_get_values_from_range(
+                spreadsheet_id=self.test_spreadsheet_id, sheet_range=f"{sheet_name}!A1", expand_mode="table"
+            )
+            data = json.loads(result)
+
+            if data.get("rowCount", 0) > 0:
+                logger.info(f"Expanded to {data['rowCount']} rows, {data['columnCount']} columns")
+                self.log_result(test_name, True)
+            else:
+                self.log_result(test_name, False, "No data found with expand mode")
+        except Exception as e:
+            self.log_error(test_name, e)
+
+    async def test_sheet_operations(self):
+        """Test sheet operations (add, rename, delete)."""
+        test_name = "sheet_operations"
+        if not self.test_spreadsheet_id:
+            self.log_result(test_name, False, "No test spreadsheet created")
+            return
+
+        try:
+            # Add new sheet
+            add_result = await gsheet_add_sheet(spreadsheet_id=self.test_spreadsheet_id, name="TestSheet2")
+            add_data = json.loads(add_result)
+
+            if "id" in add_data:
+                logger.info(f"Added sheet: {add_data['name']}")
+
+                # Rename sheet
+                rename_result = await gsheet_rename_sheet(
+                    spreadsheet_id=self.test_spreadsheet_id, sheet_name="TestSheet2", new_name="RenamedSheet"
+                )
+                rename_data = json.loads(rename_result)
+
+                if rename_data.get("name") == "RenamedSheet":
+                    logger.info("Successfully renamed sheet")
+
+                    # Delete sheet
+                    delete_result = await gsheet_delete_sheet(
+                        spreadsheet_id=self.test_spreadsheet_id, sheet_name="RenamedSheet"
+                    )
+                    logger.info("Successfully deleted sheet")
+                    self.log_result(test_name, True)
+                else:
+                    self.log_result(test_name, False, "Failed to rename sheet")
+            else:
+                self.log_result(test_name, False, "Failed to add sheet")
+        except Exception as e:
+            self.log_error(test_name, e)
+
+    async def test_batch_operations(self):
+        """Test batch operations if available."""
+        test_name = "batch_operations"
+        if not BATCH_TOOLS_AVAILABLE:
+            logger.info("Skipping batch operations test (not available)")
+            return
+
+        if not self.test_spreadsheet_id:
+            self.log_result(test_name, False, "No test spreadsheet created")
+            return
+
+        try:
+            # Batch read
+            read_result = await gsheet_batch_read(
+                spreadsheet_id=self.test_spreadsheet_id, ranges=["Sheet1!A1:C4", "Sheet1!E1:G4"]
+            )
+            read_data = json.loads(read_result)
+
+            if read_data.get("total_ranges", 0) == 2:
+                logger.info(f"Batch read {read_data['total_cells']} cells from {read_data['total_ranges']} ranges")
+
+                # Batch write
+                updates = [
+                    {"range": "Sheet1!A10:B11", "values": [["Batch", "Test"], ["Data", "123"]]},
+                    {"range": "Sheet1!D10:E11", "values": [["More", "Batch"], ["Test", "456"]]},
+                ]
+
+                write_result = await gsheet_batch_write(spreadsheet_id=self.test_spreadsheet_id, updates=updates)
+                write_data = json.loads(write_result)
+
+                if write_data.get("ranges_updated", 0) == 2:
+                    logger.info(
+                        f"Batch wrote {write_data['total_cells_updated']} cells to {write_data['ranges_updated']} ranges"
+                    )
+                    self.log_result(test_name, True)
+                else:
+                    self.log_result(test_name, False, "Batch write failed")
+            else:
+                self.log_result(test_name, False, "Batch read failed")
+        except Exception as e:
+            self.log_error(test_name, e)
+
+    async def test_error_handling(self):
+        """Test error handling scenarios."""
+        test_name = "error_handling"
+
+        try:
+            # Test with invalid spreadsheet ID
+            try:
+                await gsheet_get_spreadsheet_info(spreadsheet_id="invalid_id_12345")
+                self.log_result(test_name + "_invalid_id", False, "Should have raised error")
+            except Exception as e:
+                logger.info(f"Correctly handled invalid ID error: {type(e).__name__}")
+                self.log_result(test_name + "_invalid_id", True)
+
+            # Test with invalid range
+            if self.test_spreadsheet_id:
+                try:
+                    await gsheet_get_values_from_range(
+                        spreadsheet_id=self.test_spreadsheet_id, sheet_range="InvalidSheet!A1"
+                    )
+                    self.log_result(test_name + "_invalid_range", False, "Should have raised error")
+                except Exception as e:
+                    logger.info(f"Correctly handled invalid range error: {type(e).__name__}")
+                    self.log_result(test_name + "_invalid_range", True)
+
+        except Exception as e:
+            self.log_error(test_name, e)
+
+    def print_summary(self):
+        """Print test summary."""
+        print("\n" + "=" * 60)
+        print("TEST SUMMARY")
+        print("=" * 60)
+        print(f"✅ Passed: {len(self.results['passed'])}")
+        print(f"❌ Failed: {len(self.results['failed'])}")
+        print(f"🚨 Errors: {len(self.results['errors'])}")
+
+        if self.results["failed"]:
+            print("\nFailed tests:")
+            for test in self.results["failed"]:
+                print(f"  - {test}")
+
+        if self.results["errors"]:
+            print("\nErrors:")
+            for test, error in self.results["errors"]:
+                print(f"  - {test}: {error}")
+
+        print("\n" + "=" * 60)
+
+        # Return exit code
+        return 0 if not self.results["failed"] and not self.results["errors"] else 1
+
+
+async def main():
+    """Main test function."""
+    # Check environment
+    if not os.getenv("USE_GOOGLE_SHEETS"):
+        print("ERROR: USE_GOOGLE_SHEETS environment variable not set")
+        print("Please run: export USE_GOOGLE_SHEETS=1")
+        return 1
+
+    if not os.getenv("GOOGLE_CLIENT_SECRET_PATH"):
+        print("ERROR: GOOGLE_CLIENT_SECRET_PATH environment variable not set")
+        print("Please run: export GOOGLE_CLIENT_SECRET_PATH=./google_client_secret.json")
+        return 1
+
+    print("Starting Google Sheets Tools Tests...")
+    print("=" * 60)
+
+    tester = GoogleSheetsToolsTester()
+
+    # Run tests in order
+    tests = [
+        tester.test_list_spreadsheets,
+        tester.test_search_spreadsheets,
+        tester.test_create_spreadsheet,
+        tester.test_get_spreadsheet_info,
+        tester.test_write_and_read_data,
+        tester.test_csv_write,
+        tester.test_expand_mode,
+        tester.test_sheet_operations,
+        tester.test_batch_operations,
+        tester.test_error_handling,
+    ]
+
+    for test in tests:
+        print(f"\nRunning {test.__name__}...")
+        await test()
+        await asyncio.sleep(0.5)  # Small delay between tests
+
+    # Print summary
+    exit_code = tester.print_summary()
+
+    # Cleanup message
+    if tester.test_spreadsheet_id:
+        print(f"\nNote: Test spreadsheet created: {tester.test_spreadsheet_name}")
+        print(f"ID: {tester.test_spreadsheet_id}")
+        print("You may want to delete it manually from Google Drive.")
+
+    return exit_code
+
+
+if __name__ == "__main__":
+    # Configure Django settings if needed
+    import django
+    from django.conf import settings
+
+    if not settings.configured:
+        settings.configure(
+            USE_GOOGLE_SHEETS=True,
+            GOOGLE_CLIENT_SECRET_PATH=os.getenv("GOOGLE_CLIENT_SECRET_PATH", "./google_client_secret.json"),
+            SECRET_KEY="test-secret-key",
+            DEBUG=True,
+        )
+        django.setup()
+
+    # Run tests
+    exit_code = asyncio.run(main())
+    sys.exit(exit_code)

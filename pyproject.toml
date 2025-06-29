@@ -67,8 +67,16 @@ python = [
 sentiment = [
     "vaderSentiment",
 ]
+gsheets = [
+    "gspread>=6.0.0",
+    "gspread-asyncio>=2.0.0",
+    "google-auth>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-api-python-client>=2.0.0",
+]
 all = [
-    "pyhub-mcptools[music,excel,browser,images,python,sentiment]",
+    "pyhub-mcptools[music,excel,browser,images,python,sentiment,gsheets]",
 ]
 dev = [
     "pytest",
@@ -102,12 +110,9 @@ Documentation = "https://pyhub-kr.github.io/pyhub-mcptools"
 "mcp" = "pyhub.mcptools.__main__:app"
 "mcptools" = "pyhub.mcptools.__main__:app"
 "pyhub.mcptools" = "pyhub.mcptools.__main__:app"
-"pyhub.mcptools.browser" = "pyhub.mcptools.browser.__main__:app"
-"pyhub.mcptools.email" = "pyhub.mcptools.email.__main__:app"
-"pyhub.mcptools.excel" = "pyhub.mcptools.excel.__main__:app"
-"pyhub.mcptools.python" = "pyhub.mcptools.python.__main__:app"
 "pyhub.mcptools.sentiment" = "pyhub.mcptools.sentiment.__main__:app"
 "pyhub.mcptools.setup" = "pyhub.mcptools.setup.__main__:app"
+"pyhub.mcptools.google" = "pyhub.mcptools.google.__main__:app"
 
 [project.entry-points."mkdocs.plugins"]
 local_social = "plugins.local_social.plugin:LocalSocialPlugin"
@@ -154,7 +159,11 @@ indent = 2
 testpaths = ["pyhub"]
 python_files = "test_*.py"
 asyncio_mode = "auto"  # Enable asyncio mode
-asyncio_default_fixture_loop_scope = "function"  # Set default fixture loop scope
+asyncio_default_fixture_loop_scope = "session"  # Set default fixture loop scope
 markers = [
     "asyncio: mark test as an asyncio test",
+    "integration: mark test as an integration test requiring API access",
+    "error_handling: mark test as error handling specific test",
+    "slow: mark test as slow running test",
+    "batch: mark test as batch operation test",
 ]
