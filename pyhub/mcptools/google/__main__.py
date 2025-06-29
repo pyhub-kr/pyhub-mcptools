@@ -1,8 +1,17 @@
-"""Google MCP 도구 독립 실행 지원
+"""Entry point for Google MCP tools."""
 
-이 모듈은 Google MCP 도구를 독립적으로 실행할 수 있도록 지원합니다.
-향후 다른 Google 서비스(Drive, Docs, Calendar 등)가 추가될 때 확장됩니다.
-"""
+import os
 
-# Google Sheets 도구 import
-from pyhub.mcptools.google.sheets.tools import *  # noqa
+# Set required environment variables for Google Sheets
+os.environ.setdefault("USE_GOOGLE_SHEETS", "1")
+
+from pyhub.mcptools.core.cli import app
+
+from . import cli_commands  # noqa
+from .gmail.tools import labels, messages, search  # noqa
+
+# Import to register tools and CLI commands
+from .sheets.tools import sheets  # noqa
+
+if __name__ == "__main__":
+    app()
