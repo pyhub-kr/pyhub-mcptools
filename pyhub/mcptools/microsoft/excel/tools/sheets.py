@@ -467,7 +467,7 @@ async def excel_set_cell_data(
                 parsed_data = None
 
             if parsed_data is not None:
-                fixed_data = fix_data(parsed_data)
+                fixed_data = fix_data(sheet_range, parsed_data)
                 range_.value = fixed_data
 
             return "Successfully set values."
@@ -560,7 +560,8 @@ async def excel_find_data_ranges(
                 for col_idx, cell_value in enumerate(row):
                     if cell_value is not None and (row_idx, col_idx) not in visited:
                         # Found non-empty cell, expand to find full data block
-                        cell = used_range.cells[row_idx, col_idx]
+                        # xlwings Range has no .cells; it supports 0-based (row, col) indexing directly
+                        cell = used_range[row_idx, col_idx]
                         data_block = cell.expand("table")
 
                         # Mark all cells in this block as visited
@@ -822,12 +823,14 @@ async def excel_add_sheet(
                 book = xw.books.active
 
             # Determine position
+            # xlwings Sheets.add() resolves plain ints with 1-based Excel indexing,
+            # so 0 / -1 raise DISP_E_BADINDEX. Pass Sheet objects instead.
             if at_start:
-                before = 0
+                before = book.sheets[0]
                 after = None
             elif at_end:
                 before = None
-                after = -1
+                after = book.sheets[-1]
             elif before_sheet_name:
                 before = book.sheets[before_sheet_name]
                 after = None

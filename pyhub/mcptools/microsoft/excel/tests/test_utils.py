@@ -72,3 +72,50 @@ def test_json_loads(json_str, expected):
 )
 def test_csv_loads(csv_str, expected):
     assert csv_loads(csv_str) == expected
+
+
+@pytest.mark.parametrize("expand_mode", ["", "none", "NONE", None])
+def test_get_range_without_expand(monkeypatch, expand_mode):
+    """expand_mode 가 비어 있거나 'none' 이면 Range.expand() 를 호출하지 않아야 한다."""
+    from pyhub.mcptools.microsoft.excel import utils
+
+    calls = []
+
+    class FakeRange:
+        def expand(self, mode):
+            calls.append(mode)
+            return self
+
+    class FakeSheet:
+        def range(self, addr):
+            return FakeRange()
+
+    monkeypatch.setattr(utils, "get_sheet", lambda **kwargs: FakeSheet())
+
+    utils.get_range(sheet_range="A1:D10", expand_mode=expand_mode)
+    assert calls == []
+
+
+@pytest.mark.parametrize("expand_mode, expected", [("table", "table"), ("Down", "down"), ("right", "right")])
+def test_get_range_with_expand(monkeypatch, expand_mode, expected):
+    """expand_mode 가 유효하면 시작 셀만 남기고 그 모드로 expand() 를 호출해야 한다."""
+    from pyhub.mcptools.microsoft.excel import utils
+
+    calls = []
+    addrs = []
+
+    class FakeRange:
+        def expand(self, mode):
+            calls.append(mode)
+            return self
+
+    class FakeSheet:
+        def range(self, addr):
+            addrs.append(addr)
+            return FakeRange()
+
+    monkeypatch.setattr(utils, "get_sheet", lambda **kwargs: FakeSheet())
+
+    utils.get_range(sheet_range="A1:D10", expand_mode=expand_mode)
+    assert addrs == ["A1"]
+    assert calls == [expected]

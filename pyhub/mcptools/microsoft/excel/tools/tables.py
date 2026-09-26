@@ -89,12 +89,13 @@ async def excel_convert_to_table(
 
             # Convert to table
             sheet = range_.sheet
-            has_headers_bool = None if has_headers == "guess" else (has_headers.lower() == "true")
+            # xlwings Tables.add(source=..., has_headers=True|False|"guess")
+            has_headers_value = "guess" if has_headers.lower() == "guess" else (has_headers.lower() == "true")
 
             table = sheet.tables.add(
-                source_range=range_,
+                source=range_,
                 name=table_name or None,
-                has_headers=has_headers_bool,
+                has_headers=has_headers_value,
                 table_style_name=table_style_name,
             )
 
@@ -296,7 +297,7 @@ async def excel_remove_pivot_tables(
                 names = [name.strip() for name in pivot_table_names.split(",")]
                 results = []
                 for name in names:
-                    result = PivotTable.remove(sheet, name)
+                    result = PivotTable.remove(sheet, [name])  # remove_() expects a list of names
                     results.append(result)
                 result = "; ".join(results)
             else:
