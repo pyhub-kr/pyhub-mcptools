@@ -41,6 +41,13 @@ def get_range(
         parsed_sheet_name, sheet_range = sheet_range.split("!", 1)
         sheet_name = sheet_name or parsed_sheet_name
 
+    # "none"/"" 은 확장하지 않음. xlwings의 Range.expand 는 알 수 없는 mode 문자열을 그대로 사용하다가
+    # 'str' object has no attribute 'expand' 오류를 내므로 여기서 걸러낸다.
+    if not isinstance(expand_mode, str) or expand_mode.strip().lower() in ("", "none"):
+        expand_mode = None
+    else:
+        expand_mode = expand_mode.strip().lower()
+
     # expand_mode가 지정되어있을 때, 시트 범위에서 시작 셀 좌표만 추출.
     # Claude에서 expand_mode를 지정했을 때에도 sheet range를 너무 크게 잡을 때가 있음.
     if expand_mode:
