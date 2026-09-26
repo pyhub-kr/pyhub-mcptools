@@ -181,7 +181,9 @@ class PivotTableInWindows(PivotTable):
 
         pivot_table.RefreshTable()
 
-        return pivot_table.name
+        # NOTE: must be `Name`. `pivot_table.name` misses the makepy attribute, falls back to
+        # IDispatch.GetIDsOfNames("name") and that call crashes the Excel process (RPC failure).
+        return pivot_table.Name
 
     @classmethod
     def list_(cls, sheet: xw.Sheet) -> List:
@@ -208,18 +210,28 @@ class PivotTableInWindows(PivotTable):
 
             for i in range(1, all_fields.Count + 1):
                 fld = all_fields.Item(i)
-                ori = fld.Orientation
-                name = fld.Name
+                ori = int(fld.Orientation)  # COM returns float; do not shadow `name` (pivot table name)
+                field_name = fld.Name
 
                 match ori:
                     case PivotFieldOrientation.xlRowField:
-                        row_field_names.append(name)
+                        row_field_names.append(field_name)
                     case PivotFieldOrientation.xlColumnField:
-                        column_field_names.append(name)
+                        column_field_names.append(field_name)
                     case PivotFieldOrientation.xlPageField:
-                        page_field_names.append(name)
+                        page_field_names.append(field_name)
                     case PivotFieldOrientation.xlDataField:
-                        value_field_names.append(name)
+                        value_field_names.append(field_name)
+
+            # Value fields are exposed through DataFields (their PivotField.Orientation stays xlHidden)
+            try:
+                data_fields = pivot_table.DataFields  # property-style access works through the xlwings COM wrapper
+                for i in range(1, data_fields.Count + 1):
+                    data_field_name = data_fields.Item(i).Name
+                    if data_field_name not in value_field_names:
+                        value_field_names.append(data_field_name)
+            except Exception:  # noqa
+                pass
 
             pivot_tables.append(
                 {
@@ -237,17 +249,18 @@ class PivotTableInWindows(PivotTable):
 
     @classmethod
     def remove_(cls, sheet: xw.Sheet, names: List[str]) -> str:
-        for name in names:
+        removed = []
+        for name in names:  # do not append to `names` while iterating it (infinite loop)
             pivot_table = sheet.api.PivotTables(name)
-            names.append(pivot_table.Name)
+            removed.append(pivot_table.Name)
             pivot_table.TableRange2.Delete()
             try:
                 pivot_table.PivotCache().Delete()
             except:  # noqa
                 pass
 
-        if names:
-            return f"Removed pivot tables : {', '.join(names)}"
+        if removed:
+            return f"Removed pivot tables : {', '.join(removed)}"
         else:
             return "No pivot tables were removed."
 
@@ -255,7 +268,8 @@ class PivotTableInWindows(PivotTable):
     def remove_all_(cls, sheet: xw.Sheet) -> str:
         names = []
         pivot_table_api = sheet.api.PivotTables()
-        for i in range(1, pivot_table_api.Count + 1):
+        # iterate backwards: deleting shrinks the collection, so Item(i) fails when going forward
+        for i in range(pivot_table_api.Count, 0, -1):
             pivot_table = pivot_table_api.Item(i)
             names.append(pivot_table.Name)
             pivot_table.TableRange2.Delete()

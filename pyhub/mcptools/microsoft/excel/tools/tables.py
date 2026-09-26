@@ -297,7 +297,7 @@ async def excel_remove_pivot_tables(
                 names = [name.strip() for name in pivot_table_names.split(",")]
                 results = []
                 for name in names:
-                    result = PivotTable.remove(sheet, name)
+                    result = PivotTable.remove(sheet, [name])  # remove_() expects a list of names
                     results.append(result)
                 result = "; ".join(results)
             else:
